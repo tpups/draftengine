@@ -1,0 +1,79 @@
+# .NET Core
+bin/
+obj/
+*.dll
+*.pdb
+*.user
+*.suo
+*.cache
+*.log
+*.vs
+*.vscode
+*.idea
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio files
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider
+.idea/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# MongoDB
+*.dat
+*.lock
+*.wt
+*.turtle
+*.0
+*.1
+*.2
+storage.bson
+mongod.lock
+WiredTiger*
+journal/
+
+# Environment files
+appsettings.*.json
+!appsettings.json
+!appsettings.Example.json
+*.env
+.env.*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.docker/
+*.dockerignore
