@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace DraftEngine.Controllers
 {
@@ -7,10 +8,12 @@ namespace DraftEngine.Controllers
     public class PlayerController : ControllerBase
     {
         private readonly PlayerService _playerService;
+        private readonly ILogger<PlayerController> _logger;
 
-        public PlayerController(PlayerService playerService)
+        public PlayerController(PlayerService playerService, ILogger<PlayerController> logger)
         {
             _playerService = playerService;
+            _logger = logger;
         }
 
         // Basic CRUD operations
@@ -32,11 +35,50 @@ namespace DraftEngine.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(Player newPlayer)
+        public async Task<IActionResult> Post([FromBody] JsonElement body)
         {
-            await _playerService.CreateAsync(newPlayer);
+            try
+            {
+                _logger.LogInformation("Received raw player data: {PlayerData}", body.ToString());
+                
+                // Deserialize with more lenient options
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    AllowTrailingCommas = true,
+                    ReadCommentHandling = JsonCommentHandling.Skip
+                };
 
-            return CreatedAtAction(nameof(Get), new { id = newPlayer.Id }, newPlayer);
+                var newPlayer = JsonSerializer.Deserialize<Player>(body.ToString(), options);
+
+                if (newPlayer == null)
+                {
+                    _logger.LogError("Failed to deserialize player data");
+                    return BadRequest(new { error = "Invalid player data format" });
+                }
+
+                // Initialize collections if they're null
+                newPlayer.Position ??= Array.Empty<string>();
+                newPlayer.Rank ??= new Dictionary<string, int>();
+                newPlayer.ProspectRank ??= new Dictionary<string, int>();
+                newPlayer.ProspectRisk ??= new Dictionary<string, string>();
+                newPlayer.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
+
+                _logger.LogInformation("Deserialized player: {Player}", JsonSerializer.Serialize(newPlayer));
+
+                await _playerService.CreateAsync(newPlayer);
+                return CreatedAtAction(nameof(Get), new { id = newPlayer.Id }, newPlayer);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "JSON deserialization error");
+                return BadRequest(new { error = "Invalid JSON format", details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating player");
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpPut("{id:length(24)}")]

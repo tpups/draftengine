@@ -34,6 +34,13 @@ bld/
 *.userosscache
 *.sln.docstates
 *.userprefs
+*.dbmdl
+*.jfm
+*.pfx
+*.publishsettings
+
+# Test Results
+TestResults/
 
 # Rider
 .idea/

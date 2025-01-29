@@ -2,6 +2,17 @@
 
 ## Technology Stack
 
+### Frontend
+- React with TypeScript
+  - Vite build tool
+  - Material-UI components
+  - React Query for API integration
+  - AG Grid for data tables
+- Node.js and npm
+  - Required for frontend development
+  - Package management
+  - Build tooling
+
 ### Backend
 - .NET Core 8.0
   - Latest LTS release

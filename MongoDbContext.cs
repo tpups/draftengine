@@ -10,6 +10,10 @@ namespace DraftEngine
         public MongoDbContext(IOptions<MongoDbSettings> settings)
         {
             var client = new MongoClient(settings.Value.ConnectionString);
+            if (string.IsNullOrEmpty(settings.Value.DatabaseName))
+            {
+                throw new ArgumentException("Database name must be provided in settings");
+            }
             _database = client.GetDatabase(settings.Value.DatabaseName);
         }
 
@@ -18,7 +22,7 @@ namespace DraftEngine
 
     public class MongoDbSettings
     {
-        public string ConnectionString { get; set; } = null!;
-        public string DatabaseName { get; set; } = null!;
+        public string ConnectionString { get; set; } = "mongodb://localhost:27017";
+        public string DatabaseName { get; set; } = "DraftEngine";
     }
 }
