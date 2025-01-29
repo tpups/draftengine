@@ -29,6 +29,7 @@
 - API client service layer
 - TypeScript interfaces for data models
 - Basic component structure
+- Git configuration and dependency management
 
 ## In Progress
 
