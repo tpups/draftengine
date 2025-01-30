@@ -53,7 +53,14 @@
 4. Visual Studio Code or Visual Studio
 
 ### Environment Configuration
-- appsettings.json for configuration
+- Configuration Sources:
+  * appsettings.json for base configuration
+    - Uses colon notation for hierarchical keys (e.g., "MongoDB:ConnectionString")
+    - JSON standard format
+  * Environment variables for overrides
+    - Uses double underscore notation (e.g., "MongoDB__ConnectionString")
+    - Required format for Docker/container environments
+  * Both formats are equivalent when accessed in code
 - Development/Production environments
 - MongoDB connection settings
 - Docker configuration

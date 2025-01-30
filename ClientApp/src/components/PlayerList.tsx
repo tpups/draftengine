@@ -1,63 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
-import { DataGrid, GridColDef, GridValueGetter } from '@mui/x-data-grid';
+import { DataGrid } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { playerService } from '../services/playerService';
 import { Player } from '../types/models';
 
-const columns: GridColDef<Player>[] = [
-  { 
-    field: 'name',
-    headerName: 'Name',
-    flex: 1,
-    minWidth: 150,
-  },
-  { 
-    field: 'position',
-    headerName: 'Position',
-    width: 120,
-    valueGetter: ({ row }: { row: Player }) => row.position?.join(', '),
-  },
-  { 
-    field: 'mlbTeam',
-    headerName: 'Team',
-    width: 100,
-  },
-  { 
-    field: 'level',
-    headerName: 'Level',
-    width: 100,
-  },
-  { 
-    field: 'eta',
-    headerName: 'ETA',
-    width: 100,
-    type: 'number',
-  },
-  {
-    field: 'personalRank',
-    headerName: 'My Rank',
-    width: 100,
-    type: 'number',
-  },
-  {
-    field: 'isDrafted',
-    headerName: 'Drafted',
-    width: 100,
-    type: 'boolean',
-  },
-  {
-    field: 'isHighlighted',
-    headerName: 'Highlighted',
-    width: 100,
-    type: 'boolean',
-  },
-];
-
 export function PlayerList() {
-  const { data: players, isLoading, error } = useQuery({
+  const { data: response, isLoading, error } = useQuery({
     queryKey: ['players'],
-    queryFn: playerService.getAll,
+    queryFn: async () => {
+      const data = await playerService.getAll();
+      console.log('API Response:', {
+        raw: data,
+        value: data?.value,
+        firstPlayer: data?.value?.[0]
+      });
+      return data;
+    },
   });
+
+  const players = response?.value ?? [];
 
   if (isLoading) {
     return (
@@ -75,23 +36,45 @@ export function PlayerList() {
     );
   }
 
+  if (!players || players.length === 0) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+        <Alert severity="info">No players available</Alert>
+      </Box>
+    );
+  }
+
+  // Transform data to only include fields we want to display
+  const gridData = players.map(player => ({
+    id: player.id,
+    name: player.name,
+    mlbTeam: player.mlbTeam,
+    level: player.level
+  }));
+
+  console.log('Rendering DataGrid with data:', gridData);
+
   return (
-    <Box sx={{ width: '100%', height: 600 }}>
-      <DataGrid<Player>
-        rows={players ?? []}
-        columns={columns}
-        initialState={{
-          pagination: {
-            paginationModel: { pageSize: 25, page: 0 },
+    <Box sx={{ width: '100%', height: 600, display: 'flex', flexDirection: 'column' }}>
+      <DataGrid
+        rows={gridData}
+        columns={[
+          {
+            field: 'name',
+            headerName: 'Name',
+            width: 200
           },
-          sorting: {
-            sortModel: [{ field: 'name', sort: 'asc' }],
+          {
+            field: 'mlbTeam',
+            headerName: 'Team',
+            width: 100
           },
-        }}
-        pageSizeOptions={[10, 25, 50]}
-        checkboxSelection
-        disableRowSelectionOnClick
-        getRowId={(row) => row.id}
+          {
+            field: 'level',
+            headerName: 'Level',
+            width: 100
+          }
+        ]}
       />
     </Box>
   );

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: final
+    ports:
+      - "5246:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=DraftEngine
+    volumes:
+      - .:/src
+      - ./appsettings.json:/app/appsettings.json
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./ClientApp
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5246
+    volumes:
+      - ./ClientApp:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:

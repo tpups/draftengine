@@ -1,12 +1,12 @@
 import { apiClient } from './apiClient';
-import { Player, DraftInfo, AgeRangeParams, RiskLevelParams } from '../types/models';
+import { Player, DraftInfo, AgeRangeParams, RiskLevelParams, ApiResponse } from '../types/models';
 
 const BASE_PATH = '/player';
 
 export const playerService = {
   // Basic CRUD operations
   getAll: () => 
-    apiClient.get<Player[]>(BASE_PATH),
+    apiClient.get<ApiResponse<Player[]>>(BASE_PATH),
 
   getById: (id: string) =>
     apiClient.get<Player>(`${BASE_PATH}/${id}`),

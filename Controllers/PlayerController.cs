@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace DraftEngine.Controllers
 {
@@ -18,8 +19,11 @@ namespace DraftEngine.Controllers
 
         // Basic CRUD operations
         [HttpGet]
-        public async Task<List<Player>> Get() =>
-            await _playerService.GetAsync();
+        public async Task<ActionResult<List<Player>>> Get()
+        {
+            var players = await _playerService.GetAsync();
+            return Ok(players);
+        }
 
         [HttpGet("{id:length(24)}")]
         public async Task<ActionResult<Player>> Get(string id)
@@ -31,31 +35,16 @@ namespace DraftEngine.Controllers
                 return NotFound();
             }
 
-            return player;
+            return Ok(player);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] JsonElement body)
+        public async Task<IActionResult> Post([FromBody] Player newPlayer)
         {
             try
             {
-                _logger.LogInformation("Received raw player data: {PlayerData}", body.ToString());
-                
-                // Deserialize with more lenient options
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    AllowTrailingCommas = true,
-                    ReadCommentHandling = JsonCommentHandling.Skip
-                };
-
-                var newPlayer = JsonSerializer.Deserialize<Player>(body.ToString(), options);
-
-                if (newPlayer == null)
-                {
-                    _logger.LogError("Failed to deserialize player data");
-                    return BadRequest(new { error = "Invalid player data format" });
-                }
+                _logger.LogInformation("Received player data: {PlayerData}", 
+                    JsonConvert.SerializeObject(newPlayer, Formatting.Indented));
 
                 // Initialize collections if they're null
                 newPlayer.Position ??= Array.Empty<string>();
@@ -64,15 +53,8 @@ namespace DraftEngine.Controllers
                 newPlayer.ProspectRisk ??= new Dictionary<string, string>();
                 newPlayer.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
 
-                _logger.LogInformation("Deserialized player: {Player}", JsonSerializer.Serialize(newPlayer));
-
                 await _playerService.CreateAsync(newPlayer);
                 return CreatedAtAction(nameof(Get), new { id = newPlayer.Id }, newPlayer);
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "JSON deserialization error");
-                return BadRequest(new { error = "Invalid JSON format", details = ex.Message });
             }
             catch (Exception ex)
             {
@@ -114,25 +96,47 @@ namespace DraftEngine.Controllers
         }
 
         // Filtering endpoints
+        private JsonSerializerSettings GetJsonSettings() => new JsonSerializerSettings
+        {
+            ContractResolver = new CamelCasePropertyNamesContractResolver(),
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Include
+        };
+
         [HttpGet("byLevel/{level}")]
-        public async Task<List<Player>> GetByLevel(string level) =>
-            await _playerService.GetByLevelAsync(level);
+        public async Task<ActionResult<List<Player>>> GetByLevel(string level)
+        {
+            var players = await _playerService.GetByLevelAsync(level);
+            return Ok(players);
+        }
 
         [HttpGet("byTeam/{team}")]
-        public async Task<List<Player>> GetByTeam(string team) =>
-            await _playerService.GetByTeamAsync(team);
+        public async Task<ActionResult<List<Player>>> GetByTeam(string team)
+        {
+            var players = await _playerService.GetByTeamAsync(team);
+            return Ok(players);
+        }
 
         [HttpGet("byPosition/{position}")]
-        public async Task<List<Player>> GetByPosition(string position) =>
-            await _playerService.GetByPositionAsync(position);
+        public async Task<ActionResult<List<Player>>> GetByPosition(string position)
+        {
+            var players = await _playerService.GetByPositionAsync(position);
+            return Ok(players);
+        }
 
         [HttpGet("undrafted")]
-        public async Task<List<Player>> GetUndrafted() =>
-            await _playerService.GetUndraftedPlayersAsync();
+        public async Task<ActionResult<List<Player>>> GetUndrafted()
+        {
+            var players = await _playerService.GetUndraftedPlayersAsync();
+            return Ok(players);
+        }
 
         [HttpGet("highlighted")]
-        public async Task<List<Player>> GetHighlighted() =>
-            await _playerService.GetHighlightedPlayersAsync();
+        public async Task<ActionResult<List<Player>>> GetHighlighted()
+        {
+            var players = await _playerService.GetHighlightedPlayersAsync();
+            return Ok(players);
+        }
 
         // Draft management endpoints
         [HttpPost("{id:length(24)}/draft")]
@@ -193,16 +197,25 @@ namespace DraftEngine.Controllers
 
         // Advanced filtering endpoints
         [HttpGet("byAge")]
-        public async Task<List<Player>> GetByAgeRange([FromQuery] int minAge, [FromQuery] int maxAge) =>
-            await _playerService.GetByAgeRangeAsync(minAge, maxAge);
+        public async Task<ActionResult<List<Player>>> GetByAgeRange([FromQuery] int minAge, [FromQuery] int maxAge)
+        {
+            var players = await _playerService.GetByAgeRangeAsync(minAge, maxAge);
+            return Ok(players);
+        }
 
         [HttpGet("byETA/{year}")]
-        public async Task<List<Player>> GetByETA(int year) =>
-            await _playerService.GetByETAAsync(year);
+        public async Task<ActionResult<List<Player>>> GetByETA(int year)
+        {
+            var players = await _playerService.GetByETAAsync(year);
+            return Ok(players);
+        }
 
         [HttpGet("byRiskLevel")]
-        public async Task<List<Player>> GetByRiskLevel([FromQuery] string source, [FromQuery] string riskLevel) =>
-            await _playerService.GetByRiskLevelAsync(source, riskLevel);
+        public async Task<ActionResult<List<Player>>> GetByRiskLevel([FromQuery] string source, [FromQuery] string riskLevel)
+        {
+            var players = await _playerService.GetByRiskLevelAsync(source, riskLevel);
+            return Ok(players);
+        }
     }
 
     public class DraftInfo
