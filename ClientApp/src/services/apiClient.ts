@@ -40,8 +40,22 @@ async function handleResponse<T>(response: Response): Promise<T> {
     throw new ApiError(response.status, errorMessage, errorData);
   }
 
-  const data = await response.json();
-  return data as T;
+  // Return void for 204 No Content responses or when T is void
+  if (response.status === 204 || typeof void 0 === (undefined as T)) {
+    return undefined as T;
+  }
+
+  // For all other responses, try to parse JSON
+  try {
+    const data = await response.json();
+    return data as T;
+  } catch (error) {
+    if (response.ok) {
+      // If the response is OK but not JSON, return undefined
+      return undefined as T;
+    }
+    throw new ApiError(response.status, 'Invalid JSON response');
+  }
 }
 
 export const apiClient = {

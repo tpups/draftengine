@@ -21,6 +21,9 @@ namespace DraftEngine
         public async Task CreateAsync(Player newPlayer) =>
             await _players.InsertOneAsync(newPlayer);
 
+        public async Task CreateManyAsync(IEnumerable<Player> players) =>
+            await _players.InsertManyAsync(players);
+
         public async Task UpdateAsync(string id, Player updatedPlayer) =>
             await _players.ReplaceOneAsync(player => player.Id == id, updatedPlayer);
 

@@ -27,6 +27,16 @@
   - High performance
   - Native JSON support
   - MongoDB.Driver for .NET
+  - Player data structure:
+    * Comprehensive player model
+    * Multiple ranking sources
+    * Scouting metrics
+    * Draft status tracking
+  - Data import process:
+    * Batch file processing
+    * JSON validation
+    * Rank-based sorting
+    * Data integrity checks
 
 ### API
 - ASP.NET Core Web API

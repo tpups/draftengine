@@ -12,6 +12,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: parseInt(env.VITE_PORT || '5173'),
       strictPort: true, // Throw if port is already in use
+      watch: {
+        usePolling: true, // Use polling for Docker environments
+        interval: 1000, // Check for changes every second
+      },
     },
     define: {
       // Pass environment variables to the client-side code

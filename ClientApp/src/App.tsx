@@ -1,32 +1,47 @@
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Box, Container, AppBar, Toolbar, Typography, Paper } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button } from '@mui/material';
+import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import { theme } from './utils/theme';
-import { PlayerList } from './components/PlayerList';
+import { Home } from './pages/Home';
+import { AdminPanel } from './pages/AdminPanel';
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" component="div">
-              DraftEngine
-            </Typography>
-          </Toolbar>
-        </AppBar>
-        
-        <Container maxWidth="xl" sx={{ mt: 3, mb: 3, flex: 1 }}>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Player Management
-            </Typography>
-            <PlayerList />
-          </Paper>
-        </Container>
-      </Box>
-    </ThemeProvider>
+    <BrowserRouter>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
+          <AppBar position="static" sx={{ width: '100%' }}>
+            <Toolbar>
+              <Typography variant="h6" component={RouterLink} to="/" sx={{ textDecoration: 'none', color: 'inherit', flexGrow: 1 }}>
+                DraftEngine
+              </Typography>
+              <Button 
+                color="inherit" 
+                component={RouterLink} 
+                to="/"
+                sx={{ mr: 2 }}
+              >
+                Home
+              </Button>
+              <Button 
+                color="inherit" 
+                component={RouterLink} 
+                to="/admin"
+              >
+                Admin
+              </Button>
+            </Toolbar>
+          </AppBar>
+          
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/admin" element={<AdminPanel />} />
+          </Routes>
+        </Box>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
 

@@ -17,13 +17,15 @@
     "@mui/x-data-grid": "^7.24.1",
     "@tanstack/react-query": "^5.65.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.29.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.12.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.0.0",

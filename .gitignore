@@ -41,6 +41,9 @@ bld/
 
 # Test Results
 TestResults/
+coverage/
+*.coverage
+*.coveragexml
 
 # Rider
 .idea/
@@ -94,6 +97,8 @@ yarn-debug.log*
 yarn-error.log*
 .npm/
 .yarn/
+.pnp.*
+.cache/
 
 # Build output
 dist/
@@ -107,3 +112,18 @@ build/
 *.cer
 *.der
 *.priv
+
+# Project specific
+Data/*.json
+!Data/schema.json
+player.json
+
+# IDE specific
+.history/
+*.swp
+*.swo
+*~
+
+# Test coverage
+coverage/
+.nyc_output/

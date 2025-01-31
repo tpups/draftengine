@@ -5,6 +5,30 @@ The DraftEngine follows a modern web API architecture with clear separation of c
 
 ## Core Patterns
 
+### Frontend Architecture
+1. React Router Integration
+   - Direct use of React Router components
+   - Proper integration with Material-UI:
+     * Use Link component from react-router-dom directly
+     * Wrap Material-UI components with Link when needed
+     * Keep routing logic separate from UI components
+   - Route configuration in App.tsx
+   - Protected routes for admin features
+
+2. Component Structure
+   - Functional components with hooks
+   - Top-level hook declarations
+   - Proper state management
+   - Clear component hierarchy
+   - Material-UI integration patterns
+
+3. State Management
+   - React Query for API state
+   - Local state with useState
+   - Component-level state isolation
+   - Proper error handling
+   - Loading state management
+
 ### API Design
 - RESTful API architecture
 - Controller-Service pattern
@@ -18,7 +42,29 @@ The DraftEngine follows a modern web API architecture with clear separation of c
   * Consistent structure across endpoints
 
 ### Data Layer
-1. MongoDB Integration
+1. Player Data Structure
+   - Comprehensive player model with:
+     * Core info (name, position, team)
+     * Ranking data (steamer_2025)
+     * Biographical info (birthDate, level)
+     * Scouting information (grades, risk assessment)
+     * Draft status tracking
+     * Personal notes and highlights
+   - JSON format for easy import/export
+   - Flexible schema for different player types
+   - Support for multiple ranking sources
+   - Proper nullability for optional fields
+
+2. Data Import Process
+   - Batch file processing
+   - Source file validation
+   - Rank-based sorting
+   - Data integrity checks
+   - PowerShell command handling
+   - Error handling and logging
+   - Verification steps
+
+3. MongoDB Integration
    - Document-based storage
    - Async operations
    - Collection per entity type
@@ -30,7 +76,7 @@ The DraftEngine follows a modern web API architecture with clear separation of c
      * Let MongoDB handle Id generation
      * Validate Id after creation
 
-2. Data Models
+4. Data Models
    - C# 8.0 nullable reference types
    - Clear property definitions
    - Dictionary-based flexible storage for rankings
@@ -55,6 +101,13 @@ The DraftEngine follows a modern web API architecture with clear separation of c
 
 ## Key Technical Decisions
 
+### Frontend Stack
+- React 18 with TypeScript
+- Material-UI for components
+- React Router for navigation
+- React Query for data fetching
+- Vite for development server
+
 ### MongoDB Choice
 - Flexible schema for evolving player data
 - Good performance for read-heavy operations
@@ -76,8 +129,15 @@ The DraftEngine follows a modern web API architecture with clear separation of c
 ## Code Organization
 ```
 DraftEngine/
-├── Controllers/         # API endpoints
-├── Models/             # Data models
+├── ClientApp/
+│   ├── src/
+│   │   ├── components/    # Reusable UI components
+│   │   ├── pages/        # Route-level components
+│   │   ├── services/     # API client and services
+│   │   ├── types/        # TypeScript definitions
+│   │   └── utils/        # Helper functions
+├── Controllers/          # API endpoints
+├── Models/              # Data models
 ├── Services/           # Business logic
 └── Properties/         # Configuration
 ```
@@ -100,3 +160,10 @@ DraftEngine/
    - Proper error handling
    - Data validation
    - MongoDB best practices
+
+4. Frontend Development
+   - React hooks at top level
+   - Consistent component structure
+   - Material-UI integration patterns
+   - TypeScript for type safety
+   - Proper routing implementation

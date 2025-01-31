@@ -47,12 +47,14 @@ namespace DraftEngine.Controllers
                 _logger.LogInformation("Received player data: {PlayerData}", 
                     JsonConvert.SerializeObject(newPlayer, Formatting.Indented));
 
-                // Initialize collections if they're null
+                // Initialize collections and required fields if they're null
                 newPlayer.Position ??= Array.Empty<string>();
                 newPlayer.Rank ??= new Dictionary<string, int>();
                 newPlayer.ProspectRank ??= new Dictionary<string, int>();
                 newPlayer.ProspectRisk ??= new Dictionary<string, string>();
                 newPlayer.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
+                newPlayer.PersonalGrades ??= new ScoutingGrades();
+                newPlayer.PersonalRiskAssessment ??= string.Empty;
 
                 await _playerService.CreateAsync(newPlayer);
                 return CreatedAtAction(nameof(Get), new { id = newPlayer.Id }, newPlayer);
@@ -216,6 +218,36 @@ namespace DraftEngine.Controllers
         {
             var players = await _playerService.GetByRiskLevelAsync(source, riskLevel);
             return Ok(ApiResponse<List<Player>>.Create(players));
+        }
+
+        // Batch operations
+        [HttpPost("batch")]
+        public async Task<IActionResult> BatchImport([FromBody] List<Player> players)
+        {
+            try
+            {
+                _logger.LogInformation("Received batch import request with {Count} players", players.Count);
+
+                // Initialize collections and required fields for each player
+                foreach (var player in players)
+                {
+                    player.Position ??= Array.Empty<string>();
+                    player.Rank ??= new Dictionary<string, int>();
+                    player.ProspectRank ??= new Dictionary<string, int>();
+                    player.ProspectRisk ??= new Dictionary<string, string>();
+                    player.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
+                    player.PersonalGrades ??= new ScoutingGrades();
+                    player.PersonalRiskAssessment ??= string.Empty;
+                }
+
+                await _playerService.CreateManyAsync(players);
+                return Ok(new { message = $"Successfully imported {players.Count} players" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing players batch");
+                return BadRequest(new { error = ex.Message });
+            }
         }
     }
 
