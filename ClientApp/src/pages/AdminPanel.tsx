@@ -27,7 +27,11 @@ export const AdminPanel: React.FC = () => {
 
     try {
       const fileContent = await selectedFile.text();
-      const players = JSON.parse(fileContent);
+      const { players } = JSON.parse(fileContent);
+      
+      if (!Array.isArray(players)) {
+        throw new Error('Invalid file format: expected a "players" array');
+      }
       
       // Reset file input and show loading state
       setSelectedFile(null);
