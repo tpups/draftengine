@@ -1,0 +1,23 @@
+{
+  "name": "John Smith",
+  "position": ["SS", "2B"],
+  "rank": {},
+  "prospectRank": {},
+  "mlbTeam": "NYY",
+  "level": "AA",
+  "birthDate": "2002-06-15",
+  "eta": 2025,
+  "prospectRisk": {},
+  "personalRiskAssessment": "Medium",
+  "scoutingGrades": {},
+  "personalGrades": {
+    "hit": 55,
+    "rawPower": 50,
+    "gamePower": 45,
+    "run": 60,
+    "arm": 55,
+    "field": 60
+  },
+  "isDrafted": false,
+  "isHighlighted": false
+}

@@ -6,7 +6,20 @@
 - DataGrid component implementation and debugging
 
 ## Recent Changes
-1. Docker Configuration:
+1. API Response Standardization:
+   - Created ApiResponse<T> wrapper class
+   - Standardized API response format
+   - Fixed frontend data display issue
+   - Verified player list functionality
+
+2. Player Model and API:
+   - Fixed MongoDB Id handling in Player model
+   - Made Id property nullable to work with MongoDB auto-generation
+   - Successfully tested player creation and retrieval
+   - Verified proper Id generation and persistence
+   - Documented proper model validation behavior
+
+2. Docker Configuration:
    - Created docker-compose.dev.yml for development
    - Created docker-compose.yml for production
    - Added Dockerfile.dev and Dockerfile.prod for frontend
@@ -34,7 +47,20 @@
    - Verified frontend-backend communication
 
 ## Common Mistakes and Lessons Learned
-1. JSON Response Handling:
+1. API Response Structure:
+   - Frontend expected wrapped response with 'value' property
+   - API was returning direct data
+   - Lesson: Maintain consistent response structure
+   - Lesson: Consider frontend expectations when designing API
+
+2. MongoDB Id Handling:
+   - Initially used non-nullable Id property which conflicted with MongoDB auto-generation
+   - Model validation was preventing null Id values before reaching MongoDB
+   - Fixed by making Id property nullable in Player model
+   - Lesson: When using MongoDB's auto-generated Ids, ensure model properties are nullable
+   - Lesson: Consider validation behavior when designing models with auto-generated fields
+
+2. JSON Response Handling:
    - Incorrectly reported missing commas in JSON responses without properly reading the output
    - Made unnecessary changes to JSON serialization based on this misreading
    - Added complexity that wasn't needed since the JSON was properly formatted

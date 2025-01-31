@@ -11,6 +11,11 @@ The DraftEngine follows a modern web API architecture with clear separation of c
 - Async/await throughout for scalability
 - Standard HTTP methods (GET, POST, PUT, DELETE)
 - Proper HTTP status code usage
+- Standardized response format:
+  * ApiResponse<T> wrapper for all responses
+  * Value property contains actual data
+  * Count property for collection metadata
+  * Consistent structure across endpoints
 
 ### Data Layer
 1. MongoDB Integration
@@ -18,12 +23,23 @@ The DraftEngine follows a modern web API architecture with clear separation of c
    - Async operations
    - Collection per entity type
    - MongoDB.Driver for .NET
+   - Auto-generated Id handling:
+     * Use nullable Id properties in models
+     * [BsonId] attribute for mapping
+     * [BsonRepresentation(BsonType.ObjectId)] for proper type conversion
+     * Let MongoDB handle Id generation
+     * Validate Id after creation
 
 2. Data Models
    - C# 8.0 nullable reference types
    - Clear property definitions
    - Dictionary-based flexible storage for rankings
    - MongoDB BSON attributes for mapping
+   - Proper nullability for auto-generated fields
+   - Model validation considerations:
+     * Use nullable types for MongoDB-managed fields
+     * Consider validation timing (pre/post database)
+     * Handle auto-generated values appropriately
 
 ### Service Layer
 - Service class per domain entity

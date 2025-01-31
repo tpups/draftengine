@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using DraftEngine.Models.Data;
 
 namespace DraftEngine.Controllers
 {
@@ -19,14 +20,14 @@ namespace DraftEngine.Controllers
 
         // Basic CRUD operations
         [HttpGet]
-        public async Task<ActionResult<List<Player>>> Get()
+        public async Task<ActionResult<ApiResponse<List<Player>>>> Get()
         {
             var players = await _playerService.GetAsync();
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         [HttpGet("{id:length(24)}")]
-        public async Task<ActionResult<Player>> Get(string id)
+        public async Task<ActionResult<ApiResponse<Player>>> Get(string id)
         {
             var player = await _playerService.GetAsync(id);
 
@@ -35,7 +36,7 @@ namespace DraftEngine.Controllers
                 return NotFound();
             }
 
-            return Ok(player);
+            return Ok(ApiResponse<Player>.Create(player));
         }
 
         [HttpPost]
@@ -104,38 +105,38 @@ namespace DraftEngine.Controllers
         };
 
         [HttpGet("byLevel/{level}")]
-        public async Task<ActionResult<List<Player>>> GetByLevel(string level)
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetByLevel(string level)
         {
             var players = await _playerService.GetByLevelAsync(level);
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         [HttpGet("byTeam/{team}")]
-        public async Task<ActionResult<List<Player>>> GetByTeam(string team)
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetByTeam(string team)
         {
             var players = await _playerService.GetByTeamAsync(team);
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         [HttpGet("byPosition/{position}")]
-        public async Task<ActionResult<List<Player>>> GetByPosition(string position)
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetByPosition(string position)
         {
             var players = await _playerService.GetByPositionAsync(position);
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         [HttpGet("undrafted")]
-        public async Task<ActionResult<List<Player>>> GetUndrafted()
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetUndrafted()
         {
             var players = await _playerService.GetUndraftedPlayersAsync();
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         [HttpGet("highlighted")]
-        public async Task<ActionResult<List<Player>>> GetHighlighted()
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetHighlighted()
         {
             var players = await _playerService.GetHighlightedPlayersAsync();
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         // Draft management endpoints
@@ -197,24 +198,24 @@ namespace DraftEngine.Controllers
 
         // Advanced filtering endpoints
         [HttpGet("byAge")]
-        public async Task<ActionResult<List<Player>>> GetByAgeRange([FromQuery] int minAge, [FromQuery] int maxAge)
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetByAgeRange([FromQuery] int minAge, [FromQuery] int maxAge)
         {
             var players = await _playerService.GetByAgeRangeAsync(minAge, maxAge);
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         [HttpGet("byETA/{year}")]
-        public async Task<ActionResult<List<Player>>> GetByETA(int year)
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetByETA(int year)
         {
             var players = await _playerService.GetByETAAsync(year);
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
         [HttpGet("byRiskLevel")]
-        public async Task<ActionResult<List<Player>>> GetByRiskLevel([FromQuery] string source, [FromQuery] string riskLevel)
+        public async Task<ActionResult<ApiResponse<List<Player>>>> GetByRiskLevel([FromQuery] string source, [FromQuery] string riskLevel)
         {
             var players = await _playerService.GetByRiskLevelAsync(source, riskLevel);
-            return Ok(players);
+            return Ok(ApiResponse<List<Player>>.Create(players));
         }
     }
 
