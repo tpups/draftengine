@@ -1,14 +1,23 @@
 using MongoDB.Driver;
+using DraftEngine.Models.Data;
+using DraftEngine.Services;
 
 namespace DraftEngine
 {
     public class PlayerService
     {
         private readonly IMongoCollection<Player> _players;
+        private readonly IMlbApiService _mlbApiService;
+        private readonly ILogger<PlayerService> _logger;
 
-        public PlayerService(MongoDbContext context)
+        public PlayerService(
+            MongoDbContext context, 
+            IMlbApiService mlbApiService,
+            ILogger<PlayerService> logger)
         {
             _players = context.Players;
+            _mlbApiService = mlbApiService;
+            _logger = logger;
         }
 
         // Basic CRUD operations
@@ -110,6 +119,121 @@ namespace DraftEngine
 
         public async Task<List<Player>> GetHighlightedPlayersAsync() =>
             await _players.Find(player => player.IsHighlighted).ToListAsync();
+
+        public async Task<BirthDateVerificationResult> VerifyBirthDatesAsync(bool includeExisting)
+        {
+            var result = new BirthDateVerificationResult();
+            var players = await GetAsync();
+            result.TotalPlayers = players.Count;
+
+            foreach (var player in players)
+            {
+                try
+                {
+                    // Skip if player has birthdate and we're not checking existing
+                    if (player.BirthDate.HasValue && !includeExisting)
+                    {
+                        result.ProcessedCount++;
+                        continue;
+                    }
+
+                    // Skip if no MLBAM ID
+                    if (player.ExternalIds == null || !player.ExternalIds.ContainsKey("mlbam_id"))
+                    {
+                        result.ProcessedCount++;
+                        result.Errors.Add($"No MLBAM ID found for player: {player.Name}");
+                        result.FailedCount++;
+                        continue;
+                    }
+
+                    var updateResult = await UpdatePlayerBirthDateAsync(player);
+                    result.Updates.Add(updateResult);
+                    result.ProcessedCount++;
+
+                    if (updateResult.WasUpdated)
+                    {
+                        result.UpdatedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add($"Error processing player {player.Name}: {ex.Message}");
+                    result.FailedCount++;
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<BirthDateUpdateResult> UpdatePlayerBirthDateAsync(Player player)
+        {
+            var result = new BirthDateUpdateResult
+            {
+                PlayerId = player.Id ?? string.Empty,
+                PlayerName = player.Name,
+                OldBirthDate = player.BirthDate
+            };
+
+            var mlbId = player.ExternalIds!["mlbam_id"];
+            _logger.LogInformation("Fetching birthdate for player {PlayerName} with MLBAM ID: {MlbId}", 
+                player.Name, mlbId);
+
+            var mlbResponse = await _mlbApiService.GetPlayerInfoAsync(mlbId);
+
+            if (mlbResponse?.People == null || mlbResponse.People.Length == 0)
+            {
+                _logger.LogWarning("No response data for player {PlayerName} with MLBAM ID: {MlbId}", 
+                    player.Name, mlbId);
+                return result;
+            }
+
+            var mlbPlayer = mlbResponse.People[0];
+            _logger.LogInformation("MLB API data for {PlayerName}: BirthDate = {BirthDate}, FullName = {FullName}", 
+                player.Name, mlbPlayer.BirthDate, mlbPlayer.FullName);
+
+            if (string.IsNullOrEmpty(mlbPlayer.BirthDate))
+            {
+                _logger.LogWarning("No birthdate in response for player {PlayerName}", player.Name);
+                return result;
+            }
+
+            if (DateTime.TryParse(mlbPlayer.BirthDate, out DateTime birthDate))
+            {
+                _logger.LogInformation("Successfully parsed birthdate for {PlayerName}: {BirthDate}", 
+                    player.Name, birthDate);
+                
+                result.NewBirthDate = birthDate;
+
+                // Only update if different
+                if (!player.BirthDate.HasValue || player.BirthDate.Value.Date != birthDate.Date)
+                {
+                    _logger.LogInformation("Updating birthdate for {PlayerName}. Old: {OldDate}, New: {NewDate}", 
+                        player.Name, player.BirthDate, birthDate);
+
+                    var update = Builders<Player>.Update
+                        .Set(p => p.BirthDate, birthDate)
+                        .Set(p => p.LastUpdated, DateTime.UtcNow);
+
+                    var updateResult = await _players.UpdateOneAsync(p => p.Id == player.Id, update);
+                    result.WasUpdated = updateResult.ModifiedCount > 0;
+
+                    _logger.LogInformation("Update result for {PlayerName}: ModifiedCount = {ModifiedCount}", 
+                        player.Name, updateResult.ModifiedCount);
+                }
+                else
+                {
+                    _logger.LogInformation("No update needed for {PlayerName}, dates match: {BirthDate}", 
+                        player.Name, birthDate);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Failed to parse birthdate '{BirthDate}' for player {PlayerName}", 
+                    mlbPlayer.BirthDate, player.Name);
+            }
+
+            return result;
+        }
 
         // Draft management methods
         public async Task<bool> MarkAsDraftedAsync(string id, string draftedBy, int round, int pick)

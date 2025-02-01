@@ -1,5 +1,12 @@
 import { apiClient } from './apiClient';
-import { Player, DraftInfo, AgeRangeParams, RiskLevelParams, ApiResponse } from '../types/models';
+import { 
+  Player, 
+  DraftInfo, 
+  AgeRangeParams, 
+  RiskLevelParams, 
+  ApiResponse,
+  BirthDateVerificationResult 
+} from '../types/models';
 import { useMemo } from 'react';
 
 const BASE_PATH = '/player';
@@ -71,6 +78,10 @@ const playerService = {
   // Admin operations
   deleteAll: () =>
     apiClient.delete<void>(`${BASE_PATH}/deleteall`),
+
+  // Birthdate verification
+  verifyBirthDates: (includeExisting: boolean) =>
+    apiClient.post<ApiResponse<BirthDateVerificationResult>>(`${BASE_PATH}/verify-birthdates`, { includeExisting }),
 };
 
 export const usePlayerService = () => {

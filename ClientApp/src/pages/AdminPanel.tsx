@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { usePlayerService } from '../services/playerService';
 import { apiClient } from '../services/apiClient';
+import { VerifyBirthDatesStatus } from '../types/models';
 
 export const AdminPanel: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -37,6 +38,8 @@ export const AdminPanel: React.FC = () => {
     dataType: 'projections',
     playerCount: 100
   });
+  const [verifyBirthDatesDialogOpen, setVerifyBirthDatesDialogOpen] = useState(false);
+  const [verifyBirthDatesStatus, setVerifyBirthDatesStatus] = useState<VerifyBirthDatesStatus | null>(null);
   const playerService = usePlayerService();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,13 +237,20 @@ export const AdminPanel: React.FC = () => {
             Data Management
           </Typography>
           
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
             <Button
               variant="contained"
               color="error"
               onClick={() => setDeleteDialogOpen(true)}
             >
               Delete All Players
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setVerifyBirthDatesDialogOpen(true)}
+            >
+              Verify Birthdates
             </Button>
           </Box>
 
@@ -250,6 +260,33 @@ export const AdminPanel: React.FC = () => {
               sx={{ mt: 2 }}
             >
               {deleteStatus.message}
+            </Alert>
+          )}
+
+          {verifyBirthDatesStatus && (
+            <Alert 
+              severity={verifyBirthDatesStatus.success ? 'success' : 'error'}
+              sx={{ mt: 2 }}
+            >
+              <Typography>{verifyBirthDatesStatus.message}</Typography>
+              {verifyBirthDatesStatus.details && (
+                <>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Processed {verifyBirthDatesStatus.details.totalPlayers} players: {' '}
+                    {verifyBirthDatesStatus.details.updatedCount} updated, {' '}
+                    {verifyBirthDatesStatus.details.failedCount} failed
+                  </Typography>
+                  {verifyBirthDatesStatus.details?.errors && verifyBirthDatesStatus.details.errors.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      {verifyBirthDatesStatus.details.errors?.map((error: string, index: number) => (
+                        <Typography key={index} variant="body2" color="error">
+                          {error}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+                </>
+              )}
             </Alert>
           )}
         </Box>
@@ -288,6 +325,78 @@ export const AdminPanel: React.FC = () => {
               }}
             >
               Delete All
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={verifyBirthDatesDialogOpen}
+          onClose={() => setVerifyBirthDatesDialogOpen(false)}
+        >
+          <DialogTitle>Verify Player Birthdates</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Would you like to verify birthdates for players that already have a birthdate set?
+              If not, only players without a birthdate will be updated.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setVerifyBirthDatesDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  setVerifyBirthDatesStatus(null);
+                  const result = await playerService.verifyBirthDates(false);
+                  setVerifyBirthDatesStatus({
+                    success: true,
+                    message: 'Successfully verified birthdates',
+                    details: {
+                      totalPlayers: result.value.totalPlayers,
+                      updatedCount: result.value.updatedCount,
+                      failedCount: result.value.failedCount,
+                      errors: result.value.errors
+                    }
+                  });
+                  setVerifyBirthDatesDialogOpen(false);
+                } catch (error) {
+                  setVerifyBirthDatesStatus({
+                    success: false,
+                    message: `Error verifying birthdates: ${error instanceof Error ? error.message : 'Unknown error'}`
+                  });
+                  setVerifyBirthDatesDialogOpen(false);
+                }
+              }}
+            >
+              Skip Existing
+            </Button>
+            <Button
+              variant="contained"
+              onClick={async () => {
+                try {
+                  setVerifyBirthDatesStatus(null);
+                  const result = await playerService.verifyBirthDates(true);
+                  setVerifyBirthDatesStatus({
+                    success: true,
+                    message: 'Successfully verified birthdates',
+                    details: {
+                      totalPlayers: result.value.totalPlayers,
+                      updatedCount: result.value.updatedCount,
+                      failedCount: result.value.failedCount
+                    }
+                  });
+                  setVerifyBirthDatesDialogOpen(false);
+                } catch (error) {
+                  setVerifyBirthDatesStatus({
+                    success: false,
+                    message: `Error verifying birthdates: ${error instanceof Error ? error.message : 'Unknown error'}`
+                  });
+                  setVerifyBirthDatesDialogOpen(false);
+                }
+              }}
+            >
+              Check All
             </Button>
           </DialogActions>
         </Dialog>

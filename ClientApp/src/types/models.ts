@@ -53,6 +53,38 @@ export interface RiskLevelParams {
 }
 
 export interface ApiResponse<T> {
-  value: T;
-  count: number;
+    value: T;
+    count?: number;
+}
+
+export interface BirthDateVerificationRequest {
+    includeExisting: boolean;
+}
+
+export interface BirthDateUpdateResult {
+    playerId: string;
+    playerName: string;
+    oldBirthDate: string | null;
+    newBirthDate: string | null;
+    wasUpdated: boolean;
+}
+
+export interface BirthDateVerificationResult {
+    totalPlayers: number;
+    processedCount: number;
+    updatedCount: number;
+    failedCount: number;
+    updates: BirthDateUpdateResult[];
+    errors: string[];
+}
+
+export interface VerifyBirthDatesStatus {
+    success: boolean;
+    message: string;
+    details?: {
+        totalPlayers: number;
+        updatedCount: number;
+        failedCount: number;
+        errors?: string[];
+    };
 }

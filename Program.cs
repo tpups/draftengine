@@ -1,10 +1,12 @@
 using DraftEngine;
 using DraftEngine.Swagger;
+using DraftEngine.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
+using DraftEngine.Models.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +18,14 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
 // Add services to the container.
 builder.Services.AddSingleton<MongoDbContext>(sp => new MongoDbContext(builder.Configuration));
-builder.Services.AddSingleton<PlayerService>();
+builder.Services.AddSingleton<PlayerService>(sp => new PlayerService(
+    sp.GetRequiredService<MongoDbContext>(),
+    sp.GetRequiredService<IMlbApiService>(),
+    sp.GetRequiredService<ILogger<PlayerService>>()
+));
+builder.Services.AddHttpClient();
+builder.Services.Configure<MlbApiOptions>(builder.Configuration.GetSection("MlbApi"));
+builder.Services.AddSingleton<IMlbApiService, MlbApiService>();
 
 // Configure CORS
 var corsOrigins = builder.Environment.IsDevelopment()

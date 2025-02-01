@@ -398,6 +398,38 @@ namespace DraftEngine.Controllers
             return Ok(ApiResponse<List<Player>>.Create(players));
         }
 
+        /// <summary>
+        /// Verify and update player birthdates using MLB Stats API
+        /// </summary>
+        /// <param name="request">The verification request parameters</param>
+        /// <returns>Results of the birthdate verification process</returns>
+        /// <response code="200">Returns the verification results</response>
+        /// <response code="400">If there was an error during verification</response>
+        [HttpPost("verify-birthdates")]
+        [ProducesResponseType(typeof(ApiResponse<BirthDateVerificationResult>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> VerifyBirthDates([FromBody] BirthDateVerificationRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Starting birthdate verification. Include existing: {IncludeExisting}", 
+                    request.IncludeExisting);
+
+                var result = await _playerService.VerifyBirthDatesAsync(request.IncludeExisting);
+                
+                _logger.LogInformation("Birthdate verification completed. " +
+                    "Total: {Total}, Updated: {Updated}, Failed: {Failed}", 
+                    result.TotalPlayers, result.UpdatedCount, result.FailedCount);
+
+                return Ok(ApiResponse<BirthDateVerificationResult>.Create(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during birthdate verification");
+                return BadRequest(ApiResponse<string>.Create(ex.Message));
+            }
+        }
+
         // Import operations
     /// <summary>
     /// Import players from a CSV file
