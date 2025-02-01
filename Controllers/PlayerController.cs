@@ -53,6 +53,8 @@ namespace DraftEngine.Controllers
                     JsonConvert.SerializeObject(newPlayer, Formatting.Indented));
 
                 // Initialize collections and required fields if they're null
+                newPlayer.LastUpdated = DateTime.UtcNow;
+                newPlayer.ExternalIds ??= new Dictionary<string, string>();
                 newPlayer.Position ??= Array.Empty<string>();
                 newPlayer.Rank ??= new Dictionary<string, int>();
                 newPlayer.ProspectRank ??= new Dictionary<string, int>();
@@ -258,9 +260,12 @@ namespace DraftEngine.Controllers
             {
                 _logger.LogInformation("Received batch import request with {Count} players", players.Count);
 
+                var now = DateTime.UtcNow;
                 // Initialize collections and required fields for each player
                 foreach (var player in players)
                 {
+                    player.LastUpdated = now;
+                    player.ExternalIds ??= new Dictionary<string, string>();
                     player.Position ??= Array.Empty<string>();
                     player.Rank ??= new Dictionary<string, int>();
                     player.ProspectRank ??= new Dictionary<string, int>();

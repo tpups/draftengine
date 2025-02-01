@@ -27,6 +27,12 @@ namespace DraftEngine
         public Dictionary<string, string>? ProspectRisk { get; set; }
         public string? PersonalRiskAssessment { get; set; }
 
+        // External identifiers from various platforms
+        public Dictionary<string, string>? ExternalIds { get; set; }
+
+        // Last time this player record was updated
+        public DateTime LastUpdated { get; set; }
+
         // Scouting grades from multiple sources
         public Dictionary<string, ScoutingGrades>? ScoutingGrades { get; set; }
         public ScoutingGrades? PersonalGrades { get; set; }

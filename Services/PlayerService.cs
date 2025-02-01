@@ -18,11 +18,73 @@ namespace DraftEngine
         public async Task<Player?> GetAsync(string id) =>
             await _players.Find(player => player.Id == id).FirstOrDefaultAsync();
 
-        public async Task CreateAsync(Player newPlayer) =>
-            await _players.InsertOneAsync(newPlayer);
+        private async Task<Player?> FindDuplicateAsync(Player player)
+        {
+            if (player.Name == null || player.BirthDate == null)
+                return null;
 
-        public async Task CreateManyAsync(IEnumerable<Player> players) =>
-            await _players.InsertManyAsync(players);
+            return await _players.Find(p => 
+                p.Name == player.Name && 
+                p.BirthDate == player.BirthDate
+            ).FirstOrDefaultAsync();
+        }
+
+        private Player MergePlayerData(Player existing, Player newData)
+        {
+            // Update timestamp
+            existing.LastUpdated = DateTime.UtcNow;
+
+            // Helper function to merge dictionaries
+            void MergeDictionary<T>(Dictionary<string, T> existing, Dictionary<string, T> newData)
+            {
+                if (newData == null) return;
+                existing ??= new Dictionary<string, T>();
+                foreach (var item in newData)
+                {
+                    existing[item.Key] = item.Value;
+                }
+            }
+
+            // Update non-null fields from new data
+            if (newData.Position != null && newData.Position.Length > 0) existing.Position = newData.Position;
+            if (newData.MLBTeam != null) existing.MLBTeam = newData.MLBTeam;
+            if (newData.Level != null) existing.Level = newData.Level;
+            if (newData.ETA != null) existing.ETA = newData.ETA;
+            if (newData.Notes != null) existing.Notes = newData.Notes;
+
+            // Merge dictionary fields
+            MergeDictionary(existing.Rank, newData.Rank);
+            MergeDictionary(existing.ProspectRank, newData.ProspectRank);
+            MergeDictionary(existing.ProspectRisk, newData.ProspectRisk);
+            MergeDictionary(existing.ScoutingGrades, newData.ScoutingGrades);
+            MergeDictionary(existing.ExternalIds, newData.ExternalIds);
+
+            return existing;
+        }
+
+        public async Task CreateAsync(Player newPlayer)
+        {
+            newPlayer.LastUpdated = DateTime.UtcNow;
+            var duplicate = await FindDuplicateAsync(newPlayer);
+
+            if (duplicate != null)
+            {
+                var merged = MergePlayerData(duplicate, newPlayer);
+                await _players.ReplaceOneAsync(p => p.Id == duplicate.Id, merged);
+            }
+            else
+            {
+                await _players.InsertOneAsync(newPlayer);
+            }
+        }
+
+        public async Task CreateManyAsync(IEnumerable<Player> players)
+        {
+            foreach (var player in players)
+            {
+                await CreateAsync(player);
+            }
+        }
 
         public async Task UpdateAsync(string id, Player updatedPlayer) =>
             await _players.ReplaceOneAsync(player => player.Id == id, updatedPlayer);

@@ -25,7 +25,25 @@ namespace DraftEngine
             _database = client.GetDatabase(databaseName);
         }
 
-        public IMongoCollection<Player> Players => _database.GetCollection<Player>("Players");
+        private IMongoCollection<Player>? _players;
+        public IMongoCollection<Player> Players
+        {
+            get
+            {
+                if (_players == null)
+                {
+                    _players = _database.GetCollection<Player>("Players");
+                    // Create compound index on name and birthDate
+                    var indexKeysDefinition = Builders<Player>.IndexKeys
+                        .Ascending(p => p.Name)
+                        .Ascending(p => p.BirthDate);
+                    var indexOptions = new CreateIndexOptions { Unique = true, Sparse = true };
+                    var indexModel = new CreateIndexModel<Player>(indexKeysDefinition, indexOptions);
+                    _players.Indexes.CreateOne(indexModel);
+                }
+                return _players;
+            }
+        }
     }
 
     public class MongoDbSettings
