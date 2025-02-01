@@ -20,7 +20,31 @@
 
 ## Recent Changes
 
-14. Statistical Projections Support: (1/31/25)
+1. Swagger Documentation Improvements: (2/1/25)
+    - Fixed Swagger documentation for file upload functionality
+    - Created CsvImportRequest model for better request handling
+    - Simplified schema naming using ASP.NET Core conventions
+    - Removed custom schema ID generation in favor of built-in approach
+    - Improved XML documentation for API endpoints
+    - Verified working file upload in Swagger UI
+    - Added proper error handling and logging for Swagger configuration
+
+2. Branding Updates: (1/31/25)
+    - Updated browser tab title to "Hampio's Draft Engine"
+    - Updated AppBar title to match
+    - Created custom retro V6 engine icon
+    - Added engine icon to browser tab and AppBar
+    - Used Material-UI blue colors for consistent branding
+
+3. Navigation Button Styling: (1/31/25)
+    - Enhanced AppBar button styling
+    - Used contained variant with default Material-UI shadows
+    - Added subtle white background (10% opacity)
+    - Increased opacity on hover (20%)
+    - Maintained consistent white text color
+    - Improved visual feedback for user interactions
+
+4. Statistical Projections Support: (1/31/25)
     - Added ProjectionData class to store statistical projections
     - Added Projections dictionary to Player model
     - Supports multiple projection sources (e.g., Steamer, ZiPS)
@@ -28,91 +52,19 @@
     - Flexible stat categories through dictionary structure
     - Verified model changes in development environment
 
-1. JSON Import Fix:
-   - Updated BatchImport endpoint to handle both array and wrapped formats
-   - Modified frontend to maintain consistent JSON structure
-   - Fixed player import functionality in AdminPanel
-   - Verified successful batch import of player data
+5. CSV Import Implementation: (1/31/25)
+    - Added CsvPlayerImport model for handling CSV file processing
+    - Implemented flexible CSV parsing with CsvHelper library
+    - Added support for both hitter and pitcher projections
+    - Created importcsv endpoint in PlayerController
+    - Added data source and import date tracking
+    - Implemented player count validation
+    - Fixed development environment configuration:
+      * Switched to docker-compose.dev.yml for proper port mappings
+      * Resolved API connectivity issues
+      * Verified both JSON and CSV import functionality
 
-2. React Router Integration Fix:
-   - Fixed routing issues in App.tsx
-   - Updated Link component implementation
-   - Properly integrated Material-UI with React Router
-   - Resolved module resolution error for react-router-dom
-   - Verified working in development environment
-
-3. Admin Panel Implementation:
-   - Created new AdminPanel component
-   - Added basic layout with Material-UI components
-   - Added JSON file upload button and selection interface
-   - Implemented Material-UI Alert for status messages
-   - Set up initial routing and navigation
-   - Added to main navigation structure
-
-4. Delete Operation Fix:
-   - Fixed apiClient to properly handle 204 No Content responses
-   - Added proper handling for void type responses
-   - Improved JSON parsing error handling
-   - Fixed delete operation snackbar error
-   - Verified working in development environment
-
-5. Player Creation Validation Fix:
-   - Modified PlayerController to initialize optional fields
-   - PersonalGrades initialized with new ScoutingGrades()
-   - PersonalRiskAssessment initialized with string.Empty
-   - Allows creating players with just a name
-   - Supports flexible data entry for both MLB and prospect players
-   - Enables basic player list imports
-   - Verified working in development environment
-
-6. React Hooks Optimization:
-   - Fixed React hooks order in PlayerList component
-   - Moved all hooks to component top level
-   - Ensured consistent Dialog and Snackbar rendering
-   - Resolved hook-related console errors
-   - Verified proper component functionality
-
-7. API Response Standardization:
-   - Created ApiResponse<T> wrapper class
-   - Standardized API response format
-   - Fixed frontend data display issue
-   - Verified player list functionality
-
-8. Player Model and API:
-   - Fixed MongoDB Id handling in Player model
-   - Made Id property nullable to work with MongoDB auto-generation
-   - Successfully tested player creation and retrieval
-   - Verified proper Id generation and persistence
-   - Documented proper model validation behavior
-
-9. Docker Configuration:
-   - Created docker-compose.dev.yml for development
-   - Created docker-compose.yml for production
-   - Added Dockerfile.dev and Dockerfile.prod for frontend
-   - Configured Nginx as reverse proxy
-   - Set up volume mappings and port forwarding
-   - Successfully tested development environment setup
-   - Verified container communication and MongoDB persistence
-
-10. Environment Configuration:
-   - Added .env.development and .env.production
-   - Created .env.example for documentation
-   - Updated .gitignore for environment files
-   - Configured consistent port usage
-   - Validated environment configurations
-
-11. API Configuration:
-   - Updated CORS settings for both environments
-   - Added API prefix handling for production
-   - Improved error handling and logging
-   - MongoDB connection configuration
-   - Investigated and documented .NET Core configuration patterns:
-     * appsettings.json uses colon notation (MongoDB:ConnectionString)
-     * Environment variables require double underscore (MongoDB__ConnectionString)
-     * Both formats are equivalent in code configuration access
-   - Verified frontend-backend communication
-
-12. Delete All Endpoint: (1/31/25)
+6. Delete All Endpoint: (1/31/25)
     - Added DeleteAll endpoint and DeleteAllAsync method
     - Initially encountered 404 error with /player/deleteall route
     - Investigated potential route casing and configuration issues
@@ -121,7 +73,7 @@
     - Endpoint now working and visible in Swagger
     - Delete all functionality confirmed working in admin panel
 
-13. Duplicate Player Detection: (1/31/25)
+7. Duplicate Player Detection: (1/31/25)
     - Added ExternalIds dictionary to Player model for various platform IDs
     - Created compound unique index on name + birthDate in MongoDB
     - Implemented smart merge logic in PlayerService
@@ -132,6 +84,92 @@
       * Properly updated lastUpdated timestamp
       * Verified data merging with multiple imports
     - Documented merge behavior for future reference
+
+8. JSON Import Fix:
+   - Updated BatchImport endpoint to handle both array and wrapped formats
+   - Modified frontend to maintain consistent JSON structure
+   - Fixed player import functionality in AdminPanel
+   - Verified successful batch import of player data
+
+9. React Router Integration Fix:
+   - Fixed routing issues in App.tsx
+   - Updated Link component implementation
+   - Properly integrated Material-UI with React Router
+   - Resolved module resolution error for react-router-dom
+   - Verified working in development environment
+
+10. Admin Panel Implementation:
+   - Created new AdminPanel component
+   - Added basic layout with Material-UI components
+   - Added JSON file upload button and selection interface
+   - Implemented Material-UI Alert for status messages
+   - Set up initial routing and navigation
+   - Added to main navigation structure
+
+11. Delete Operation Fix:
+   - Fixed apiClient to properly handle 204 No Content responses
+   - Added proper handling for void type responses
+   - Improved JSON parsing error handling
+   - Fixed delete operation snackbar error
+   - Verified working in development environment
+
+12. Player Creation Validation Fix:
+   - Modified PlayerController to initialize optional fields
+   - PersonalGrades initialized with new ScoutingGrades()
+   - PersonalRiskAssessment initialized with string.Empty
+   - Allows creating players with just a name
+   - Supports flexible data entry for both MLB and prospect players
+   - Enables basic player list imports
+   - Verified working in development environment
+
+13. React Hooks Optimization:
+   - Fixed React hooks order in PlayerList component
+   - Moved all hooks to component top level
+   - Ensured consistent Dialog and Snackbar rendering
+   - Resolved hook-related console errors
+   - Verified proper component functionality
+
+14. API Response Standardization:
+   - Created ApiResponse<T> wrapper class
+   - Standardized API response format
+   - Fixed frontend data display issue
+   - Verified player list functionality
+
+15. Player Model and API:
+   - Fixed MongoDB Id handling in Player model
+   - Made Id property nullable to work with MongoDB auto-generation
+   - Successfully tested player creation and retrieval
+   - Verified proper Id generation and persistence
+   - Documented proper model validation behavior
+
+16. Docker Configuration:
+   - Created docker-compose.dev.yml for development
+   - Created docker-compose.yml for production
+   - Added Dockerfile.dev and Dockerfile.prod for frontend
+   - Configured Nginx as reverse proxy
+   - Set up volume mappings and port forwarding
+   - Successfully tested development environment setup
+   - Verified container communication and MongoDB persistence
+
+17. Environment Configuration:
+   - Added .env.development and .env.production
+   - Created .env.example for documentation
+   - Updated .gitignore for environment files
+   - Configured consistent port usage
+   - Validated environment configurations
+
+18. API Configuration:
+   - Updated CORS settings for both environments
+   - Added API prefix handling for production
+   - Improved error handling and logging
+   - MongoDB connection configuration
+   - Investigated and documented .NET Core configuration patterns:
+     * appsettings.json uses colon notation (MongoDB:ConnectionString)
+     * Environment variables require double underscore (MongoDB__ConnectionString)
+     * Both formats are equivalent in code configuration access
+   - Verified frontend-backend communication
+
+
 
 ## Common Mistakes and Lessons Learned
 1. React Router Integration:

@@ -1,8 +1,10 @@
 using DraftEngine;
+using DraftEngine.Swagger;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,10 +101,49 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for managing baseball draft prospects"
     });
     
-    // Include XML comments
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    c.IncludeXmlComments(xmlPath);
+    // Configure Swagger to handle XML comments
+    var logger = LoggerFactory.Create(config => 
+    {
+        config.AddConsole();
+        config.SetMinimumLevel(LogLevel.Debug);
+    }).CreateLogger("Swagger");
+
+    try
+    {
+        var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        
+        logger.LogInformation("Looking for XML file at: {XmlPath}", xmlPath);
+        logger.LogInformation("Current directory: {CurrentDir}", Directory.GetCurrentDirectory());
+        logger.LogInformation("Base directory: {BaseDir}", AppContext.BaseDirectory);
+        
+        if (File.Exists(xmlPath))
+        {
+            logger.LogInformation("XML file found, attempting to include comments");
+            c.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+            logger.LogInformation("Successfully included XML comments");
+        }
+        else
+        {
+            var files = Directory.GetFiles(AppContext.BaseDirectory, "*.xml");
+            logger.LogWarning("XML file not found at expected path. Available XML files: {Files}", 
+                string.Join(", ", files));
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error configuring Swagger XML documentation");
+        // Continue without XML documentation rather than failing
+        logger.LogWarning("Continuing Swagger generation without XML documentation");
+    }
+
+    // Configure Swagger to handle file uploads
+    c.MapType<IFormFile>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+
 });
 
 var app = builder.Build();

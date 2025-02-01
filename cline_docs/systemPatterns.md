@@ -40,6 +40,21 @@ The DraftEngine follows a modern web API architecture with clear separation of c
   * Value property contains actual data
   * Count property for collection metadata
   * Consistent structure across endpoints
+- File Upload Handling:
+  * Dedicated request models for file uploads
+  * Proper multipart/form-data configuration
+  * Swagger documentation support
+  * Validation and error handling
+  * Progress tracking and logging
+
+### Swagger Configuration
+- XML documentation for all endpoints
+- Standard ASP.NET Core conventions for schema naming
+- Simple file upload configuration using IFormFile mapping
+- Built-in multipart/form-data support
+- Proper error handling and logging
+- Development-time debugging capabilities
+- Focus on clean, maintainable documentation
 
 ### Data Layer
 1. Player Data Structure

@@ -1,5 +1,22 @@
 import React, { useState } from 'react';
-import { Box, Button, Container, Paper, Typography, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Divider } from '@mui/material';
+import { 
+  Box, 
+  Button, 
+  Container, 
+  Paper, 
+  Typography, 
+  Alert, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  Divider,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
+} from '@mui/material';
 import { usePlayerService } from '../services/playerService';
 
 export const AdminPanel: React.FC = () => {
@@ -13,15 +30,26 @@ export const AdminPanel: React.FC = () => {
     success: boolean;
     message: string;
   } | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importConfig, setImportConfig] = useState({
+    dataSource: '',
+    dataType: 'projections',
+    playerCount: 100
+  });
   const playerService = usePlayerService();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      setSelectedFile(event.target.files[0]);
+      const file = event.target.files[0];
+      setSelectedFile(file);
+      
+      if (file.name.endsWith('.csv')) {
+        setImportDialogOpen(true);
+      }
     }
   };
 
-  const handleImport = async () => {
+  const handleJsonImport = async () => {
     if (!selectedFile) {
       setImportStatus({
         success: false,
@@ -58,6 +86,53 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleCsvImport = async () => {
+    if (!selectedFile) {
+      setImportStatus({
+        success: false,
+        message: 'Please select a file to import',
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('dataSource', importConfig.dataSource);
+      formData.append('dataType', importConfig.dataType);
+      formData.append('playerCount', importConfig.playerCount.toString());
+
+      const response = await fetch('/player/importcsv', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to import CSV');
+      }
+
+      const result = await response.json();
+      
+      // Reset form and show success
+      setSelectedFile(null);
+      setImportDialogOpen(false);
+      const fileInput = document.getElementById('import-file') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      setImportStatus({
+        success: true,
+        message: `Successfully imported players from ${selectedFile.name}`,
+      });
+    } catch (error) {
+      setImportStatus({
+        success: false,
+        message: `Error importing players: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+    }
+  };
+
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Paper sx={{ p: 4 }}>
@@ -66,41 +141,90 @@ export const AdminPanel: React.FC = () => {
         </Typography>
         
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Import Players
-          </Typography>
-          
-          <Box sx={{ mt: 2 }}>
-            <input
-              accept=".json"
-              style={{ display: 'none' }}
-              id="import-file"
-              type="file"
-              onChange={handleFileSelect}
-            />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <label htmlFor="import-file">
-                <Button variant="contained" component="span">
-                  Select JSON File
-                </Button>
-              </label>
-              
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleImport}
-                disabled={!selectedFile}
-              >
-                Import Players
-              </Button>
-            </Box>
+            <Typography variant="h6" gutterBottom>
+              Import Players
+            </Typography>
             
-            {selectedFile && (
-              <Typography sx={{ mt: 1 }}>
-                Selected: {selectedFile.name}
-              </Typography>
-            )}
-          </Box>
+            <Box sx={{ mt: 2 }}>
+              <input
+                accept=".json,.csv"
+                style={{ display: 'none' }}
+                id="import-file"
+                type="file"
+                onChange={handleFileSelect}
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <label htmlFor="import-file">
+                  <Button variant="contained" component="span">
+                    Select File
+                  </Button>
+                </label>
+                {selectedFile && !selectedFile.name.endsWith('.csv') && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleJsonImport}
+                  >
+                    Import JSON
+                  </Button>
+                )}
+              </Box>
+              
+              {selectedFile && (
+                <Typography sx={{ mt: 1 }}>
+                  Selected: {selectedFile.name}
+                </Typography>
+              )}
+            </Box>
+
+            <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
+              <DialogTitle>Import Configuration</DialogTitle>
+              <DialogContent>
+                <Box sx={{ mt: 2, minWidth: 300 }}>
+                  <TextField
+                    fullWidth
+                    label="Data Source"
+                    value={importConfig.dataSource}
+                    onChange={(e) => setImportConfig(prev => ({ ...prev, dataSource: e.target.value }))}
+                    margin="normal"
+                    helperText="e.g., steamer_2025"
+                  />
+                  
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Data Type</InputLabel>
+                    <Select
+                      value={importConfig.dataType}
+                      label="Data Type"
+                      onChange={(e) => setImportConfig(prev => ({ ...prev, dataType: e.target.value }))}
+                    >
+                      <MenuItem value="projections">Projections</MenuItem>
+                      <MenuItem value="rankings">Rankings</MenuItem>
+                      <MenuItem value="prospects">Prospects</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Number of Players"
+                    value={importConfig.playerCount}
+                    onChange={(e) => setImportConfig(prev => ({ ...prev, playerCount: parseInt(e.target.value) || 0 }))}
+                    margin="normal"
+                    inputProps={{ min: 1 }}
+                  />
+                </Box>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={handleCsvImport}
+                  variant="contained"
+                  disabled={!importConfig.dataSource || importConfig.playerCount < 1}
+                >
+                  Import CSV
+                </Button>
+              </DialogActions>
+            </Dialog>
 
           {importStatus && (
             <Alert 

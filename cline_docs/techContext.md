@@ -41,8 +41,19 @@
 ### API
 - ASP.NET Core Web API
 - RESTful architecture
-- Swagger/OpenAPI documentation
+- Swagger/OpenAPI documentation:
+  * XML documentation for all endpoints
+  * Standard ASP.NET Core conventions for schema naming
+  * Simple file upload configuration using IFormFile mapping
+  * Built-in multipart/form-data support
+  * Development-time debugging capabilities
+  * Proper error handling and logging
 - JSON response format
+- File Upload Support:
+  * Dedicated request models
+  * Multipart/form-data handling
+  * Progress tracking
+  * Validation and error handling
 
 ### Development Tools
 - Docker
