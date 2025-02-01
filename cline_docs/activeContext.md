@@ -21,6 +21,20 @@
 
 ## Recent Changes
 
+21. Player Details Modal & Enhanced Age Display: (2/1/25)
+    - Created PlayerDetailsModal component with tabbed interface:
+      * Rankings tab showing all ranking sources
+      * Scouting tab with grades and risk assessment
+      * Draft Info tab with status and position
+      * Notes tab for personal notes
+    - Made player names clickable in grid to open modal
+    - Added dateUtils.ts for centralized age calculations:
+      * Precise age with one decimal place
+      * Baseball age calculation (as of July 1st)
+      * Configurable CURRENT_BASEBALL_SEASON constant
+    - Updated age display format with vertical bar separator
+    - Verified working in development environment
+
 20. Birthdate Verification Feature: (2/1/25)
     - Added MLB Stats API integration for birthdate verification
     - Created MlbApiService for handling MLB API requests

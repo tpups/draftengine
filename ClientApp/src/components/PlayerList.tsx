@@ -5,7 +5,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { playerService } from '../services/playerService';
 import { Player } from '../types/models';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { PlayerDetailsModal } from './PlayerDetailsModal';
+import { calculatePreciseAge, calculateBaseballAge, CURRENT_BASEBALL_SEASON } from '../utils/dateUtils';
 
 export function PlayerList() {
   const initialPlayerState: Omit<Player, 'id'> = {
@@ -51,6 +53,18 @@ export function PlayerList() {
     message: '',
     severity: 'success'
   });
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+
+  const handlePlayerClick = useCallback((player: Player) => {
+    setSelectedPlayer(player);
+    setDetailsModalOpen(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setDetailsModalOpen(false);
+    setSelectedPlayer(null);
+  }, []);
 
   const queryClient = useQueryClient();
 
@@ -127,25 +141,14 @@ export function PlayerList() {
   };
 
   const players = response?.value ?? [];
-  const calculateAge = (birthDate: string | undefined) => {
-    if (!birthDate) return null;
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
   const gridData = players.map(player => ({
     id: player.id,
     name: player.name,
     mlbTeam: player.mlbTeam,
     level: player.level,
     rank: player.rank?.['steamer_2025'] || null,
-    age: calculateAge(player.birthDate),
+    currentAge: calculatePreciseAge(player.birthDate),
+    baseballAge: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
     position: player.position?.join(', ') || ''
   }));
 
@@ -306,7 +309,27 @@ export function PlayerList() {
           {
             field: 'name',
             headerName: 'Name',
-            width: 200
+            width: 200,
+            renderCell: (params) => (
+              <Box
+                component="span"
+                sx={{
+                  cursor: 'pointer',
+                  color: 'primary.main',
+                  '&:hover': {
+                    textDecoration: 'underline'
+                  }
+                }}
+                onClick={() => {
+                  const player = players.find(p => p.id === params.row.id);
+                  if (player) {
+                    handlePlayerClick(player);
+                  }
+                }}
+              >
+                {params.value}
+              </Box>
+            )
           },
           {
             field: 'position',
@@ -314,9 +337,16 @@ export function PlayerList() {
             width: 120
           },
           {
-            field: 'age',
+            field: 'currentAge',
             headerName: 'Age',
             width: 80,
+            type: 'number',
+            valueFormatter: (params: { value: number | null }) => params.value?.toFixed(1) ?? ''
+          },
+          {
+            field: 'baseballAge',
+            headerName: `Baseball Age ${CURRENT_BASEBALL_SEASON}`,
+            width: 160,
             type: 'number'
           },
           {
@@ -357,6 +387,11 @@ export function PlayerList() {
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         message={snackbar.message}
+      />
+      <PlayerDetailsModal
+        player={selectedPlayer}
+        open={detailsModalOpen}
+        onClose={handleCloseModal}
       />
     </Box>
   );
