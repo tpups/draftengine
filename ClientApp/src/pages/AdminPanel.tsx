@@ -18,6 +18,7 @@ import {
   MenuItem
 } from '@mui/material';
 import { usePlayerService } from '../services/playerService';
+import { apiClient } from '../services/apiClient';
 
 export const AdminPanel: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -102,17 +103,7 @@ export const AdminPanel: React.FC = () => {
       formData.append('dataType', importConfig.dataType);
       formData.append('playerCount', importConfig.playerCount.toString());
 
-      const response = await fetch('/player/importcsv', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to import CSV');
-      }
-
-      const result = await response.json();
+      const result = await apiClient.upload<{ message: string }>('player/importcsv', formData);
       
       // Reset form and show success
       setSelectedFile(null);
@@ -123,7 +114,7 @@ export const AdminPanel: React.FC = () => {
       }
       setImportStatus({
         success: true,
-        message: `Successfully imported players from ${selectedFile.name}`,
+        message: result.message || `Successfully imported players from ${selectedFile.name}`,
       });
     } catch (error) {
       setImportStatus({

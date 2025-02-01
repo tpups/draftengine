@@ -20,7 +20,14 @@
 
 ## Recent Changes
 
-1. Swagger Documentation Improvements: (2/1/25)
+1. CSV Import Fix: (2/1/25)
+    - Added upload method to apiClient for handling file uploads
+    - Updated AdminPanel to use apiClient.upload instead of direct fetch
+    - Fixed incorrect API URL routing for CSV imports
+    - Added proper TypeScript typing for response handling
+    - Verified working CSV import functionality
+
+2. Swagger Documentation Improvements: (2/1/25)
     - Fixed Swagger documentation for file upload functionality
     - Created CsvImportRequest model for better request handling
     - Simplified schema naming using ASP.NET Core conventions
@@ -29,14 +36,14 @@
     - Verified working file upload in Swagger UI
     - Added proper error handling and logging for Swagger configuration
 
-2. Branding Updates: (1/31/25)
+3. Branding Updates: (1/31/25)
     - Updated browser tab title to "Hampio's Draft Engine"
     - Updated AppBar title to match
     - Created custom retro V6 engine icon
     - Added engine icon to browser tab and AppBar
     - Used Material-UI blue colors for consistent branding
 
-3. Navigation Button Styling: (1/31/25)
+4. Navigation Button Styling: (1/31/25)
     - Enhanced AppBar button styling
     - Used contained variant with default Material-UI shadows
     - Added subtle white background (10% opacity)
@@ -44,7 +51,7 @@
     - Maintained consistent white text color
     - Improved visual feedback for user interactions
 
-4. Statistical Projections Support: (1/31/25)
+5. Statistical Projections Support: (1/31/25)
     - Added ProjectionData class to store statistical projections
     - Added Projections dictionary to Player model
     - Supports multiple projection sources (e.g., Steamer, ZiPS)
@@ -52,7 +59,7 @@
     - Flexible stat categories through dictionary structure
     - Verified model changes in development environment
 
-5. CSV Import Implementation: (1/31/25)
+6. CSV Import Implementation: (1/31/25)
     - Added CsvPlayerImport model for handling CSV file processing
     - Implemented flexible CSV parsing with CsvHelper library
     - Added support for both hitter and pitcher projections
@@ -64,7 +71,7 @@
       * Resolved API connectivity issues
       * Verified both JSON and CSV import functionality
 
-6. Delete All Endpoint: (1/31/25)
+7. Delete All Endpoint: (1/31/25)
     - Added DeleteAll endpoint and DeleteAllAsync method
     - Initially encountered 404 error with /player/deleteall route
     - Investigated potential route casing and configuration issues
@@ -73,7 +80,7 @@
     - Endpoint now working and visible in Swagger
     - Delete all functionality confirmed working in admin panel
 
-7. Duplicate Player Detection: (1/31/25)
+8. Duplicate Player Detection: (1/31/25)
     - Added ExternalIds dictionary to Player model for various platform IDs
     - Created compound unique index on name + birthDate in MongoDB
     - Implemented smart merge logic in PlayerService
@@ -85,20 +92,20 @@
       * Verified data merging with multiple imports
     - Documented merge behavior for future reference
 
-8. JSON Import Fix:
+9. JSON Import Fix:
    - Updated BatchImport endpoint to handle both array and wrapped formats
    - Modified frontend to maintain consistent JSON structure
    - Fixed player import functionality in AdminPanel
    - Verified successful batch import of player data
 
-9. React Router Integration Fix:
+10. React Router Integration Fix:
    - Fixed routing issues in App.tsx
    - Updated Link component implementation
    - Properly integrated Material-UI with React Router
    - Resolved module resolution error for react-router-dom
    - Verified working in development environment
 
-10. Admin Panel Implementation:
+11. Admin Panel Implementation:
    - Created new AdminPanel component
    - Added basic layout with Material-UI components
    - Added JSON file upload button and selection interface
@@ -106,14 +113,14 @@
    - Set up initial routing and navigation
    - Added to main navigation structure
 
-11. Delete Operation Fix:
+12. Delete Operation Fix:
    - Fixed apiClient to properly handle 204 No Content responses
    - Added proper handling for void type responses
    - Improved JSON parsing error handling
    - Fixed delete operation snackbar error
    - Verified working in development environment
 
-12. Player Creation Validation Fix:
+13. Player Creation Validation Fix:
    - Modified PlayerController to initialize optional fields
    - PersonalGrades initialized with new ScoutingGrades()
    - PersonalRiskAssessment initialized with string.Empty
@@ -122,27 +129,27 @@
    - Enables basic player list imports
    - Verified working in development environment
 
-13. React Hooks Optimization:
+14. React Hooks Optimization:
    - Fixed React hooks order in PlayerList component
    - Moved all hooks to component top level
    - Ensured consistent Dialog and Snackbar rendering
    - Resolved hook-related console errors
    - Verified proper component functionality
 
-14. API Response Standardization:
+15. API Response Standardization:
    - Created ApiResponse<T> wrapper class
    - Standardized API response format
    - Fixed frontend data display issue
    - Verified player list functionality
 
-15. Player Model and API:
+16. Player Model and API:
    - Fixed MongoDB Id handling in Player model
    - Made Id property nullable to work with MongoDB auto-generation
    - Successfully tested player creation and retrieval
    - Verified proper Id generation and persistence
    - Documented proper model validation behavior
 
-16. Docker Configuration:
+17. Docker Configuration:
    - Created docker-compose.dev.yml for development
    - Created docker-compose.yml for production
    - Added Dockerfile.dev and Dockerfile.prod for frontend
@@ -151,14 +158,14 @@
    - Successfully tested development environment setup
    - Verified container communication and MongoDB persistence
 
-17. Environment Configuration:
+18. Environment Configuration:
    - Added .env.development and .env.production
    - Created .env.example for documentation
    - Updated .gitignore for environment files
    - Configured consistent port usage
    - Validated environment configurations
 
-18. API Configuration:
+19. API Configuration:
    - Updated CORS settings for both environments
    - Added API prefix handling for production
    - Improved error handling and logging

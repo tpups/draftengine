@@ -108,4 +108,16 @@ export const apiClient = {
     ]);
     return handleResponse<T>(response);
   },
+
+  upload: async <T>(endpoint: string, formData: FormData): Promise<T> => {
+    const url = getApiUrl(endpoint);
+    const response = await Promise.race([
+      fetch(url, {
+        method: 'POST',
+        body: formData,
+      }),
+      timeout(API_TIMEOUT)
+    ]);
+    return handleResponse<T>(response);
+  },
 };
