@@ -5,8 +5,13 @@ using DraftEngine.Models.Data;
 
 namespace DraftEngine.Controllers
 {
+    /// <summary>
+    /// Controller for managing baseball player data
+    /// </summary>
     [ApiController]
     [Route("[controller]")]
+    [Produces("application/json")]
+    [ApiExplorerSettings(GroupName = "v1")]
     public class PlayerController : ControllerBase
     {
         private readonly PlayerService _playerService;
@@ -96,6 +101,31 @@ namespace DraftEngine.Controllers
             await _playerService.RemoveAsync(id);
 
             return NoContent();
+        }
+
+        /// <summary>
+        /// Deletes all players from the database
+        /// </summary>
+        /// <returns>A message indicating how many players were deleted</returns>
+        /// <response code="200">Returns the number of players deleted</response>
+        /// <response code="400">If there was an error deleting players</response>
+        [HttpDelete("deleteall")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> DeleteAll()
+        {
+            try
+            {
+                _logger.LogInformation("Attempting to delete all players");
+                var deletedCount = await _playerService.DeleteAllAsync();
+                _logger.LogInformation("Successfully deleted {Count} players", deletedCount);
+                return Ok(new { message = $"Successfully deleted {deletedCount} players" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting all players");
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         // Filtering endpoints

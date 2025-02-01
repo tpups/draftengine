@@ -127,11 +127,26 @@ export function PlayerList() {
   };
 
   const players = response?.value ?? [];
+  const calculateAge = (birthDate: string | undefined) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const gridData = players.map(player => ({
     id: player.id,
     name: player.name,
     mlbTeam: player.mlbTeam,
-    level: player.level
+    level: player.level,
+    rank: player.rank?.['steamer_2025'] || null,
+    age: calculateAge(player.birthDate),
+    position: player.position?.join(', ') || ''
   }));
 
   const renderAddPlayerDialog = () => (
@@ -283,9 +298,26 @@ export function PlayerList() {
         }}
         columns={[
           {
+            field: 'rank',
+            headerName: 'Rank',
+            width: 80,
+            type: 'number'
+          },
+          {
             field: 'name',
             headerName: 'Name',
             width: 200
+          },
+          {
+            field: 'position',
+            headerName: 'Position',
+            width: 120
+          },
+          {
+            field: 'age',
+            headerName: 'Age',
+            width: 80,
+            type: 'number'
           },
           {
             field: 'mlbTeam',

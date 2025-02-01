@@ -67,6 +67,10 @@ const playerService = {
   // Batch operations
   importPlayers: (players: Omit<Player, 'id'>[]) =>
     apiClient.post<void>(`${BASE_PATH}/batch`, players),
+    
+  // Admin operations
+  deleteAll: () =>
+    apiClient.delete<void>(`${BASE_PATH}/deleteall`),
 };
 
 export const usePlayerService = () => {

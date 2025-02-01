@@ -30,6 +30,9 @@ namespace DraftEngine
         public async Task RemoveAsync(string id) =>
             await _players.DeleteOneAsync(player => player.Id == id);
 
+        public async Task<long> DeleteAllAsync() =>
+            (await _players.DeleteManyAsync(player => true)).DeletedCount;
+
         // Player filtering methods
         public async Task<List<Player>> GetByLevelAsync(string level) =>
             await _players.Find(player => player.Level == level).ToListAsync();

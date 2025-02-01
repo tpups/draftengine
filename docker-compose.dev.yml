@@ -4,18 +4,19 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: final
+      dockerfile: Dockerfile.dev
     ports:
       - "5246:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_URLS=http://0.0.0.0:8080
       - MongoDB__ConnectionString=mongodb://mongo:27017
       - MongoDB__DatabaseName=DraftEngine
+      - DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true
     volumes:
-      - .:/src
-      - ./appsettings.json:/app/appsettings.json
+      - .:/app
+      - /app/bin
+      - /app/obj
     depends_on:
       - mongo
 

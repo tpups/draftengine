@@ -2,8 +2,15 @@ using DraftEngine;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Kestrel to listen on all interfaces
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(int.Parse(builder.Configuration["ASPNETCORE_HTTP_PORT"] ?? "8080"));
+});
 
 // Add services to the container.
 builder.Services.AddSingleton<MongoDbContext>(sp => new MongoDbContext(builder.Configuration));
@@ -68,16 +75,35 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 
+// Configure routing options
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.LowercaseUrls = true;
+    options.LowercaseQueryStrings = true;
+});
+
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
-    {
-        options.SerializerSettings.ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
-        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include;
-        options.SerializerSettings.DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Include;
-    });
+{
+    options.SerializerSettings.ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
+    options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include;
+    options.SerializerSettings.DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Include;
+});
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { 
+        Title = "DraftEngine API", 
+        Version = "v1",
+        Description = "API for managing baseball draft prospects"
+    });
+    
+    // Include XML comments
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
 
 var app = builder.Build();
 

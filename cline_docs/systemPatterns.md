@@ -126,6 +126,21 @@ The DraftEngine follows a modern web API architecture with clear separation of c
 - Development/production parity
 - Environment configuration
 
+### Docker Development Considerations
+- Live updates behavior:
+  * Frontend (Vite) supports hot reloading
+  * API has two development options:
+    1. Standard mode (Dockerfile):
+       - Requires container rebuild for code changes
+       - Use `docker compose up -d --build api` to apply changes
+       - More stable, but slower development cycle
+    2. Watch mode (Dockerfile.dev):
+       - Uses `dotnet watch` for hot reloading
+       - Automatically recompiles on file changes
+       - Faster development cycle, but may require container restart if watch fails
+       - Configured with volume mounts to exclude bin/obj directories
+       - Uses SDK image instead of runtime for development
+
 ## Code Organization
 ```
 DraftEngine/

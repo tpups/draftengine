@@ -2,12 +2,10 @@
 
 ## Current Development Focus
 - Admin Panel Implementation
-  * JSON import functionality
   * Frontend routing and navigation
-  * File upload handling
+  * DataGrid component implementation and debugging
 - Frontend-backend integration
-- DataGrid component implementation and debugging
-- Player data management and import
+- Player data management refinements
 
 ## Latest Data Import Progress
 - Successfully combined player data from multiple batch files
@@ -105,6 +103,15 @@
      * Both formats are equivalent in code configuration access
    - Verified frontend-backend communication
 
+12. Delete All Endpoint: (1/31/25)
+    - Added DeleteAll endpoint and DeleteAllAsync method
+    - Initially encountered 404 error with /player/deleteall route
+    - Investigated potential route casing and configuration issues
+    - Found that API container wasn't picking up code changes with just restart
+    - Resolution: Required full rebuild with `docker compose up -d --build api`
+    - Endpoint now working and visible in Swagger
+    - Delete all functionality confirmed working in admin panel
+
 ## Common Mistakes and Lessons Learned
 1. React Router Integration:
    - Issue: Incorrect usage of Material-UI with React Router components
@@ -150,6 +157,26 @@
    - Lesson: Use `docker compose` (with a space) as it's the newer, recommended syntax
    - Example: Use `Invoke-WebRequest` instead of `curl` for HTTP requests
    - Example: Use `docker compose up` instead of `docker-compose up`
+
+7. ASP.NET Core Routing:
+   - Issue: 404 error with deleteall endpoint despite correct implementation
+   - Investigation: Noticed potential casing issue with [Route("[controller]")] and LowercaseUrls option
+   - Lesson: Pay attention to ASP.NET Core's route transformation settings
+   - Lesson: Consider explicit lowercase routes when using LowercaseUrls option
+
+8. Docker Development Workflow:
+   - Issue: API changes not reflecting after container restart
+   - Root Cause: Container needs rebuild to pick up C# code changes
+   - Solution: Use `docker compose up -d --build api` instead of just restart
+   - Lesson: Always rebuild API container when making C# code changes
+   - Lesson: Don't assume container restart will pick up all code changes
+
+9. Hot Reload Limitations:
+   - Issue: MissingMethodException when removing endpoints during hot reload
+   - Root Cause: Hot reload cannot handle method deletion while app is running
+   - Solution: Restart container when removing endpoints
+   - Lesson: Hot reload works well for additions and modifications
+   - Lesson: Use container restart for structural changes like method removal
 
 ## Next Steps
 1. Immediate Tasks

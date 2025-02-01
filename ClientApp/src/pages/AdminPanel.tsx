@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Box, Button, Container, Paper, Typography, Alert } from '@mui/material';
+import { Box, Button, Container, Paper, Typography, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Divider } from '@mui/material';
 import { usePlayerService } from '../services/playerService';
 
 export const AdminPanel: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importStatus, setImportStatus] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<{
     success: boolean;
     message: string;
   } | null>(null);
@@ -73,27 +78,28 @@ export const AdminPanel: React.FC = () => {
               type="file"
               onChange={handleFileSelect}
             />
-            <label htmlFor="import-file">
-              <Button variant="contained" component="span">
-                Select JSON File
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <label htmlFor="import-file">
+                <Button variant="contained" component="span">
+                  Select JSON File
+                </Button>
+              </label>
+              
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleImport}
+                disabled={!selectedFile}
+              >
+                Import Players
               </Button>
-            </label>
+            </Box>
             
             {selectedFile && (
               <Typography sx={{ mt: 1 }}>
                 Selected: {selectedFile.name}
               </Typography>
             )}
-            
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleImport}
-              disabled={!selectedFile}
-              sx={{ mt: 2, ml: selectedFile ? 2 : 0 }}
-            >
-              Import Players
-            </Button>
           </Box>
 
           {importStatus && (
@@ -105,6 +111,71 @@ export const AdminPanel: React.FC = () => {
             </Alert>
           )}
         </Box>
+
+        <Divider sx={{ my: 4 }} />
+
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Data Management
+          </Typography>
+          
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              Delete All Players
+            </Button>
+          </Box>
+
+          {deleteStatus && (
+            <Alert 
+              severity={deleteStatus.success ? 'success' : 'error'}
+              sx={{ mt: 2 }}
+            >
+              {deleteStatus.message}
+            </Alert>
+          )}
+        </Box>
+
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+        >
+          <DialogTitle>Confirm Delete All Players</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete all players? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="error"
+              onClick={async () => {
+                try {
+                  await playerService.deleteAll();
+                  setDeleteStatus({
+                    success: true,
+                    message: 'Successfully deleted all players'
+                  });
+                  setDeleteDialogOpen(false);
+                } catch (error) {
+                  setDeleteStatus({
+                    success: false,
+                    message: `Error deleting players: ${error instanceof Error ? error.message : 'Unknown error'}`
+                  });
+                  setDeleteDialogOpen(false);
+                }
+              }}
+            >
+              Delete All
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Paper>
     </Container>
   );
