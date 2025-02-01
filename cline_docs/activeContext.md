@@ -19,6 +19,15 @@
   * 2025 projections
 
 ## Recent Changes
+
+14. Statistical Projections Support: (1/31/25)
+    - Added ProjectionData class to store statistical projections
+    - Added Projections dictionary to Player model
+    - Supports multiple projection sources (e.g., Steamer, ZiPS)
+    - Includes UpdatedDate tracking for projection freshness
+    - Flexible stat categories through dictionary structure
+    - Verified model changes in development environment
+
 1. JSON Import Fix:
    - Updated BatchImport endpoint to handle both array and wrapped formats
    - Modified frontend to maintain consistent JSON structure
@@ -112,6 +121,18 @@
     - Endpoint now working and visible in Swagger
     - Delete all functionality confirmed working in admin panel
 
+13. Duplicate Player Detection: (1/31/25)
+    - Added ExternalIds dictionary to Player model for various platform IDs
+    - Created compound unique index on name + birthDate in MongoDB
+    - Implemented smart merge logic in PlayerService
+    - Added helper function to merge dictionary fields
+    - Tested with Bobby Witt Jr. player data:
+      * Successfully preserved rank data from first import
+      * Added external IDs from second import
+      * Properly updated lastUpdated timestamp
+      * Verified data merging with multiple imports
+    - Documented merge behavior for future reference
+
 ## Common Mistakes and Lessons Learned
 1. React Router Integration:
    - Issue: Incorrect usage of Material-UI with React Router components
@@ -177,6 +198,16 @@
    - Solution: Restart container when removing endpoints
    - Lesson: Hot reload works well for additions and modifications
    - Lesson: Use container restart for structural changes like method removal
+
+10. Duplicate Player Detection:
+    - Issue: Same player could be imported multiple times with different data
+    - Root Cause: No unique constraint on player identification
+    - Solution: 
+      * Use compound index on name + birthDate for reliable matching
+      * Implement smart merge logic to preserve existing data
+      * Use dictionary fields for extensible external IDs
+    - Lesson: Consider data merging strategy when implementing duplicate detection
+    - Lesson: Use compound indexes for more reliable duplicate detection than single field
 
 ## Next Steps
 1. Immediate Tasks

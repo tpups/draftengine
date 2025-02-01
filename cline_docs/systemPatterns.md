@@ -50,6 +50,11 @@ The DraftEngine follows a modern web API architecture with clear separation of c
      * Scouting information (grades, risk assessment)
      * Draft status tracking
      * Personal notes and highlights
+     * Statistical projections with update tracking
+   - Projection data structure:
+     * Multiple source support (Steamer, ZiPS, etc.)
+     * Flexible stat categories via dictionary
+     * Update date tracking for freshness
    - JSON format for easy import/export
    - Flexible schema for different player types
    - Support for multiple ranking sources
@@ -75,6 +80,12 @@ The DraftEngine follows a modern web API architecture with clear separation of c
      * [BsonRepresentation(BsonType.ObjectId)] for proper type conversion
      * Let MongoDB handle Id generation
      * Validate Id after creation
+   - Duplicate Detection:
+     * Compound unique index on name + birthDate
+     * Smart merge logic for duplicate records
+     * Dictionary fields for extensible data (ranks, IDs)
+     * Preserve existing data during merges
+     * Update timestamps for tracking changes
 
 4. Data Models
    - C# 8.0 nullable reference types
