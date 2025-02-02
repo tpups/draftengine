@@ -88,3 +88,11 @@ export interface VerifyBirthDatesStatus {
         errors?: string[];
     };
 }
+
+export interface Manager {
+    id?: string;
+    name: string;
+    teamName?: string;
+    isUser: boolean;
+    email?: string;
+}

@@ -21,6 +21,21 @@
 
 ## Recent Changes
 
+22. Manager Management Enhancements: (2/1/25)
+    - Added optional email field to Manager model
+    - Enhanced ManagerList component:
+      * Added email field to grid and forms
+      * Removed Current User column
+      * Added row highlighting for current user
+      * Added sorting to keep user manager at top
+      * Added edit functionality with modal dialog
+      * Improved error messages and validation
+    - Simplified UI:
+      * Changed section title to "Managers"
+      * Added hover effects for actions
+      * Consistent styling with primary/error colors
+    - Verified working in development environment
+
 21. Player Details Modal & Enhanced Age Display: (2/1/25)
     - Created PlayerDetailsModal component with tabbed interface:
       * Rankings tab showing all ranking sources
@@ -28,11 +43,12 @@
       * Draft Info tab with status and position
       * Notes tab for personal notes
     - Made player names clickable in grid to open modal
-    - Added dateUtils.ts for centralized age calculations:
-      * Precise age with one decimal place
-      * Baseball age calculation (as of July 1st)
+    - Enhanced dateUtils.ts for centralized age calculations:
+      * Precise age with one decimal place in modal (e.g., 24.7)
+      * Baseball age calculation (as of July 1st) for grid display
       * Configurable CURRENT_BASEBALL_SEASON constant
-    - Updated age display format with vertical bar separator
+      * Updated age display format with vertical bar separator
+      * Simplified grid to show single baseball age column
     - Verified working in development environment
 
 20. Birthdate Verification Feature: (2/1/25)

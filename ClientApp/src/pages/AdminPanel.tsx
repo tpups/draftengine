@@ -20,6 +20,7 @@ import {
 import { usePlayerService } from '../services/playerService';
 import { apiClient } from '../services/apiClient';
 import { VerifyBirthDatesStatus } from '../types/models';
+import { ManagerList } from '../components/ManagerList';
 
 export const AdminPanel: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -400,6 +401,13 @@ export const AdminPanel: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+      </Paper>
+
+      <Paper sx={{ p: 4, mt: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Managers
+        </Typography>
+        <ManagerList />
       </Paper>
     </Container>
   );

@@ -23,6 +23,9 @@ builder.Services.AddSingleton<PlayerService>(sp => new PlayerService(
     sp.GetRequiredService<IMlbApiService>(),
     sp.GetRequiredService<ILogger<PlayerService>>()
 ));
+builder.Services.AddSingleton<ManagerService>(sp => new ManagerService(
+    sp.GetRequiredService<MongoDbContext>()
+));
 builder.Services.AddHttpClient();
 builder.Services.Configure<MlbApiOptions>(builder.Configuration.GetSection("MlbApi"));
 builder.Services.AddSingleton<IMlbApiService, MlbApiService>();

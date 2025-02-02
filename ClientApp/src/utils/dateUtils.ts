@@ -39,5 +39,5 @@ export const formatAgeDisplay = (birthDate: string | undefined): string => {
   
   if (!preciseAge || !baseballAge) return '';
   
-  return `Age: ${preciseAge} | Baseball Age ${CURRENT_BASEBALL_SEASON}: ${baseballAge}`;
+  return `Age: ${preciseAge.toFixed(1)} | Baseball Age ${CURRENT_BASEBALL_SEASON}: ${baseballAge}`;
 };

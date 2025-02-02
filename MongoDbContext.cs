@@ -1,11 +1,13 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using DraftEngine.Models;
 
 namespace DraftEngine
 {
     public class MongoDbContext
     {
         private readonly IMongoDatabase _database;
+        public IMongoDatabase Database => _database;
 
         public MongoDbContext(IConfiguration configuration)
         {
@@ -42,6 +44,24 @@ namespace DraftEngine
                     _players.Indexes.CreateOne(indexModel);
                 }
                 return _players;
+            }
+        }
+
+        private IMongoCollection<Manager>? _managers;
+        public IMongoCollection<Manager> Managers
+        {
+            get
+            {
+                if (_managers == null)
+                {
+                    _managers = _database.GetCollection<Manager>("Managers");
+                    // Create unique index on name
+                    var indexKeysDefinition = Builders<Manager>.IndexKeys.Ascending(m => m.Name);
+                    var indexOptions = new CreateIndexOptions { Unique = true };
+                    var indexModel = new CreateIndexModel<Manager>(indexKeysDefinition, indexOptions);
+                    _managers.Indexes.CreateOne(indexModel);
+                }
+                return _managers;
             }
         }
     }

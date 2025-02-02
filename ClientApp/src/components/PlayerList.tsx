@@ -147,8 +147,7 @@ export function PlayerList() {
     mlbTeam: player.mlbTeam,
     level: player.level,
     rank: player.rank?.['steamer_2025'] || null,
-    currentAge: calculatePreciseAge(player.birthDate),
-    baseballAge: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
+    age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
     position: player.position?.join(', ') || ''
   }));
 
@@ -337,16 +336,9 @@ export function PlayerList() {
             width: 120
           },
           {
-            field: 'currentAge',
+            field: 'age',
             headerName: 'Age',
             width: 80,
-            type: 'number',
-            valueFormatter: (params: { value: number | null }) => params.value?.toFixed(1) ?? ''
-          },
-          {
-            field: 'baseballAge',
-            headerName: `Baseball Age ${CURRENT_BASEBALL_SEASON}`,
-            width: 160,
             type: 'number'
           },
           {
