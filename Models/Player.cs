@@ -47,6 +47,7 @@ namespace DraftEngine
         public bool IsHighlighted { get; set; }
         public string? Notes { get; set; }
         public int? PersonalRank { get; set; }
+        public decimal? StarsRating { get; set; }  // 0-5 in 0.5 increments
 
         // Statistical projections from multiple sources (Steamer, ZiPS, etc.)
         public Dictionary<string, ProjectionData>? Projections { get; set; }

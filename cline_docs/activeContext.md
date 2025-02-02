@@ -23,6 +23,25 @@
 
 ## Recent Changes
 
+24. Player Edit and Star Rating: (2/1/25)
+    - Added star rating (0-5 in 0.5 increments)
+    - Created PlayerEditModal component:
+      * Star rating input
+      * Personal rank
+      * Personal risk assessment
+      * Personal grades for both hitters and pitchers
+      * Notes
+    - Added star rating display to PlayerDetailsModal
+    - Fixed position data handling:
+      * Proper array/string conversion
+      * Grid display formatting
+      * Edit mode compatibility
+    - Improved edit functionality:
+      * Edit button in Prep Mode only
+      * Type-safe implementation
+      * Proper data persistence
+      * Success/error feedback
+
 23. Draft Mode Implementation: (2/1/25)
     - Added mode toggle between Prep and Draft modes
     - Added draft button and manager selection modal

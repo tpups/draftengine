@@ -4,11 +4,15 @@ import { Box, CircularProgress, Alert, Button, Dialog, DialogTitle, DialogConten
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import GavelIcon from '@mui/icons-material/Gavel';
+import EditIcon from '@mui/icons-material/Edit';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { playerService } from '../services/playerService';
 import { Player } from '../types/models';
 import { useState, useCallback, useMemo } from 'react';
 import { PlayerDetailsModal } from './PlayerDetailsModal';
 import { DraftPlayerModal } from './DraftPlayerModal';
+import { PlayerEditModal } from './PlayerEditModal';
 import { managerService } from '../services/managerService';
 import { calculatePreciseAge, calculateBaseballAge, CURRENT_BASEBALL_SEASON } from '../utils/dateUtils';
 
@@ -58,6 +62,7 @@ export function PlayerList() {
   });
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [draftModalOpen, setDraftModalOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [gridMode, setGridMode] = useState<'prep' | 'draft'>('prep');
@@ -216,9 +221,21 @@ export function PlayerList() {
   });
 
   const getRowClassName = (params: any) => {
-    if (!params.row.isDrafted) return '';
-    if (params.row.draftedBy === currentUser?.id) return 'drafted-by-user';
-    return 'drafted-by-other';
+    const classes: string[] = [];
+    
+    if (params.row.isHighlighted) {
+      classes.push('highlighted');
+    }
+    
+    if (params.row.isDrafted) {
+      if (params.row.draftedBy === currentUser?.id) {
+        classes.push('drafted-by-user');
+      } else {
+        classes.push('drafted-by-other');
+      }
+    }
+    
+    return classes.join(' ');
   };
 
   const handleResetDraft = () => {
@@ -266,9 +283,91 @@ export function PlayerList() {
     </Box>
   );
 
+  const handleEdit = (gridPlayer: any) => {
+    // Convert grid data back to Player format
+    const player: Player = {
+      ...gridPlayer,
+      position: gridPlayer.position ? gridPlayer.position.split(', ') : []
+    };
+    setSelectedPlayer(player);
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (updatedPlayer: Player) => {
+    try {
+      const response = await playerService.update(updatedPlayer.id!, updatedPlayer);
+      if (response?.value) {
+        queryClient.invalidateQueries({ queryKey: ['players'] });
+        setEditModalOpen(false);
+        setSelectedPlayer(null);
+        setSnackbar({ open: true, message: 'Player updated successfully', severity: 'success' });
+      } else {
+        throw new Error('Failed to update player');
+      }
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: `Error updating player: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
+  };
+
+  const handleToggleHighlight = async (id: string) => {
+    try {
+      await playerService.toggleHighlight(id);
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+      setSnackbar({ open: true, message: 'Highlight status updated', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: `Error updating highlight status: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
+  };
+
   const renderActionButtons = (params: any) => {
     if (gridMode === 'prep') {
       return [
+        <GridActionsCellItem
+          icon={params.row.isHighlighted ? (
+            <StarIcon 
+              sx={{ 
+                color: 'warning.main',
+                '&:hover': {
+                  transform: 'scale(1.2)',
+                  transition: 'transform 0.2s'
+                }
+              }}
+            />
+          ) : (
+            <StarBorderIcon 
+              sx={{ 
+                color: 'warning.main',
+                '&:hover': {
+                  transform: 'scale(1.2)',
+                  transition: 'transform 0.2s'
+                }
+              }}
+            />
+          )}
+          label="Toggle Highlight"
+          onClick={() => handleToggleHighlight(params.id.toString())}
+          title="Toggle highlight status"
+        />,
+        <GridActionsCellItem
+          icon={<EditIcon sx={{ 
+            color: 'primary.main',
+            '&:hover': {
+              transform: 'scale(1.2)',
+              transition: 'transform 0.2s'
+            }
+          }} />}
+          label="Edit"
+          onClick={() => handleEdit(params.row)}
+          title="Edit this player"
+        />,
         <GridActionsCellItem
           icon={<DeleteIcon sx={{ 
             color: 'error.main',
@@ -520,6 +619,24 @@ export function PlayerList() {
           '& .MuiDataGrid-main': {
             width: '100%'
           },
+          '& .highlighted': {
+            bgcolor: 'warning.light',
+            '&:hover': {
+              bgcolor: 'warning.light',
+            },
+            '&.drafted-by-user': {
+              bgcolor: 'success.main',
+              '&:hover': {
+                bgcolor: 'success.main',
+              }
+            },
+            '&.drafted-by-other': {
+              bgcolor: 'warning.main',
+              '&:hover': {
+                bgcolor: 'warning.main',
+              }
+            }
+          },
           '& .drafted-by-user': {
             bgcolor: 'success.light',
             '&:hover': {
@@ -621,6 +738,15 @@ export function PlayerList() {
         player={selectedPlayer}
         open={detailsModalOpen}
         onClose={handleCloseModal}
+      />
+      <PlayerEditModal
+        player={selectedPlayer}
+        open={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedPlayer(null);
+        }}
+        onSave={handleSaveEdit}
       />
     </Box>
   );

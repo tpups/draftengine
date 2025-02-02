@@ -2,6 +2,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typogra
 import { Player, ScoutingGrades } from '../types/models';
 import { useState } from 'react';
 import { formatAgeDisplay } from '../utils/dateUtils';
+import { StarRating } from './StarRating';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -88,25 +89,31 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
       fullWidth
     >
       <DialogTitle>
-        <Typography variant="h5" component="div">
-          {player.name}
-          {player.isHighlighted && (
-            <Typography 
-              component="span" 
-              sx={{ 
-                ml: 1,
-                color: 'warning.main',
-                fontSize: '0.8em'
-              }}
-            >
-              ★ Highlighted
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h5" component="div">
+              {player.name}
             </Typography>
-          )}
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          {player.position?.join(', ')} | {player.mlbTeam || 'N/A'} | {player.level || 'N/A'}
-          {player.birthDate && ` | ${formatAgeDisplay(player.birthDate)}`}
-        </Typography>
+            {player.starsRating !== null && player.starsRating !== undefined && (
+              <StarRating value={player.starsRating} readOnly />
+            )}
+            {player.isHighlighted && (
+              <Typography 
+                component="span" 
+                sx={{ 
+                  color: 'warning.main',
+                  fontSize: '0.8em'
+                }}
+              >
+                ★ Highlighted
+              </Typography>
+            )}
+          </Box>
+          <Typography variant="subtitle1" color="text.secondary">
+            {Array.isArray(player.position) ? player.position.join(', ') : player.position} | {player.mlbTeam || 'N/A'} | {player.level || 'N/A'}
+            {player.birthDate && ` | ${formatAgeDisplay(player.birthDate)}`}
+          </Typography>
+        </Box>
       </DialogTitle>
       <Divider />
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

@@ -19,6 +19,7 @@ export interface Player {
   isHighlighted?: boolean;
   notes?: string | null;
   personalRank?: number | null;
+  starsRating?: number | null;  // 0-5 in 0.5 increments
 }
 
 export interface ScoutingGrades {

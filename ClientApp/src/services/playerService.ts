@@ -23,7 +23,7 @@ const playerService = {
     apiClient.post<Player>(BASE_PATH, player),
 
   update: (id: string, player: Player) =>
-    apiClient.put<void>(`${BASE_PATH}/${id}`, player),
+    apiClient.put<ApiResponse<Player>>(`${BASE_PATH}/${id}`, player),
 
   delete: (id: string) =>
     apiClient.delete<void>(`${BASE_PATH}/${id}`),
