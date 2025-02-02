@@ -23,6 +23,19 @@
 
 ## Recent Changes
 
+25. Menu Bar Navigation Improvements: (2/1/25)
+    - Refined navigation behavior in menu bar
+    - Removed redundant home link from entire menu bar
+    - Kept home navigation on logo and Home button only
+    - Added proper cursor styles:
+      * Default cursor on non-interactive areas
+      * Pointer cursor on buttons and logo
+    - Enhanced active page indication:
+      * Increased opacity (0.4) for active button
+      * Added subtle white glow effect
+      * Maintained hover state on active button
+    - Improved overall UX consistency
+
 24. Player Edit and Star Rating: (2/1/25)
     - Added star rating (0-5 in 0.5 increments)
     - Created PlayerEditModal component:
