@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using DraftEngine.Models;
 using DraftEngine.Models.Data;
+using DraftEngine.Services;
 
 namespace DraftEngine.Controllers
 {
@@ -253,16 +255,16 @@ namespace DraftEngine.Controllers
         /// Mark a player as drafted
         /// </summary>
         /// <param name="id">The ID of the player to mark as drafted</param>
-        /// <param name="draftInfo">Information about the draft selection</param>
+        /// <param name="request">Information about the draft selection</param>
         /// <returns>No content</returns>
         /// <response code="204">If the player was successfully marked as drafted</response>
         /// <response code="404">If the player is not found</response>
         [HttpPost("{id:length(24)}/draft")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> MarkAsDrafted(string id, [FromBody] DraftInfo draftInfo)
+        public async Task<IActionResult> MarkAsDrafted(string id, [FromBody] DraftPickRequest request)
         {
-            var success = await _playerService.MarkAsDraftedAsync(id, draftInfo.DraftedBy, draftInfo.Round, draftInfo.Pick);
+            var success = await _playerService.MarkAsDrafted(id, request);
             
             if (!success)
                 return NotFound();

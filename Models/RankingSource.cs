@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
+using DraftEngine.Models;
 
-namespace DraftEngine
+namespace DraftEngine.Models
 {
     public class RankingSource
     {

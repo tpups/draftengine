@@ -1,7 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace DraftEngine
+namespace DraftEngine.Models
 {
     public class Player
     {

@@ -45,8 +45,8 @@ const playerService = {
     apiClient.get<Player[]>(`${BASE_PATH}/highlighted`),
 
   // Draft management
-  markAsDrafted: (id: string, draftInfo: DraftInfo) =>
-    apiClient.post<void>(`${BASE_PATH}/${id}/draft`, draftInfo),
+  markAsDrafted: (id: string, request: { draftedBy: string; round: number; pick: number }) =>
+    apiClient.post<void>(`${BASE_PATH}/${id}/draft`, request),
 
   undraftPlayer: (id: string) =>
     apiClient.post<void>(`${BASE_PATH}/${id}/undraft`),

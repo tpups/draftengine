@@ -1,8 +1,8 @@
 using MongoDB.Driver;
+using DraftEngine.Models;
 using DraftEngine.Models.Data;
-using DraftEngine.Services;
 
-namespace DraftEngine
+namespace DraftEngine.Services
 {
     public class PlayerService
     {
@@ -236,13 +236,13 @@ namespace DraftEngine
         }
 
         // Draft management methods
-        public async Task<bool> MarkAsDraftedAsync(string id, string draftedBy, int round, int pick)
+        public async Task<bool> MarkAsDrafted(string id, DraftPickRequest request)
         {
             var update = Builders<Player>.Update
                 .Set(p => p.IsDrafted, true)
-                .Set(p => p.DraftedBy, draftedBy)
-                .Set(p => p.DraftRound, round)
-                .Set(p => p.DraftPick, pick);
+                .Set(p => p.DraftedBy, request.DraftedBy)
+                .Set(p => p.DraftRound, request.Round)
+                .Set(p => p.DraftPick, request.Pick);
 
             var result = await _players.UpdateOneAsync(player => player.Id == id, update);
             return result.ModifiedCount > 0;
