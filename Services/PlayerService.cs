@@ -291,6 +291,22 @@ namespace DraftEngine
             return result.ModifiedCount > 0;
         }
 
+        // Draft reset operation
+        public async Task<long> ResetDraftStatusAsync()
+        {
+            var update = Builders<Player>.Update
+                .Set(p => p.IsDrafted, false)
+                .Set(p => p.DraftedBy, null)
+                .Set(p => p.DraftRound, null)
+                .Set(p => p.DraftPick, null);
+
+            var result = await _players.UpdateManyAsync(
+                Builders<Player>.Filter.Empty, 
+                update
+            );
+            return result.ModifiedCount;
+        }
+
         // Advanced filtering
         public async Task<List<Player>> GetByAgeRangeAsync(int minAge, int maxAge)
         {

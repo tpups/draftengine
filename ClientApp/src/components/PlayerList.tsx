@@ -1,12 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
-import { Box, CircularProgress, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar } from '@mui/material';
+import { Box, CircularProgress, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import GavelIcon from '@mui/icons-material/Gavel';
 import { playerService } from '../services/playerService';
 import { Player } from '../types/models';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { PlayerDetailsModal } from './PlayerDetailsModal';
+import { DraftPlayerModal } from './DraftPlayerModal';
+import { managerService } from '../services/managerService';
 import { calculatePreciseAge, calculateBaseballAge, CURRENT_BASEBALL_SEASON } from '../utils/dateUtils';
 
 export function PlayerList() {
@@ -55,6 +58,9 @@ export function PlayerList() {
   });
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [draftModalOpen, setDraftModalOpen] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [gridMode, setGridMode] = useState<'prep' | 'draft'>('prep');
 
   const handlePlayerClick = useCallback((player: Player) => {
     setSelectedPlayer(player);
@@ -67,6 +73,16 @@ export function PlayerList() {
   }, []);
 
   const queryClient = useQueryClient();
+
+  const { data: managersResponse } = useQuery({
+    queryKey: ['managers'],
+    queryFn: () => managerService.getAll(),
+  });
+
+  const currentUser = useMemo(() => 
+    managersResponse?.value?.find(m => m.isUser), 
+    [managersResponse?.value]
+  );
 
   const { data: response, isLoading, error } = useQuery({
     queryKey: ['players'],
@@ -118,6 +134,45 @@ export function PlayerList() {
     }
   });
 
+  const resetDraftMutation = useMutation({
+    mutationFn: playerService.resetDraftStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+      setSnackbar({ open: true, message: 'Draft status reset successfully', severity: 'success' });
+    },
+    onError: (error) => {
+      setSnackbar({ 
+        open: true, 
+        message: `Error resetting draft status: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
+  });
+
+  const draftMutation = useMutation({
+    mutationFn: ({ playerId, managerId }: { playerId: string; managerId: string }) => 
+      playerService.markAsDrafted(playerId, { draftedBy: managerId, round: 0, pick: 0 }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+      setDraftModalOpen(false);
+      setSelectedPlayerId(null);
+      setSnackbar({ open: true, message: 'Player drafted successfully', severity: 'success' });
+    },
+    onError: (error) => {
+      setSnackbar({ 
+        open: true, 
+        message: `Error drafting player: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
+  });
+
+  const handleDraft = (managerId: string) => {
+    if (selectedPlayerId) {
+      draftMutation.mutate({ playerId: selectedPlayerId, managerId });
+    }
+  };
+
   const handleDelete = (id: string) => {
     console.log('Delete request details:', {
       rawId: id,
@@ -141,15 +196,116 @@ export function PlayerList() {
   };
 
   const players = response?.value ?? [];
-  const gridData = players.map(player => ({
-    id: player.id,
-    name: player.name,
-    mlbTeam: player.mlbTeam,
-    level: player.level,
-    rank: player.rank?.['steamer_2025'] || null,
-    age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
-    position: player.position?.join(', ') || ''
-  }));
+  const managers = managersResponse?.value ?? [];
+  const gridData = players.map(player => {
+    const draftingManager = player.draftedBy 
+      ? managers.find(m => m.id === player.draftedBy)
+      : null;
+
+    return {
+      ...player,
+      id: player.id,
+      name: player.name,
+      mlbTeam: player.mlbTeam,
+      level: player.level,
+      rank: player.rank?.['steamer_2025'] || null,
+      age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
+      position: player.position?.join(', ') || '',
+      draftingManagerName: draftingManager?.name ?? ''
+    };
+  });
+
+  const getRowClassName = (params: any) => {
+    if (!params.row.isDrafted) return '';
+    if (params.row.draftedBy === currentUser?.id) return 'drafted-by-user';
+    return 'drafted-by-other';
+  };
+
+  const handleResetDraft = () => {
+    if (window.confirm('Are you sure you want to reset all draft status? This cannot be undone.')) {
+      resetDraftMutation.mutate();
+    }
+  };
+
+  const renderModeToggle = () => (
+    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box>
+        <ToggleButtonGroup
+        value={gridMode}
+        exclusive
+        onChange={(_, newMode) => {
+          if (newMode !== null) {
+            setGridMode(newMode);
+          }
+        }}
+        aria-label="grid mode"
+      >
+        <ToggleButton value="prep" aria-label="prep mode">
+          Prep Mode
+        </ToggleButton>
+        <ToggleButton value="draft" aria-label="draft mode">
+          Draft Mode
+        </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      {gridMode === 'draft' && (
+        <Button
+          variant="outlined"
+          color="warning"
+          onClick={handleResetDraft}
+          sx={{
+            '&:hover': {
+              transform: 'scale(1.05)',
+              transition: 'transform 0.2s'
+            }
+          }}
+        >
+          Reset Draft Status
+        </Button>
+      )}
+    </Box>
+  );
+
+  const renderActionButtons = (params: any) => {
+    if (gridMode === 'prep') {
+      return [
+        <GridActionsCellItem
+          icon={<DeleteIcon sx={{ 
+            color: 'error.main',
+            '&:hover': {
+              transform: 'scale(1.2)',
+              transition: 'transform 0.2s'
+            }
+          }} />}
+          label="Delete"
+          onClick={() => handleDelete(params.id.toString())}
+          title="Delete this player"
+        />
+      ];
+    }
+
+    if (!params.row.isDrafted) {
+      return [
+        <GridActionsCellItem
+          icon={<GavelIcon sx={{ 
+            color: 'primary.main',
+            '&:hover': {
+              transform: 'scale(1.2)',
+              transition: 'transform 0.2s'
+            }
+          }} />}
+          label="Draft"
+          onClick={() => {
+            setSelectedPlayerId(params.id.toString());
+            setDraftModalOpen(true);
+          }}
+          title="Draft this player"
+        />
+      ];
+    }
+
+    return [];
+  };
 
   const renderAddPlayerDialog = () => (
     <Dialog open={open} onClose={handleClose}>
@@ -231,20 +387,55 @@ export function PlayerList() {
   if (!players || players.length === 0) {
     return (
       <Box display="flex" flexDirection="column" gap={2}>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setOpen(true)}
-            sx={{
-              '&:hover': {
-                transform: 'scale(1.05)',
-                transition: 'transform 0.2s'
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <ToggleButtonGroup
+            value={gridMode}
+            exclusive
+            onChange={(_, newMode) => {
+              if (newMode !== null) {
+                setGridMode(newMode);
               }
             }}
+            aria-label="grid mode"
           >
-            Add Player
-          </Button>
+            <ToggleButton value="prep" aria-label="prep mode">
+              Prep Mode
+            </ToggleButton>
+            <ToggleButton value="draft" aria-label="draft mode">
+              Draft Mode
+            </ToggleButton>
+          </ToggleButtonGroup>
+          <Box>
+            {gridMode === 'prep' ? (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setOpen(true)}
+                sx={{
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    transition: 'transform 0.2s'
+                  }
+                }}
+              >
+                Add Player
+              </Button>
+            ) : (
+              <Button
+                variant="outlined"
+                color="warning"
+                onClick={handleResetDraft}
+                sx={{
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    transition: 'transform 0.2s'
+                  }
+                }}
+              >
+                Reset Draft Status
+              </Button>
+            )}
+          </Box>
         </Box>
         <Box display="flex" justifyContent="center" alignItems="center" height="400px">
           <Alert severity="info">No players available</Alert>
@@ -269,26 +460,58 @@ export function PlayerList() {
       flexDirection: 'column', 
       gap: 2 
     }}>
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'flex-end',
-        width: '100%'
-      }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setOpen(true)}
-            sx={{
-              '&:hover': {
-                transform: 'scale(1.05)',
-                transition: 'transform 0.2s'
-              }
-            }}
-          >
-            Add Player
-          </Button>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <ToggleButtonGroup
+          value={gridMode}
+          exclusive
+          onChange={(_, newMode) => {
+            if (newMode !== null) {
+              setGridMode(newMode);
+            }
+          }}
+          aria-label="grid mode"
+        >
+          <ToggleButton value="prep" aria-label="prep mode">
+            Prep Mode
+          </ToggleButton>
+          <ToggleButton value="draft" aria-label="draft mode">
+            Draft Mode
+          </ToggleButton>
+        </ToggleButtonGroup>
+        <Box>
+          {gridMode === 'prep' ? (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setOpen(true)}
+              sx={{
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                  transition: 'transform 0.2s'
+                }
+              }}
+            >
+              Add Player
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={handleResetDraft}
+              sx={{
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                  transition: 'transform 0.2s'
+                }
+              }}
+            >
+              Reset Draft Status
+            </Button>
+          )}
+        </Box>
       </Box>
       <DataGrid
+        getRowClassName={getRowClassName}
         rows={gridData}
         autoHeight={false}
         sx={{
@@ -296,6 +519,18 @@ export function PlayerList() {
           flex: 1,
           '& .MuiDataGrid-main': {
             width: '100%'
+          },
+          '& .drafted-by-user': {
+            bgcolor: 'success.light',
+            '&:hover': {
+              bgcolor: 'success.light',
+            }
+          },
+          '& .drafted-by-other': {
+            bgcolor: 'warning.light',
+            '&:hover': {
+              bgcolor: 'warning.light',
+            }
           }
         }}
         columns={[
@@ -356,22 +591,24 @@ export function PlayerList() {
             type: 'actions',
             headerName: 'Actions',
             width: 100,
-            getActions: (params) => [
-              <GridActionsCellItem
-                icon={<DeleteIcon sx={{ 
-                  color: 'error.main',
-                  '&:hover': {
-                    transform: 'scale(1.2)',
-                    transition: 'transform 0.2s'
-                  }
-                }} />}
-                label="Delete"
-                onClick={() => handleDelete(params.id.toString())}
-                title="Delete this player"
-              />
-            ]
-          }
+            getActions: renderActionButtons
+          },
+          ...(gridMode === 'draft' ? [
+            {
+              field: 'draftingManagerName',
+              headerName: 'Drafted By',
+              width: 150,
+            }
+          ] : [])
         ]}
+      />
+      <DraftPlayerModal
+        open={draftModalOpen}
+        onClose={() => {
+          setDraftModalOpen(false);
+          setSelectedPlayerId(null);
+        }}
+        onManagerSelect={handleDraft}
       />
       {renderAddPlayerDialog()}
       <Snackbar

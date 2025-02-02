@@ -1,10 +1,12 @@
 # Active Context
 
 ## Current Development Focus
-- Admin Panel Implementation
-  * Frontend routing and navigation
-  * DataGrid component implementation and debugging
-  * Birthdate verification feature
+- Draft Mode Implementation
+  * Added mode toggle between Prep/Draft modes
+  * Added draft functionality with manager selection
+  * Added row highlighting for drafted players
+  * Added Reset Draft Status feature
+  * Improved layout consistency
 - Frontend-backend integration
 - Player data management refinements
 
@@ -20,6 +22,23 @@
   * 2025 projections
 
 ## Recent Changes
+
+23. Draft Mode Implementation: (2/1/25)
+    - Added mode toggle between Prep and Draft modes
+    - Added draft button and manager selection modal
+    - Added row highlighting:
+      * Orange for players drafted by others
+      * Green for players drafted by current user
+    - Added "Drafted By" column in Draft Mode
+    - Added Reset Draft Status feature
+    - Improved layout consistency:
+      * Mode toggle and action buttons in same row
+      * Add Player button only in Prep Mode
+      * Consistent styling across empty and populated states
+    - Added backend support for draft operations:
+      * markAsDrafted endpoint
+      * resetDraftStatus endpoint
+      * Proper draft status tracking in database
 
 22. Manager Management Enhancements: (2/1/25)
     - Added optional email field to Manager model

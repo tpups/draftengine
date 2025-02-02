@@ -79,6 +79,9 @@ const playerService = {
   deleteAll: () =>
     apiClient.delete<void>(`${BASE_PATH}/deleteall`),
 
+  resetDraftStatus: () =>
+    apiClient.post<void>(`${BASE_PATH}/reset-draft-status`),
+
   // Birthdate verification
   verifyBirthDates: (includeExisting: boolean) =>
     apiClient.post<ApiResponse<BirthDateVerificationResult>>(`${BASE_PATH}/verify-birthdates`, { includeExisting }),

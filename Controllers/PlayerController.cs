@@ -290,6 +290,19 @@ namespace DraftEngine.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Reset draft status for all players
+        /// </summary>
+        /// <returns>A message indicating how many players were reset</returns>
+        /// <response code="200">Returns the number of players reset</response>
+        [HttpPost("reset-draft-status")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> ResetDraftStatus()
+        {
+            var count = await _playerService.ResetDraftStatusAsync();
+            return Ok(new { message = $"Reset draft status for {count} players" });
+        }
+
         // Personal tracking endpoints
         /// <summary>
         /// Toggle highlight status for a player
