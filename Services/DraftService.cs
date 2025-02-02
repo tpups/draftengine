@@ -171,4 +171,30 @@ public class DraftService
             throw;
         }
     }
+
+    public async Task<Draft> RemoveRoundAsync(string draftId)
+    {
+        try
+        {
+            var draft = await GetByIdAsync(draftId);
+            if (draft == null)
+            {
+                throw new InvalidOperationException("Draft not found");
+            }
+
+            if (draft.Rounds.Count <= 1)
+            {
+                throw new InvalidOperationException("Cannot remove the last round");
+            }
+
+            draft.Rounds.RemoveAt(draft.Rounds.Count - 1);
+            await UpdateAsync(draft);
+            return draft;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing round from draft: {DraftId}", draftId);
+            throw;
+        }
+    }
 }

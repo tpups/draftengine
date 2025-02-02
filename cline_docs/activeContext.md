@@ -11,7 +11,7 @@
     - Draft order management with drag-and-drop
     - Draft list with delete capability
     - Reset draft functionality
-    - Add round capability
+    - Add/remove round capability
   * Improved UI consistency and feedback
 - Frontend-backend integration
 - Player data management refinements
@@ -28,6 +28,20 @@
   * 2025 projections
 
 ## Recent Changes
+
+27. Admin Panel UI Improvements: (2/2/25)
+    - Enhanced Manager Section:
+      * Added manager count display
+      * Moved Add Manager button to header row
+      * Removed pagination in favor of scrolling
+      * Improved dialog state management
+      * Better header organization with flex layout
+    - Enhanced Draft Management:
+      * Added draft list with scrolling
+      * Conditional rendering based on draft existence
+      * Added remove round capability
+      * Improved validation and error handling
+      * Consistent dialog styling
 
 26. Admin Panel Organization & Draft Management: (2/2/25)
     - Split AdminPanel into focused components:
@@ -55,18 +69,5 @@
       * DraftController with RESTful endpoints
       * Proper error handling and validation
       * Draft model with complete draft state
-
-25. Menu Bar Navigation Improvements: (2/1/25)
-    - Refined navigation behavior in menu bar
-    - Removed redundant home link from entire menu bar
-    - Kept home navigation on logo and Home button only
-    - Added proper cursor styles:
-      * Default cursor on non-interactive areas
-      * Pointer cursor on buttons and logo
-    - Enhanced active page indication:
-      * Increased opacity (0.4) for active button
-      * Added subtle white glow effect
-      * Maintained hover state on active button
-    - Improved overall UX consistency
 
 [Previous entries remain unchanged...]

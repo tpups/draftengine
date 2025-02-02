@@ -27,6 +27,9 @@ export const draftService = {
   addRound: (draftId: string) => 
     apiClient.post<ApiResponse<Draft>>(`/draft/${draftId}/addRound`),
 
+  removeRound: (draftId: string) =>
+    apiClient.post<ApiResponse<Draft>>(`/draft/${draftId}/removeRound`),
+
   markPickComplete: (draftId: string, params: { roundNumber: number; managerId: string }) => 
     apiClient.post<ApiResponse<Draft>>(`/draft/${draftId}/pick`, params),
 

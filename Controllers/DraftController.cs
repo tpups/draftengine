@@ -172,6 +172,26 @@ public class DraftController : ControllerBase
         }
     }
 
+    [HttpPost("{draftId}/removeRound")]
+    public async Task<IActionResult> RemoveRound(string draftId)
+    {
+        try
+        {
+            var draft = await _draftService.RemoveRoundAsync(draftId);
+            return Ok(new { value = draft });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when removing round");
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing round");
+            return StatusCode(500, new { message = "Error removing round" });
+        }
+    }
+
     [HttpPost("{draftId}/reset")]
     public async Task<IActionResult> ResetDraft(string draftId)
     {

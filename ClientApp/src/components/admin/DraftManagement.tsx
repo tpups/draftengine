@@ -31,6 +31,7 @@ export const DraftManagement: React.FC = () => {
   const [draftOrderDialogOpen, setDraftOrderDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [removeRoundDialogOpen, setRemoveRoundDialogOpen] = useState(false);
   const [draftToDelete, setDraftToDelete] = useState<Draft | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
@@ -138,6 +139,30 @@ export const DraftManagement: React.FC = () => {
     }
   };
 
+  const handleRemoveRound = async () => {
+    try {
+      setDraftLoading(true);
+      setDraftStatus(null);
+      if (!currentDraft?.id) {
+        throw new Error('No active draft');
+      }
+      const response = await draftService.removeRound(currentDraft.id);
+      setCurrentDraft(response.value);
+      setDraftStatus({
+        success: true,
+        message: 'Successfully removed round'
+      });
+      setRemoveRoundDialogOpen(false);
+    } catch (error) {
+      setDraftStatus({
+        success: false,
+        message: `Error removing round: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    } finally {
+      setDraftLoading(false);
+    }
+  };
+
   const handleCreateDraft = async () => {
     try {
       setDraftLoading(true);
@@ -201,36 +226,46 @@ export const DraftManagement: React.FC = () => {
         >
           {draftLoading ? 'Generating...' : 'Generate Draft'}
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={async () => {
-            try {
-              setDraftLoading(true);
-              setDraftStatus(null);
-              if (!currentDraft?.id) {
-                throw new Error('No active draft');
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={async () => {
+              try {
+                setDraftLoading(true);
+                setDraftStatus(null);
+                if (!currentDraft?.id) {
+                  throw new Error('No active draft');
+                }
+                const response = await draftService.addRound(currentDraft.id);
+                await loadManagers(); // Refresh manager list
+                setCurrentDraft(response.value);
+                setDraftStatus({
+                  success: true,
+                  message: 'Successfully added new round'
+                });
+              } catch (error) {
+                setDraftStatus({
+                  success: false,
+                  message: `Error adding round: ${error instanceof Error ? error.message : 'Unknown error'}`
+                });
+              } finally {
+                setDraftLoading(false);
               }
-              const response = await draftService.addRound(currentDraft.id);
-              await loadManagers(); // Refresh manager list
-              setCurrentDraft(response.value);
-              setDraftStatus({
-                success: true,
-                message: 'Successfully added new round'
-              });
-            } catch (error) {
-              setDraftStatus({
-                success: false,
-                message: `Error adding round: ${error instanceof Error ? error.message : 'Unknown error'}`
-              });
-            } finally {
-              setDraftLoading(false);
-            }
-          }}
-          disabled={!currentDraft?.id || draftLoading}
-        >
-          {draftLoading ? 'Adding...' : 'Add Round'}
-        </Button>
+            }}
+            disabled={!currentDraft?.id || draftLoading}
+          >
+            {draftLoading ? 'Adding...' : 'Add Round'}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setRemoveRoundDialogOpen(true)}
+            disabled={!currentDraft?.id || currentDraft?.rounds.length <= 1 || draftLoading}
+          >
+            {draftLoading ? 'Removing...' : 'Remove Round'}
+          </Button>
+        </Box>
         <Button
           variant="contained"
           color="error"
@@ -241,42 +276,44 @@ export const DraftManagement: React.FC = () => {
         </Button>
       </Box>
 
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          All Drafts
-        </Typography>
-        <Paper variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
-          <List>
-            {allDrafts.map((draft, index) => (
-              <React.Fragment key={draft.id}>
-                {index > 0 && <Divider />}
-                <ListItem
-                  secondaryAction={
-                    <IconButton
-                      edge="end"
-                      onClick={() => {
-                        setDraftToDelete(draft);
-                        setDeleteDialogOpen(true);
-                      }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  }
-                >
-                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    <Typography>
-                      {draft.type} Draft ({draft.year})
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {draft.rounds.length} rounds • {draft.isSnakeDraft ? 'Snake' : 'Standard'} • {draft.isActive ? 'Active' : 'Inactive'}
-                    </Typography>
-                  </Box>
-                </ListItem>
-              </React.Fragment>
-            ))}
-          </List>
-        </Paper>
-      </Box>
+      {allDrafts.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            All Drafts
+          </Typography>
+          <Paper variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
+            <List>
+              {allDrafts.map((draft, index) => (
+                <React.Fragment key={draft.id}>
+                  {index > 0 && <Divider />}
+                  <ListItem
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        onClick={() => {
+                          setDraftToDelete(draft);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    }
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography>
+                        {draft.type} Draft ({draft.year})
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {draft.rounds.length} rounds • {draft.isSnakeDraft ? 'Snake' : 'Standard'} • {draft.isActive ? 'Active' : 'Inactive'}
+                      </Typography>
+                    </Box>
+                  </ListItem>
+                </React.Fragment>
+              ))}
+            </List>
+          </Paper>
+        </Box>
+      )}
 
       <Dialog
         open={draftOrderDialogOpen}
@@ -405,6 +442,50 @@ export const DraftManagement: React.FC = () => {
             disabled={draftLoading}
           >
             {draftLoading ? 'Resetting...' : 'Reset Draft'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={removeRoundDialogOpen}
+        onClose={() => !draftLoading && setRemoveRoundDialogOpen(false)}
+      >
+        <DialogTitle sx={{ bgcolor: 'grey.100' }}>Remove Round</DialogTitle>
+        <DialogContent sx={{ bgcolor: 'grey.100' }}>
+          <Typography sx={{ mb: 2 }}>
+            Are you sure you want to remove the last round from the current draft?
+          </Typography>
+          {currentDraft && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Current Draft Details:
+              </Typography>
+              <Typography>
+                Year: {currentDraft.year}
+              </Typography>
+              <Typography>
+                Type: {currentDraft.type}
+              </Typography>
+              <Typography>
+                Total Rounds: {currentDraft.rounds.length}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ bgcolor: 'grey.100', px: 3 }}>
+          <Button 
+            onClick={() => setRemoveRoundDialogOpen(false)}
+            disabled={draftLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleRemoveRound}
+            disabled={draftLoading}
+          >
+            {draftLoading ? 'Removing...' : 'Remove Round'}
           </Button>
         </DialogActions>
       </Dialog>

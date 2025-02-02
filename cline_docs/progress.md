@@ -10,16 +10,30 @@
 - Consistent styling and patterns ✓
 - Independent state management ✓
 - Proper error handling ✓
+- Standardized header layouts ✓
+- Improved dialog management ✓
 
 ### Draft Management
 - Draft generation with round selection ✓
 - Draft order management with drag-and-drop ✓
 - Draft list with delete functionality ✓
 - Reset draft with confirmation ✓
-- Add round capability ✓
+- Add/remove round capability ✓
 - Active draft tracking ✓
 - Snake draft support ✓
 - Backend integration complete ✓
+- Conditional UI rendering ✓
+- Scrollable draft list ✓
+
+### Manager Section
+- Basic manager CRUD operations ✓
+- Team and email management ✓
+- User manager designation ✓
+- Manager count display ✓
+- Scrolling list view ✓
+- Improved header organization ✓
+- Dialog state management ✓
+- Consistent styling patterns ✓
 
 ### API Infrastructure
 - Basic .NET Core 8.0 Web API setup ✓
@@ -145,23 +159,19 @@
 
 ## Recent Achievements
 
-7. Admin Panel Organization & Draft Management: (2/2/25)
-   - Successfully split AdminPanel into focused components ✓
-   - Implemented comprehensive draft management:
-     * Draft generation with round selection ✓
-     * Drag-and-drop draft order management ✓
-     * Draft list with delete functionality ✓
-     * Reset draft with confirmation ✓
-     * Add round capability ✓
-   - Added backend support:
-     * DraftService with MongoDB integration ✓
-     * DraftController with RESTful endpoints ✓
-     * Draft model with complete state ✓
-   - Enhanced UI consistency:
+8. Admin Panel UI Improvements: (2/2/25)
+   - Enhanced Manager Section:
+     * Added manager count display ✓
+     * Moved Add Manager button to header row ✓
+     * Removed pagination in favor of scrolling ✓
+     * Improved dialog state management ✓
+     * Better header organization with flex layout ✓
+   - Enhanced Draft Management:
+     * Added draft list with scrolling ✓
+     * Conditional rendering based on draft existence ✓
+     * Added remove round capability ✓
+     * Improved validation and error handling ✓
      * Consistent dialog styling ✓
-     * Proper loading states ✓
-     * Clear success/error messages ✓
-     * Confirmation dialogs ✓
 
 [Previous achievements remain unchanged...]
 
@@ -173,3 +183,4 @@
 5. Implement enhanced features
 6. Add draft simulation features
 7. Implement draft analysis tools
+8. Improve UI consistency across all sections ✓

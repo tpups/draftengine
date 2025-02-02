@@ -2,13 +2,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Checkbox, FormControlLabel, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import { managerService } from '../services/managerService';
 import { Manager } from '../types/models';
 import { useState } from 'react';
 
-export function ManagerList() {
+interface ManagerListProps {
+  dialogOpen: boolean;
+  onDialogClose: () => void;
+}
+
+export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
   const initialManagerState: Omit<Manager, 'id'> = {
     name: '',
     teamName: '',
@@ -17,9 +21,6 @@ export function ManagerList() {
   };
 
   const [editManager, setEditManager] = useState<Manager | null>(null);
-
-  // All hooks at the top level
-  const [open, setOpen] = useState(false);
   const [newManager, setNewManager] = useState<Omit<Manager, 'id'>>(initialManagerState);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -55,7 +56,7 @@ export function ManagerList() {
     mutationFn: (manager: Manager) => managerService.update(manager.id!, manager),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managers'] });
-      setOpen(false);
+      onDialogClose();
       setEditManager(null);
       setSnackbar({ open: true, message: 'Manager updated successfully', severity: 'success' });
     },
@@ -78,7 +79,7 @@ export function ManagerList() {
     mutationFn: (manager: Omit<Manager, 'id'>) => managerService.create(manager),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managers'] });
-      setOpen(false);
+      onDialogClose();
       setNewManager(initialManagerState);
       setSnackbar({ open: true, message: 'Manager created successfully', severity: 'success' });
     },
@@ -114,7 +115,7 @@ export function ManagerList() {
   };
 
   const handleClose = () => {
-    setOpen(false);
+    onDialogClose();
     setNewManager(initialManagerState);
     setEditManager(null);
   };
@@ -130,7 +131,7 @@ export function ManagerList() {
   };
 
   const renderManagerDialog = () => (
-    <Dialog open={open} onClose={handleClose}>
+    <Dialog open={dialogOpen} onClose={handleClose}>
       <DialogTitle>{editManager ? 'Edit Manager' : 'Add New Manager'}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
@@ -214,21 +215,6 @@ export function ManagerList() {
   if (!managers || managers.length === 0) {
     return (
       <Box display="flex" flexDirection="column" gap={2}>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setOpen(true)}
-            sx={{
-              '&:hover': {
-                transform: 'scale(1.05)',
-                transition: 'transform 0.2s'
-              }
-            }}
-          >
-            Add Manager
-          </Button>
-        </Box>
         <Box display="flex" justifyContent="center" alignItems="center" height="400px">
           <Alert severity="info">No managers available</Alert>
         </Box>
@@ -247,33 +233,16 @@ export function ManagerList() {
   return (
     <Box sx={{ 
       width: '100%', 
-      height: 'calc(100vh - 200px)', // Adjust for AppBar and padding
+      height: '100%',
       display: 'flex', 
       flexDirection: 'column', 
       gap: 2 
     }}>
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'flex-end',
-        width: '100%'
-      }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setOpen(true)}
-            sx={{
-              '&:hover': {
-                transform: 'scale(1.05)',
-                transition: 'transform 0.2s'
-              }
-            }}
-          >
-            Add Manager
-          </Button>
-      </Box>
       <DataGrid
         rows={sortManagers(managers)}
         autoHeight={false}
+        hideFooter={true}
+        disableVirtualization={false}
         getRowClassName={(params) => params.row.isUser ? 'user-manager-row' : ''}
         sx={{
           width: '100%',
@@ -321,7 +290,8 @@ export function ManagerList() {
                 label="Edit"
                 onClick={() => {
                   setEditManager(params.row);
-                  setOpen(true);
+                  onDialogClose(); // Close any existing dialog first
+                  setTimeout(() => onDialogClose(), 0); // Then open with edit mode
                 }}
                 title="Edit this manager"
               />,
