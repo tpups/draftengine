@@ -14,9 +14,14 @@ public class Draft
     public bool IsSnakeDraft { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsActive { get; set; }
-    
-    public List<DraftRound> Rounds { get; set; } = new();
     public DraftPosition[] DraftOrder { get; set; } = Array.Empty<DraftPosition>();
+    public List<DraftRound> Rounds { get; set; } = new();
+
+    [BsonElement("CurrentRound")]
+    public int? CurrentRound { get; set; }
+
+    [BsonElement("CurrentPick")]
+    public int? CurrentPick { get; set; }
 }
 
 public class DraftRound

@@ -70,6 +70,10 @@ export interface Draft {
     isActive: boolean;
     rounds: DraftRound[];
     draftOrder: DraftPosition[];
+    currentRound?: number;
+    currentPick?: number;
+    activeRound?: number;
+    activePick?: number;
 }
 
 export interface DraftRound {

@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using DraftEngine.Models.Configuration;
+using DraftEngine.Models.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,10 +30,12 @@ builder.Services.AddSingleton<ManagerService>(sp => new ManagerService(
 ));
 builder.Services.AddSingleton<DraftService>(sp => new DraftService(
     sp.GetRequiredService<MongoDbContext>(),
-    sp.GetRequiredService<ILogger<DraftService>>()
+    sp.GetRequiredService<ILogger<DraftService>>(),
+    sp.GetRequiredService<IOptions<DebugOptions>>()
 ));
 builder.Services.AddHttpClient();
 builder.Services.Configure<MlbApiOptions>(builder.Configuration.GetSection("MlbApi"));
+builder.Services.Configure<DebugOptions>(builder.Configuration.GetSection("Debug"));
 builder.Services.AddSingleton<IMlbApiService, MlbApiService>();
 
 // Configure CORS

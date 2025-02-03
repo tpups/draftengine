@@ -2,6 +2,22 @@
 
 ## Completed Features
 
+### Draft Pick System
+- Two-tier pick tracking ✓
+  * Current Round/Pick for draft progress ✓
+  * Active Round/Pick for UI selection ✓
+- Pick state logging ✓
+  * Context-based logging ✓
+  * Organized availability dictionary ✓
+  * Clear state transitions ✓
+- Pick advancement controls ✓
+  * Manual advancement for earlier picks ✓
+  * Next Pick and Skip to Incomplete options ✓
+- Debug logging system ✓
+  * Active vs Current pick states ✓
+  * Before/after state changes ✓
+  * Pick availability by round ✓
+
 ### Admin Panel Organization
 - Split into focused components ✓
   * DataManagement for data operations ✓
@@ -155,9 +171,30 @@
    - Season tracking
 
 ## Known Issues
-- None currently tracked
+- Pick System Testing:
+  * Recent improvements to pick advancement and selection implemented
+  * Initial testing shows correct behavior for basic scenarios
+  * Need more comprehensive testing of:
+    - Snake draft pick ordering
+    - Skip to incomplete functionality
+    - Edge cases with multiple rounds
+  * Status: Under active testing and monitoring
 
 ## Recent Achievements
+9. Pick State Management Fix: (2/2/25)
+   - Fixed pick advancement behavior:
+     * Added updateActivePick endpoint for backend state ✓
+     * Implemented proper state sync between frontend and backend ✓
+     * Fixed issue where next pick jumped incorrectly ✓
+     * Clarified UI terminology ("Edit active pick") ✓
+   - Enhanced pick state tracking:
+     * Current Pick properly tracks draft progress ✓
+     * Active Pick maintains UI selection state ✓
+     * Backend state persistence for both ✓
+   - Added comprehensive error handling:
+     * Backend validation for pick updates ✓
+     * Frontend error messages for state changes ✓
+     * Detailed state logging for debugging ✓
 
 8. Admin Panel UI Improvements: (2/2/25)
    - Enhanced Manager Section:
@@ -173,7 +210,69 @@
      * Improved validation and error handling ✓
      * Consistent dialog styling ✓
 
-[Previous achievements remain unchanged...]
+7. Admin Panel Organization & Draft Management: (2/2/25)
+   - Successfully split AdminPanel into focused components ✓
+   - Implemented comprehensive draft management:
+     * Draft generation with round selection ✓
+     * Drag-and-drop draft order management ✓
+     * Draft list with delete functionality ✓
+     * Reset draft with confirmation ✓
+     * Add round capability ✓
+   - Added backend support:
+     * DraftService with MongoDB integration ✓
+     * DraftController with RESTful endpoints ✓
+     * Draft model with complete state ✓
+   - Enhanced UI consistency:
+     * Consistent dialog styling ✓
+     * Proper loading states ✓
+     * Clear success/error messages ✓
+     * Confirmation dialogs ✓
+
+6. Player Creation API
+   - Successfully implemented player creation
+   - MongoDB Id auto-generation working
+   - Proper model validation
+   - Verified data persistence
+   - Tested retrieval functionality
+   - Fixed validation to support minimal player creation
+   - Enabled flexible data entry for MLB/prospect players
+   - Verified working in development environment
+
+5. API Response Handling
+   - Fixed delete operation error handling
+   - Improved apiClient response parsing
+   - Added proper support for 204 No Content
+   - Enhanced void type handling
+   - Verified working in development environment
+
+4. Development Environment Improvements
+   - Fixed frontend hot reloading with proper file watching
+   - Configured Vite for Docker environment
+   - Removed redundant file copying in Dockerfile.dev
+   - Set up proper volume mounting
+   - Verified live updates working
+
+3. UI Enhancements
+   - Added hover animations to buttons
+   - Improved delete button visibility and feedback
+   - Added tooltips for better UX
+   - Verified changes in development environment
+
+2. Player Data Import
+   - Successfully combined player data from multiple batch files
+   - Created comprehensive top_players.json with 100 players
+   - Properly sorted by steamer_2025 rank (1-100)
+   - Complete player data structure with all fields
+   - Verified data integrity and format
+   - Fixed PowerShell command syntax issues
+   - Documented data import process
+
+1. React Router Integration
+   - Successfully fixed routing issues in App.tsx ✓
+   - Properly integrated Material-UI with React Router ✓
+   - Implemented correct Link component usage ✓
+   - Added navigation structure for admin features ✓
+   - Verified working in development environment ✓
 
 ## Next Milestone Goals
 1. Complete Admin Panel implementation ✓

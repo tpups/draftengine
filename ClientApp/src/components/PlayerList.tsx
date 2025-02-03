@@ -1,81 +1,35 @@
+import { Box, CircularProgress, Alert, Snackbar, Popover } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DataGrid, GridActionsCellItem, GridRowParams, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
-import { Box, CircularProgress, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, ToggleButtonGroup, ToggleButton, Typography } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import GavelIcon from '@mui/icons-material/Gavel';
-import EditIcon from '@mui/icons-material/Edit';
-import StarIcon from '@mui/icons-material/Star';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
+import { useState, useCallback, useMemo } from 'react';
+import { Player, Manager, ApiResponse, Draft } from '../types/models';
+import { CurrentPickResponse } from '../services/draftService';
 import { playerService } from '../services/playerService';
 import { draftService } from '../services/draftService';
-import { Player, Manager } from '../types/models';
-import { useState, useCallback, useMemo } from 'react';
-import { PlayerDetailsModal } from './PlayerDetailsModal';
-import { DraftPlayerModal } from './DraftPlayerModal';
-import { PlayerEditModal } from './PlayerEditModal';
 import { managerService } from '../services/managerService';
-import { calculatePreciseAge, calculateBaseballAge, CURRENT_BASEBALL_SEASON } from '../utils/dateUtils';
+import { config } from '../config/config';
 
-// Define the grid row type
-interface GridPlayer {
-  id?: string;
-  name: string;
-  position: string;
-  mlbTeam?: string;
-  level?: string;
-  rank: number | null;
-  age: number | null;
-  draftingManagerName: string;
-  isDrafted?: boolean;
-  draftRound?: number | null;
-  draftPick?: number | null;
-  draftedBy?: string | null;
-  isHighlighted?: boolean;
-  notes?: string | null;
-  personalRank?: number | null;
-  starsRating?: number | null;
-}
+// Helper function to log pick state
+const logPickState = (activeDraft: Draft | undefined | null, currentPick: CurrentPickResponse | undefined | null, context: string) => {
+  if (!config.debug.enableConsoleLogging) return;
+
+  console.log(`[${context}] Pick State:`, {
+    active: activeDraft ? {
+      round: activeDraft.currentRound,
+      pick: activeDraft.currentPick
+    } : null,
+    current: currentPick ? {
+      round: currentPick.round,
+      pick: currentPick.pick
+    } : null
+  });
+};
+import { DraftPickSelector } from './DraftPickSelector';
+import { PlayerListToolbar } from './PlayerListToolbar';
+import { PlayerListGrid } from './PlayerListGrid';
+import { PlayerListDialogs } from './PlayerListDialogs';
 
 export function PlayerList() {
-  const initialPlayerState: Omit<Player, 'id'> = {
-    name: '',
-    position: [],
-    rank: {},
-    prospectRank: {},
-    mlbTeam: '',
-    level: '',
-    birthDate: '',
-    eta: null,
-    prospectRisk: {},
-    personalRiskAssessment: '',
-    scoutingGrades: {},
-    personalGrades: {
-      hit: null,
-      rawPower: null,
-      gamePower: null,
-      run: null,
-      arm: null,
-      field: null,
-      fastball: null,
-      slider: null,
-      curve: null,
-      changeup: null,
-      control: null,
-      command: null
-    },
-    isDrafted: false,
-    draftRound: null,
-    draftPick: null,
-    draftedBy: null,
-    isHighlighted: false,
-    notes: null,
-    personalRank: null
-  };
-
-  // All hooks at the top level
-  const [open, setOpen] = useState(false);
-  const [newPlayer, setNewPlayer] = useState<Omit<Player, 'id'>>(initialPlayerState);
+  // State
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -87,9 +41,13 @@ export function PlayerList() {
   const [draftModalOpen, setDraftModalOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [gridMode, setGridMode] = useState<'prep' | 'draft'>('prep');
+  const [pickSelectorAnchor, setPickSelectorAnchor] = useState<HTMLElement | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
+  // Queries
   const { data: managersResponse } = useQuery({
     queryKey: ['managers'],
     queryFn: () => managerService.getAll(),
@@ -107,11 +65,6 @@ export function PlayerList() {
     enabled: !!activeDraftResponse?.value
   });
 
-  const currentUser = useMemo(() => 
-    managersResponse?.value?.find((m: Manager) => m.isUser), 
-    [managersResponse?.value]
-  );
-
   const { data: response, isLoading, error } = useQuery({
     queryKey: ['players'],
     queryFn: () => playerService.getAll(),
@@ -121,7 +74,31 @@ export function PlayerList() {
   const managers = managersResponse?.value ?? [];
   const activeDraft = activeDraftResponse?.value;
   const currentPick = currentPickResponse?.value;
+  const currentUser = useMemo(() => 
+    managersResponse?.value?.find((m: Manager) => m.isUser), 
+    [managersResponse?.value]
+  );
 
+  // Mutations
+  const advancePickMutation = useMutation<ApiResponse<CurrentPickResponse>, Error, boolean>({
+    mutationFn: (skipCompleted) => draftService.advancePick(skipCompleted),
+    onSuccess: (response) => {
+      if (config.debug.enableConsoleLogging) console.log('Advanced to pick:', response.value);
+      queryClient.invalidateQueries({ queryKey: ['currentPick'] });
+      logPickState(activeDraft, response.value, 'After Advance Pick');
+      setSnackbar({ open: true, message: 'Advanced to next pick', severity: 'success' });
+    },
+    onError: (error) => {
+      if (config.debug.enableConsoleLogging) console.error('Error advancing pick:', error);
+      setSnackbar({ 
+        open: true, 
+        message: `Error advancing pick: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
+  });
+
+  // Callbacks
   const getCurrentPickManager = useCallback(() => {
     if (!activeDraft || !currentPick) return null;
 
@@ -129,78 +106,108 @@ export function PlayerList() {
     if (!round) return null;
 
     const pick = round.picks.find(p => p.pickNumber === currentPick.pick);
-    return pick ? managers.find(m => m.id === pick.managerId) : null;
+    const manager = pick ? managers.find(m => m.id === pick.managerId) : null;
+    return manager ? { name: manager.name } : null;
   }, [activeDraft, currentPick, managers]);
 
+  const canAdvance = useCallback(() => {
+    if (!activeDraft || !currentPick) return false;
+    
+    // Get the last round
+    const lastRound = activeDraft.rounds[activeDraft.rounds.length - 1];
+    const isLastPick = currentPick.round === lastRound.roundNumber && 
+      currentPick.pick === (lastRound.roundNumber % 2 === 0 && activeDraft.isSnakeDraft
+        ? Math.min(...lastRound.picks.map(p => p.pickNumber))
+        : Math.max(...lastRound.picks.map(p => p.pickNumber)));
+
+    return !isLastPick;
+  }, [activeDraft, currentPick]);
+
+  const canSkipToIncomplete = useCallback(() => {
+    if (!activeDraft || !currentPick) return false;
+    
+    // Check if there are any incomplete picks after current pick
+    const hasIncomplete = activeDraft.rounds.some((round, i) => {
+      if (round.roundNumber < currentPick.round) return false;
+      if (round.roundNumber > currentPick.round) return round.picks.some(p => !p.isComplete);
+      
+      const picks = round.roundNumber % 2 === 0 && activeDraft.isSnakeDraft
+        ? [...round.picks].sort((a, b) => b.pickNumber - a.pickNumber)
+        : [...round.picks].sort((a, b) => a.pickNumber - b.pickNumber);
+        
+      return picks
+        .slice(picks.findIndex(p => p.pickNumber === currentPick.pick) + 1)
+        .some(p => !p.isComplete);
+    });
+
+    return hasIncomplete;
+  }, [activeDraft, currentPick]);
+
   const canDraft = useCallback((playerId: string) => {
-    if (!activeDraft || !currentPick || !currentUser) return false;
-    
-    const currentManager = getCurrentPickManager();
-    return currentManager?.id === currentUser.id;
-  }, [activeDraft, currentPick, currentUser, getCurrentPickManager]);
+    if (!activeDraft || !currentPick || !activeDraft.currentRound || !activeDraft.currentPick) return false;
 
-  const gridData: GridPlayer[] = players.map(player => {
-    const draftingManager = player.draftedBy 
-      ? managers.find((m: Manager) => m.id === player.draftedBy)
-      : null;
+    // Get the pick we're trying to draft from
+    const draftRound = activeDraft.rounds.find(r => r.roundNumber === currentPick.round);
+    if (!draftRound) return false;
 
-    return {
-      id: player.id,
-      name: player.name,
-      mlbTeam: player.mlbTeam,
-      level: player.level,
-      rank: player.rank?.['steamer_2025'] || null,
-      age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
-      position: player.position?.join(', ') || '',
-      draftingManagerName: draftingManager?.name ?? '',
-      isDrafted: player.isDrafted,
-      draftRound: player.draftRound,
-      draftPick: player.draftPick,
-      draftedBy: player.draftedBy,
-      isHighlighted: player.isHighlighted,
-      notes: player.notes,
-      personalRank: player.personalRank,
-      starsRating: player.starsRating
-    };
-  });
+    const pick = draftRound.picks.find(p => p.pickNumber === currentPick.pick);
+    if (!pick) return false;
 
-  const getRowClassName = (params: GridRowParams<GridPlayer>) => {
-    const classes: string[] = [];
-    
-    if (params.row.isHighlighted) {
-      classes.push('highlighted');
-    }
-    
-    if (params.row.isDrafted) {
-      if (params.row.draftedBy === currentUser?.id) {
-        classes.push('drafted-by-user');
+    // Can't draft if pick is already complete
+    if (pick.isComplete) return false;
+
+    // Can't draft if selected pick is in a future round
+    if (currentPick.round > activeDraft.currentRound) return false;
+
+    // For current round, need to compare based on snake order
+    if (currentPick.round === activeDraft.currentRound) {
+      if (currentPick.round % 2 === 0 && activeDraft.isSnakeDraft) {
+        // In snake rounds, higher numbers come first
+        if (currentPick.pick < activeDraft.currentPick) return false;
       } else {
-        classes.push('drafted-by-other');
+        // In normal rounds, lower numbers come first
+        if (currentPick.pick > activeDraft.currentPick) return false;
       }
     }
-    
-    return classes.join(' ');
-  };
+
+    return true;
+  }, [activeDraft, currentPick]);
 
   const handleDraft = async (managerId: string) => {
-    if (!selectedPlayerId || !activeDraft || !currentPick) return;
+    if (!selectedPlayerId || !activeDraft || !activeDraft.currentRound || !activeDraft.currentPick) return;
+
+    if (config.debug.enableConsoleLogging) {
+      console.log('Starting draft for:', {
+        playerId: selectedPlayerId,
+        managerId,
+        round: activeDraft.currentRound,
+        pick: activeDraft.currentPick
+      });
+    }
 
     try {
+      if (config.debug.enableConsoleLogging) console.log('Marking pick complete and player as drafted');
       await Promise.all([
         draftService.markPickComplete(activeDraft.id!, {
-          roundNumber: currentPick.round,
+          roundNumber: activeDraft.currentRound,
           managerId
         }),
         playerService.markAsDrafted(selectedPlayerId, {
           draftedBy: managerId,
-          round: currentPick.round,
-          pick: currentPick.pick
+          round: activeDraft.currentRound,
+          pick: activeDraft.currentPick
         })
       ]);
 
-  queryClient.invalidateQueries({ queryKey: ['activeDraft'] });
-  queryClient.invalidateQueries({ queryKey: ['currentPick'] });
-  queryClient.invalidateQueries({ queryKey: ['players'] });
+      if (config.debug.enableConsoleLogging) console.log('Advancing to next pick');
+      // Advance to next pick
+      await advancePickMutation.mutateAsync(false);
+
+      if (config.debug.enableConsoleLogging) console.log('Invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['activeDraft'] });
+      queryClient.invalidateQueries({ queryKey: ['currentPick'] });
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+      logPickState(activeDraft, currentPick, 'After Draft Complete');
       setDraftModalOpen(false);
       setSelectedPlayerId(null);
       setSnackbar({ open: true, message: 'Player drafted successfully', severity: 'success' });
@@ -213,26 +220,39 @@ export function PlayerList() {
     }
   };
 
-  const handleEdit = (gridPlayer: GridPlayer) => {
-    // Convert grid data back to Player format
-    const player: Player = {
-      ...gridPlayer,
-      position: gridPlayer.position.split(', ').filter(Boolean),
-      rank: gridPlayer.rank ? { 'steamer_2025': gridPlayer.rank } : {}
-    };
-    setSelectedPlayer(player);
-    setEditModalOpen(true);
+  const handlePlayerCreate = async (player: Omit<Player, 'id'>) => {
+    try {
+      await playerService.create(player);
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+      setAddDialogOpen(false);
+      setSnackbar({ open: true, message: 'Player created successfully', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: `Error creating player: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
   };
 
-  const handlePlayerClick = useCallback((player: Player) => {
-    setSelectedPlayer(player);
-    setDetailsModalOpen(true);
-  }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setDetailsModalOpen(false);
-    setSelectedPlayer(null);
-  }, []);
+  const handleResetDraft = async () => {
+    if (!activeDraft) return;
+    
+    try {
+      await draftService.resetDraft(activeDraft.id!);
+      queryClient.invalidateQueries({ queryKey: ['activeDraft'] });
+      queryClient.invalidateQueries({ queryKey: ['currentPick'] });
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+      setSnackbar({ open: true, message: 'Draft status reset successfully', severity: 'success' });
+      setResetDialogOpen(false);
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: `Error resetting draft status: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
+  };
 
   const handleSaveEdit = async (updatedPlayer: Player) => {
     try {
@@ -284,252 +304,6 @@ export function PlayerList() {
     }
   };
 
-  const handleResetDraft = async () => {
-    if (!activeDraft) return;
-    
-    if (window.confirm('Are you sure you want to reset all draft status? This cannot be undone.')) {
-      try {
-        await draftService.resetDraft(activeDraft.id!);
-        queryClient.invalidateQueries({ queryKey: ['activeDraft'] });
-        queryClient.invalidateQueries({ queryKey: ['currentPick'] });
-        queryClient.invalidateQueries({ queryKey: ['players'] });
-        setSnackbar({ open: true, message: 'Draft status reset successfully', severity: 'success' });
-      } catch (error) {
-        setSnackbar({ 
-          open: true, 
-          message: `Error resetting draft status: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-          severity: 'error' 
-        });
-      }
-    }
-  };
-
-  const renderAddPlayerDialog = () => (
-    <Dialog open={open} onClose={() => setOpen(false)}>
-      <DialogTitle>Add New Player</DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField
-            label="Name"
-            value={newPlayer.name}
-            onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
-            fullWidth
-            required
-          />
-          <TextField
-            label="Team"
-            value={newPlayer.mlbTeam}
-            onChange={(e) => setNewPlayer({ ...newPlayer, mlbTeam: e.target.value })}
-            fullWidth
-          />
-          <TextField
-            label="Level"
-            value={newPlayer.level}
-            onChange={(e) => setNewPlayer({ ...newPlayer, level: e.target.value })}
-            fullWidth
-          />
-          <TextField
-            label="Birth Date"
-            type="date"
-            value={newPlayer.birthDate}
-            onChange={(e) => setNewPlayer({ ...newPlayer, birthDate: e.target.value })}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="Position(s)"
-            placeholder="e.g., SS, 2B"
-            value={newPlayer.position?.join(', ') || ''}
-            onChange={(e) => setNewPlayer({ 
-              ...newPlayer, 
-              position: e.target.value.split(',').map(p => p.trim()).filter(p => p)
-            })}
-            fullWidth
-            helperText="Enter positions separated by commas"
-          />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setOpen(false)}>Cancel</Button>
-        <Button 
-          onClick={() => {
-            playerService.create(newPlayer).then(() => {
-              queryClient.invalidateQueries({ queryKey: ['players'] });
-              setOpen(false);
-              setNewPlayer(initialPlayerState);
-              setSnackbar({ open: true, message: 'Player created successfully', severity: 'success' });
-            }).catch((error) => {
-              setSnackbar({ 
-                open: true, 
-                message: `Error creating player: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-                severity: 'error' 
-              });
-            });
-          }}
-          variant="contained" 
-          disabled={!newPlayer.name}
-        >
-          Create
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-
-  const columns: GridColDef<GridPlayer>[] = [
-    {
-      field: 'rank',
-      headerName: 'Rank',
-      width: 80,
-      type: 'number' as const
-    },
-    {
-      field: 'name',
-      headerName: 'Name',
-      width: 200,
-      renderCell: (params: GridRenderCellParams<GridPlayer>) => (
-        <Box
-          component="span"
-          sx={{
-            cursor: 'pointer',
-            color: 'primary.main',
-            '&:hover': {
-              textDecoration: 'underline'
-            }
-          }}
-          onClick={() => {
-            const player = players.find(p => p.id === params.row.id);
-            if (player) {
-              handlePlayerClick(player);
-            }
-          }}
-        >
-          {params.row.name}
-        </Box>
-      )
-    },
-    {
-      field: 'position',
-      headerName: 'Position',
-      width: 120
-    },
-    {
-      field: 'age',
-      headerName: 'Age',
-      width: 80,
-      type: 'number' as const
-    },
-    {
-      field: 'mlbTeam',
-      headerName: 'Team',
-      width: 100
-    },
-    {
-      field: 'level',
-      headerName: 'Level',
-      width: 100
-    },
-    {
-      field: 'actions',
-      type: 'actions',
-      headerName: 'Actions',
-      width: 100,
-      getActions: (params: GridRowParams<GridPlayer>) => {
-        if (gridMode === 'draft') {
-          if (!params.row.isDrafted) {
-            const canMakePick = canDraft(params.row.id!);
-            return [
-              <GridActionsCellItem
-                icon={<GavelIcon sx={{ 
-                  color: canMakePick ? 'primary.main' : 'text.disabled',
-                  '&:hover': canMakePick ? {
-                    transform: 'scale(1.2)',
-                    transition: 'transform 0.2s'
-                  } : {}
-                }} />}
-                disabled={!canMakePick}
-                onClick={() => {
-                  setSelectedPlayerId(params.row.id!.toString());
-                  setDraftModalOpen(true);
-                }}
-                label="Draft"
-                title={canMakePick ? "Draft this player" : "Not your pick"}
-              />
-            ];
-          }
-          return [];
-        }
-
-        return [
-          <GridActionsCellItem
-            icon={params.row.isHighlighted ? (
-              <StarIcon sx={{ 
-                color: 'warning.main',
-                '&:hover': {
-                  transform: 'scale(1.2)',
-                  transition: 'transform 0.2s'
-                }
-              }} />
-            ) : (
-              <StarBorderIcon sx={{ 
-                color: 'warning.main',
-                '&:hover': {
-                  transform: 'scale(1.2)',
-                  transition: 'transform 0.2s'
-                }
-              }} />
-            )}
-            label="Toggle Highlight"
-            onClick={() => handleToggleHighlight(params.row.id!.toString())}
-            title="Toggle highlight status"
-          />,
-          <GridActionsCellItem
-            icon={<EditIcon sx={{ 
-              color: 'primary.main',
-              '&:hover': {
-                transform: 'scale(1.2)',
-                transition: 'transform 0.2s'
-              }
-            }} />}
-            label="Edit"
-            onClick={() => handleEdit(params.row)}
-            title="Edit this player"
-          />,
-          <GridActionsCellItem
-            icon={<DeleteIcon sx={{ 
-              color: 'error.main',
-              '&:hover': {
-                transform: 'scale(1.2)',
-                transition: 'transform 0.2s'
-              }
-            }} />}
-            label="Delete"
-            onClick={() => handleDelete(params.row.id!.toString())}
-            title="Delete this player"
-          />
-        ];
-      }
-    },
-    ...(gridMode === 'draft' ? [
-      {
-        field: 'draftRound',
-        headerName: 'Round',
-        width: 80,
-      type: 'number' as const
-      },
-      {
-        field: 'draftPick',
-        headerName: 'Pick',
-        width: 80,
-      type: 'number' as const
-      },
-      {
-        field: 'draftingManagerName',
-        headerName: 'Drafted By',
-        width: 150,
-      }
-    ] : [])
-  ];
-
   // Render loading state
   if (isLoading) {
     return (
@@ -552,60 +326,40 @@ export function PlayerList() {
   if (!players || players.length === 0) {
     return (
       <Box display="flex" flexDirection="column" gap={2}>
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <ToggleButtonGroup
-            value={gridMode}
-            exclusive
-            onChange={(_, newMode) => {
-              if (newMode !== null) {
-                setGridMode(newMode);
-              }
-            }}
-            aria-label="grid mode"
-          >
-            <ToggleButton value="prep" aria-label="prep mode">
-              Prep Mode
-            </ToggleButton>
-            <ToggleButton value="draft" aria-label="draft mode">
-              Draft Mode
-            </ToggleButton>
-          </ToggleButtonGroup>
-          <Box>
-            {gridMode === 'prep' ? (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setOpen(true)}
-                sx={{
-                  '&:hover': {
-                    transform: 'scale(1.05)',
-                    transition: 'transform 0.2s'
-                  }
-                }}
-              >
-                Add Player
-              </Button>
-            ) : (
-              <Button
-                variant="outlined"
-                color="warning"
-                onClick={handleResetDraft}
-                sx={{
-                  '&:hover': {
-                    transform: 'scale(1.05)',
-                    transition: 'transform 0.2s'
-                  }
-                }}
-              >
-                Reset Draft Status
-              </Button>
-            )}
-          </Box>
-        </Box>
+        <PlayerListToolbar
+          gridMode={gridMode}
+          onGridModeChange={setGridMode}
+          onAddPlayer={() => setAddDialogOpen(true)}
+          onResetDraft={() => setResetDialogOpen(true)}
+          currentPick={currentPick}
+          activeDraft={activeDraft}
+        onAdvancePick={(skipCompleted) => advancePickMutation.mutate(skipCompleted)}
+          onPickSelectorClick={(event) => setPickSelectorAnchor(event.currentTarget)}
+          canAdvance={canAdvance()}
+          canSkipToIncomplete={canSkipToIncomplete()}
+          getCurrentPickManager={getCurrentPickManager}
+        />
         <Box display="flex" justifyContent="center" alignItems="center" height="400px">
           <Alert severity="info">No players available</Alert>
         </Box>
-        {renderAddPlayerDialog()}
+        <PlayerListDialogs
+          addDialogOpen={addDialogOpen}
+          onAddDialogClose={() => setAddDialogOpen(false)}
+          onPlayerCreate={handlePlayerCreate}
+          resetDialogOpen={resetDialogOpen}
+          onResetDialogClose={() => setResetDialogOpen(false)}
+          onResetConfirm={handleResetDraft}
+          selectedPlayer={selectedPlayer}
+          detailsDialogOpen={detailsModalOpen}
+          onDetailsDialogClose={() => setDetailsModalOpen(false)}
+          editDialogOpen={editModalOpen}
+          onEditDialogClose={() => setEditModalOpen(false)}
+          onPlayerSave={handleSaveEdit}
+          draftDialogOpen={draftModalOpen}
+          onDraftDialogClose={() => setDraftModalOpen(false)}
+          onManagerSelect={handleDraft}
+          activeDraft={activeDraft}
+        />
         <Snackbar
           open={snackbar.open}
           autoHideDuration={6000}
@@ -625,135 +379,115 @@ export function PlayerList() {
       flexDirection: 'column', 
       gap: 2 
     }}>
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <ToggleButtonGroup
-            value={gridMode}
-            exclusive
-            onChange={(_, newMode) => {
-              if (newMode !== null) {
-                setGridMode(newMode);
+      <PlayerListToolbar
+        gridMode={gridMode}
+        onGridModeChange={setGridMode}
+        onAddPlayer={() => setAddDialogOpen(true)}
+        onResetDraft={() => setResetDialogOpen(true)}
+        currentPick={currentPick}
+        activeDraft={activeDraft}
+        onAdvancePick={(skipCompleted) => advancePickMutation.mutate(skipCompleted)}
+        onPickSelectorClick={(event) => setPickSelectorAnchor(event.currentTarget)}
+        canAdvance={canAdvance()}
+        canSkipToIncomplete={canSkipToIncomplete()}
+        getCurrentPickManager={getCurrentPickManager}
+      />
+      <PlayerListGrid
+        gridMode={gridMode}
+        players={players}
+        managers={managers}
+        currentUser={currentUser}
+        onPlayerClick={(player) => {
+          setSelectedPlayer(player);
+          setDetailsModalOpen(true);
+        }}
+        onPlayerEdit={(player) => {
+          setSelectedPlayer(player);
+          setEditModalOpen(true);
+        }}
+        onPlayerDelete={handleDelete}
+        onPlayerHighlight={handleToggleHighlight}
+        onPlayerDraft={(id) => {
+          setSelectedPlayerId(id);
+          setDraftModalOpen(true);
+        }}
+        canDraft={canDraft}
+      />
+      {activeDraft && currentPick && (
+        <Popover
+          open={Boolean(pickSelectorAnchor)}
+          anchorEl={pickSelectorAnchor}
+          onClose={() => setPickSelectorAnchor(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <DraftPickSelector
+            activeDraft={activeDraft}
+            currentRound={currentPick.round}
+            currentPick={currentPick.pick}
+            selectedRound={currentPick.round}
+            selectedPick={currentPick.pick}
+            onPickSelect={async (round: number, pick: number) => {
+              if (!activeDraft) return;
+
+              const draftRound = activeDraft.rounds.find(r => r.roundNumber === round);
+              if (!draftRound) return;
+
+              const draftPick = draftRound.picks.find(p => p.pickNumber === pick);
+              if (!draftPick || draftPick.isComplete) return;
+
+              if (config.debug.enableConsoleLogging) {
+                console.log('Pick selector: Setting active pick to:', { round, pick });
+                console.log('Draft round picks:', draftRound.picks);
+              }
+
+              try {
+                // Update backend state
+                await draftService.updateActivePick({ round, pick });
+                // Update frontend cache
+                queryClient.setQueryData(['currentPick'], { value: { round, pick } });
+                logPickState(activeDraft, { round, pick }, 'After Pick Selection');
+                setPickSelectorAnchor(null);
+              } catch (error) {
+                setSnackbar({ 
+                  open: true, 
+                  message: `Error updating active pick: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+                  severity: 'error' 
+                });
               }
             }}
-            aria-label="grid mode"
-          >
-            <ToggleButton value="prep" aria-label="prep mode">
-              Prep Mode
-            </ToggleButton>
-            <ToggleButton value="draft" aria-label="draft mode">
-              Draft Mode
-            </ToggleButton>
-          </ToggleButtonGroup>
-          {gridMode === 'draft' && currentPick && (
-            <Typography variant="subtitle1" sx={{ ml: 2, display: 'inline' }}>
-              Round {currentPick.round}, Pick {currentPick.pick}
-              {getCurrentPickManager()?.name && ` - ${getCurrentPickManager()?.name}'s Pick`}
-            </Typography>
-          )}
-        </Box>
-        <Box>
-          {gridMode === 'prep' ? (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpen(true)}
-              sx={{
-                '&:hover': {
-                  transform: 'scale(1.05)',
-                  transition: 'transform 0.2s'
-                }
-              }}
-            >
-              Add Player
-            </Button>
-          ) : (
-            <Button
-              variant="outlined"
-              color="warning"
-              onClick={handleResetDraft}
-              sx={{
-                '&:hover': {
-                  transform: 'scale(1.05)',
-                  transition: 'transform 0.2s'
-                }
-              }}
-            >
-              Reset Draft Status
-            </Button>
-          )}
-        </Box>
-      </Box>
-      <DataGrid
-        getRowClassName={getRowClassName}
-        rows={gridData}
-        columns={columns}
-        autoHeight={false}
-        sx={{
-          width: '100%',
-          flex: 1,
-          '& .MuiDataGrid-main': {
-            width: '100%'
-          },
-          '& .highlighted': {
-            bgcolor: 'warning.light',
-            '&:hover': {
-              bgcolor: 'warning.light',
-            },
-            '&.drafted-by-user': {
-              bgcolor: 'success.main',
-              '&:hover': {
-                bgcolor: 'success.main',
-              }
-            },
-            '&.drafted-by-other': {
-              bgcolor: 'warning.main',
-              '&:hover': {
-                bgcolor: 'warning.main',
-              }
-            }
-          },
-          '& .drafted-by-user': {
-            bgcolor: 'success.light',
-            '&:hover': {
-              bgcolor: 'success.light',
-            }
-          },
-          '& .drafted-by-other': {
-            bgcolor: 'warning.light',
-            '&:hover': {
-              bgcolor: 'warning.light',
-            }
-          }
-        }}
-      />
-      <DraftPlayerModal
-        open={draftModalOpen}
-        onClose={() => {
-          setDraftModalOpen(false);
-          setSelectedPlayerId(null);
-        }}
+          />
+        </Popover>
+      )}
+      <PlayerListDialogs
+        addDialogOpen={addDialogOpen}
+        onAddDialogClose={() => setAddDialogOpen(false)}
+        onPlayerCreate={handlePlayerCreate}
+        resetDialogOpen={resetDialogOpen}
+        onResetDialogClose={() => setResetDialogOpen(false)}
+        onResetConfirm={handleResetDraft}
+        selectedPlayer={selectedPlayer}
+        detailsDialogOpen={detailsModalOpen}
+        onDetailsDialogClose={() => setDetailsModalOpen(false)}
+        editDialogOpen={editModalOpen}
+        onEditDialogClose={() => setEditModalOpen(false)}
+        onPlayerSave={handleSaveEdit}
+        draftDialogOpen={draftModalOpen}
+        onDraftDialogClose={() => setDraftModalOpen(false)}
         onManagerSelect={handleDraft}
+        activeDraft={activeDraft}
       />
-      {renderAddPlayerDialog()}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         message={snackbar.message}
-      />
-      <PlayerDetailsModal
-        player={selectedPlayer}
-        open={detailsModalOpen}
-        onClose={handleCloseModal}
-      />
-      <PlayerEditModal
-        player={selectedPlayer}
-        open={editModalOpen}
-        onClose={() => {
-          setEditModalOpen(false);
-          setSelectedPlayer(null);
-        }}
-        onSave={handleSaveEdit}
       />
     </Box>
   );

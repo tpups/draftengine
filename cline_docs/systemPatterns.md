@@ -5,6 +5,58 @@ The DraftEngine follows a modern web API architecture with clear separation of c
 
 ## Core Patterns
 
+### Draft Pick Management
+1. Pick State System
+   - Two-tier pick tracking:
+     * Current Round/Pick: Tracks draft progress (next pick after last completed)
+     * Active Round/Pick: UI selection for viewing/editing picks
+   - Single user enters all picks for all managers
+   - Draft model tracks:
+     * Pick completion status
+     * Snake draft ordering
+     * Manager assignments
+     * Active pick state
+   - Draft rules:
+     * Can select and view any pick
+     * Can only draft players with incomplete picks
+     * In current round:
+       - For normal rounds: can draft if pick <= current pick
+       - For snake rounds: can draft if pick >= current pick
+     * Can draft with any incomplete pick in past rounds
+   - Pick advancement:
+     * Draft uses active pick for making selections
+     * Active pick state persisted in backend
+     * Next pick button advances from active pick
+     * Skip to next incomplete finds next available pick
+   - State synchronization:
+     * Backend maintains both current and active pick states
+     * Frontend updates both states on pick selection
+     * Error handling for state mismatch
+
+2. Pick State Logging
+   - Context-based logging for state changes:
+     * Active vs Current pick states
+     * Before/after pick advancement
+     * Before/after pick selection
+     * Draft completion events
+   - Organized availability dictionary by round:
+     * Tracks pick order
+     * Maintains completion status
+     * Handles snake draft ordering
+   - Clear state transition messages
+   - Debug mode configuration support
+
+3. UI Feedback
+   - Visual pick state indicators:
+     * Selected pick highlighting
+     * Current pick warning color
+     * Available vs unavailable styling
+     * Snake round differentiation
+   - Manager name display
+   - Pick number calculations for snake rounds
+   - Hover effects for available picks
+   - Tooltip information
+
 ### Admin Panel Organization
 1. Component Structure
    - Focused components in admin/ directory:
@@ -80,25 +132,195 @@ The DraftEngine follows a modern web API architecture with clear separation of c
    - Loading state management
 
 ### API Design
-[Previous content remains unchanged...]
+- RESTful API architecture
+- Controller-Service pattern
+- Async/await throughout for scalability
+- Standard HTTP methods (GET, POST, PUT, DELETE)
+- Proper HTTP status code usage
+- Standardized response format:
+  * ApiResponse<T> wrapper for all responses
+  * Value property contains actual data
+  * Count property for collection metadata
+  * Consistent structure across endpoints
+- File Upload Handling:
+  * Dedicated request models for file uploads
+  * Proper multipart/form-data configuration
+  * Swagger documentation support
+  * Validation and error handling
+  * Progress tracking and logging
 
 ### Swagger Configuration
-[Previous content remains unchanged...]
+- XML documentation for all endpoints
+- Standard ASP.NET Core conventions for schema naming
+- Simple file upload configuration using IFormFile mapping
+- Built-in multipart/form-data support
+- Proper error handling and logging
+- Development-time debugging capabilities
+- Focus on clean, maintainable documentation
 
 ### Data Layer
-[Previous content remains unchanged...]
+1. Draft Data Structure
+   - Draft model with:
+     * Core info (year, type)
+     * Draft order tracking
+     * Round management
+     * Snake draft support
+     * Active status tracking
+     * Creation timestamp
+   - Draft order structure:
+     * Manager assignments
+     * Pick numbers
+     * Completion status
+   - Round structure:
+     * Round number tracking
+     * Pick management
+     * Order calculation for snake drafts
+   - MongoDB integration:
+     * Proper indexing
+     * Efficient querying
+     * Transaction support
+2. Player Data Structure
+   - Comprehensive player model with:
+     * Core info (name, position, team)
+     * Ranking data (steamer_2025)
+     * Biographical info (birthDate, level)
+     * Scouting information (grades, risk assessment)
+     * Draft status tracking
+     * Personal notes and highlights
+     * Statistical projections with update tracking
+   - Projection data structure:
+     * Multiple source support (Steamer, ZiPS, etc.)
+     * Flexible stat categories via dictionary
+     * Update date tracking for freshness
+   - JSON format for easy import/export
+   - Flexible schema for different player types
+   - Support for multiple ranking sources
+   - Proper nullability for optional fields
+
+3. Data Import Process
+   - Batch file processing
+   - Source file validation
+   - Rank-based sorting
+   - Data integrity checks
+   - PowerShell command handling
+   - Error handling and logging
+   - Verification steps
+
+4. MongoDB Integration
+   - Document-based storage
+   - Async operations
+   - Collection per entity type
+   - MongoDB.Driver for .NET
+   - Auto-generated Id handling:
+     * Use nullable Id properties in models
+     * [BsonId] attribute for mapping
+     * [BsonRepresentation(BsonType.ObjectId)] for proper type conversion
+     * Let MongoDB handle Id generation
+     * Validate Id after creation
+   - Duplicate Detection:
+     * Compound unique index on name + birthDate
+     * Smart merge logic for duplicate records
+     * Dictionary fields for extensible data (ranks, IDs)
+     * Preserve existing data during merges
+     * Update timestamps for tracking changes
+
+5. Data Models
+   - C# 8.0 nullable reference types
+   - Clear property definitions
+   - Dictionary-based flexible storage for rankings
+   - MongoDB BSON attributes for mapping
+   - Proper nullability for auto-generated fields
+   - Model validation considerations:
+     * Use nullable types for MongoDB-managed fields
+     * Consider validation timing (pre/post database)
+     * Handle auto-generated values appropriately
 
 ### Service Layer
-[Previous content remains unchanged...]
+- Service class per domain entity
+- Dependency injection
+- Repository pattern implementation
+- Async operations
 
 ### API Controllers
-[Previous content remains unchanged...]
+- Attribute routing
+- Model validation
+- Action result types
+- Standard REST endpoints
 
 ## Key Technical Decisions
-[Previous content remains unchanged...]
+
+### Frontend Stack
+- React 18 with TypeScript
+- Material-UI for components
+- React Router for navigation
+- React Query for data fetching
+- Vite for development server
+
+### MongoDB Choice
+- Flexible schema for evolving player data
+- Good performance for read-heavy operations
+- Easy scaling
+- Native JSON support
+### .NET Core 8.0
+- Modern C# features
+- Cross-platform support
+- Built-in dependency injection
+- Strong type system
+### Docker Support
+- Containerization for consistency
+- Easy deployment
+- Development/production parity
+- Environment configuration
+### Docker Development Considerations
+- Live updates behavior:
+  * Frontend (Vite) supports hot reloading
+  * API has two development options:
+    1. Standard mode (Dockerfile):
+       - Requires container rebuild for code changes
+       - Use `docker compose up -d --build api` to apply changes
+       - More stable, but slower development cycle
+    2. Watch mode (Dockerfile.dev):
+       - Uses `dotnet watch` for hot reloading
+       - Automatically recompiles on file changes
+       - Faster development cycle, but may require container restart if watch fails
+       - Configured with volume mounts to exclude bin/obj directories
+       - Uses SDK image instead of runtime for development
 
 ## Code Organization
-[Previous content remains unchanged...]
+```
+DraftEngine/
+├── ClientApp/
+│   ├── src/
+│   │   ├── components/    # Reusable UI components
+│   │   ├── pages/        # Route-level components
+│   │   ├── services/     # API client and services
+│   │   ├── types/        # TypeScript definitions
+│   │   └── utils/        # Helper functions
+├── Controllers/          # API endpoints
+├── Models/              # Data models
+├── Services/           # Business logic
+└── Properties/         # Configuration
+```
 
 ## Best Practices
-[Previous content remains unchanged...]
+1. Code Style
+   - Nullable reference types
+   - Async/await patterns
+   - Clear naming conventions
+   - Service-based architecture
+2. API Design
+   - RESTful endpoints
+   - Proper status codes
+   - Action result types
+   - Route attributes
+3. Data Management
+   - Async database operations
+   - Proper error handling
+   - Data validation
+   - MongoDB best practices
+4. Frontend Development
+   - React hooks at top level
+   - Consistent component structure
+   - Material-UI integration patterns
+   - TypeScript for type safety
+   - Proper routing implementation

@@ -37,5 +37,11 @@ export const draftService = {
     apiClient.post<ApiResponse<boolean>>(`/draft/${draftId}/reset`),
 
   deleteDraft: (draftId: string) =>
-    apiClient.delete<ApiResponse<boolean>>(`/draft/${draftId}`)
+    apiClient.delete<ApiResponse<boolean>>(`/draft/${draftId}`),
+
+  advancePick: (skipCompleted: boolean = false) =>
+    apiClient.post<ApiResponse<CurrentPickResponse>>('/draft/advancePick', { skipCompleted }),
+
+  updateActivePick: (params: { round: number; pick: number }) =>
+    apiClient.post<ApiResponse<Draft>>('/draft/updateActivePick', params)
 };
