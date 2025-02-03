@@ -14,12 +14,14 @@ const logPickState = (activeDraft: Draft | undefined | null, currentPick: Curren
 
   console.log(`[${context}] Pick State:`, {
     active: activeDraft ? {
-      round: activeDraft.currentRound,
-      pick: activeDraft.currentPick
+      round: activeDraft.activeRound,
+      pick: activeDraft.activePick,
+      overall: activeDraft.activeOverallPick
     } : null,
     current: currentPick ? {
       round: currentPick.round,
-      pick: currentPick.pick
+      pick: currentPick.pick,
+      overall: currentPick.overallPickNumber
     } : null
   });
 };
@@ -82,10 +84,17 @@ export function PlayerList() {
   // Mutations
   const advancePickMutation = useMutation<ApiResponse<CurrentPickResponse>, Error, boolean>({
     mutationFn: (skipCompleted) => draftService.advancePick(skipCompleted),
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       if (config.debug.enableConsoleLogging) console.log('Advanced to pick:', response.value);
-      queryClient.invalidateQueries({ queryKey: ['currentPick'] });
-      logPickState(activeDraft, response.value, 'After Advance Pick');
+      // Refetch both queries and wait for them to complete
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['currentPick'] }),
+        queryClient.refetchQueries({ queryKey: ['activeDraft'] })
+      ]);
+      
+      // Now get the fresh data
+      const updatedDraft = queryClient.getQueryData<{ value: Draft }>(['activeDraft']);
+      logPickState(updatedDraft?.value, response.value, 'After Advance Pick');
       setSnackbar({ open: true, message: 'Advanced to next pick', severity: 'success' });
     },
     onError: (error) => {
@@ -110,6 +119,7 @@ export function PlayerList() {
     return manager ? { name: manager.name } : null;
   }, [activeDraft, currentPick, managers]);
 
+  // Determines if user has reached last pick of draft
   const canAdvance = useCallback(() => {
     if (!activeDraft || !currentPick) return false;
     
@@ -125,6 +135,11 @@ export function PlayerList() {
 
   const canSkipToIncomplete = useCallback(() => {
     if (!activeDraft || !currentPick) return false;
+    
+    // Disable if we're on the current pick
+    if (activeDraft.activeOverallPick === activeDraft.currentOverallPick) {
+      return false;
+    }
     
     // Check if there are any incomplete picks after current pick
     const hasIncomplete = activeDraft.rounds.some((round, i) => {
@@ -187,27 +202,31 @@ export function PlayerList() {
 
     try {
       if (config.debug.enableConsoleLogging) console.log('Marking pick complete and player as drafted');
+      await draftService.markPickComplete(activeDraft.id!, {
+        roundNumber: activeDraft.currentRound,
+        managerId,
+        playerId: selectedPlayerId
+      });
+
+      // No need to advance pick here since the backend will handle it
+      await playerService.markAsDrafted(selectedPlayerId, {
+        draftedBy: managerId,
+        round: activeDraft.currentRound,
+        pick: activeDraft.currentPick
+      });
+
+      if (config.debug.enableConsoleLogging) console.log('Refetching queries');
+      // Refetch all queries and wait for them to complete
       await Promise.all([
-        draftService.markPickComplete(activeDraft.id!, {
-          roundNumber: activeDraft.currentRound,
-          managerId
-        }),
-        playerService.markAsDrafted(selectedPlayerId, {
-          draftedBy: managerId,
-          round: activeDraft.currentRound,
-          pick: activeDraft.currentPick
-        })
+        queryClient.refetchQueries({ queryKey: ['activeDraft'] }),
+        queryClient.refetchQueries({ queryKey: ['currentPick'] }),
+        queryClient.refetchQueries({ queryKey: ['players'] })
       ]);
-
-      if (config.debug.enableConsoleLogging) console.log('Advancing to next pick');
-      // Advance to next pick
-      await advancePickMutation.mutateAsync(false);
-
-      if (config.debug.enableConsoleLogging) console.log('Invalidating queries');
-      queryClient.invalidateQueries({ queryKey: ['activeDraft'] });
-      queryClient.invalidateQueries({ queryKey: ['currentPick'] });
-      queryClient.invalidateQueries({ queryKey: ['players'] });
-      logPickState(activeDraft, currentPick, 'After Draft Complete');
+      
+      // Now get the fresh data
+      const updatedDraft = queryClient.getQueryData<{ value: Draft }>(['activeDraft']);
+      const updatedPick = queryClient.getQueryData<{ value: CurrentPickResponse }>(['currentPick']);
+      logPickState(updatedDraft?.value, updatedPick?.value, 'After Draft Complete');
       setDraftModalOpen(false);
       setSelectedPlayerId(null);
       setSnackbar({ open: true, message: 'Player drafted successfully', severity: 'success' });
@@ -223,7 +242,7 @@ export function PlayerList() {
   const handlePlayerCreate = async (player: Omit<Player, 'id'>) => {
     try {
       await playerService.create(player);
-      queryClient.invalidateQueries({ queryKey: ['players'] });
+      await queryClient.refetchQueries({ queryKey: ['players'] });
       setAddDialogOpen(false);
       setSnackbar({ open: true, message: 'Player created successfully', severity: 'success' });
     } catch (error) {
@@ -240,9 +259,13 @@ export function PlayerList() {
     
     try {
       await draftService.resetDraft(activeDraft.id!);
-      queryClient.invalidateQueries({ queryKey: ['activeDraft'] });
-      queryClient.invalidateQueries({ queryKey: ['currentPick'] });
-      queryClient.invalidateQueries({ queryKey: ['players'] });
+      
+      // Refetch all queries and wait for them to complete
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['activeDraft'] }),
+        queryClient.refetchQueries({ queryKey: ['currentPick'] }),
+        queryClient.refetchQueries({ queryKey: ['players'] })
+      ]);
       setSnackbar({ open: true, message: 'Draft status reset successfully', severity: 'success' });
       setResetDialogOpen(false);
     } catch (error) {
@@ -258,7 +281,7 @@ export function PlayerList() {
     try {
       const response = await playerService.update(updatedPlayer.id!, updatedPlayer);
       if (response?.value) {
-        queryClient.invalidateQueries({ queryKey: ['players'] });
+        await queryClient.refetchQueries({ queryKey: ['players'] });
         setEditModalOpen(false);
         setSelectedPlayer(null);
         setSnackbar({ open: true, message: 'Player updated successfully', severity: 'success' });
@@ -278,7 +301,7 @@ export function PlayerList() {
     if (window.confirm('Are you sure you want to delete this player?')) {
       try {
         await playerService.delete(id);
-        queryClient.invalidateQueries({ queryKey: ['players'] });
+        await queryClient.refetchQueries({ queryKey: ['players'] });
         setSnackbar({ open: true, message: 'Player deleted successfully', severity: 'success' });
       } catch (error) {
         setSnackbar({ 
@@ -293,7 +316,7 @@ export function PlayerList() {
   const handleToggleHighlight = async (id: string) => {
     try {
       await playerService.toggleHighlight(id);
-      queryClient.invalidateQueries({ queryKey: ['players'] });
+      await queryClient.refetchQueries({ queryKey: ['players'] });
       setSnackbar({ open: true, message: 'Highlight status updated', severity: 'success' });
     } catch (error) {
       setSnackbar({ 
@@ -448,11 +471,25 @@ export function PlayerList() {
               }
 
               try {
+                // Calculate overall pick number
+                const totalManagers = activeDraft.draftOrder.length;
+                const overallPickNumber = ((round - 1) * totalManagers) + 
+                  (round % 2 === 0 && activeDraft.isSnakeDraft 
+                    ? totalManagers - pick + 1 
+                    : pick);
+
                 // Update backend state
-                await draftService.updateActivePick({ round, pick });
-                // Update frontend cache
-                queryClient.setQueryData(['currentPick'], { value: { round, pick } });
-                logPickState(activeDraft, { round, pick }, 'After Pick Selection');
+                await draftService.updateActivePick({ round, pick, overallPickNumber });
+                
+                // Refetch queries and wait for them to complete
+                await Promise.all([
+                  queryClient.refetchQueries({ queryKey: ['currentPick'] }),
+                  queryClient.refetchQueries({ queryKey: ['activeDraft'] })
+                ]);
+                
+                // Now get the fresh data
+                const updatedDraft = queryClient.getQueryData<{ value: Draft }>(['activeDraft']);
+                logPickState(updatedDraft?.value, { round, pick, overallPickNumber }, 'After Pick Selection');
                 setPickSelectorAnchor(null);
               } catch (error) {
                 setSnackbar({ 

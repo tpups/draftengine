@@ -17,11 +17,25 @@ public class Draft
     public DraftPosition[] DraftOrder { get; set; } = Array.Empty<DraftPosition>();
     public List<DraftRound> Rounds { get; set; } = new();
 
+    // For tracking draft progress
     [BsonElement("CurrentRound")]
     public int? CurrentRound { get; set; }
 
     [BsonElement("CurrentPick")]
     public int? CurrentPick { get; set; }
+
+    [BsonElement("CurrentOverallPick")]
+    public int CurrentOverallPick { get; set; } = 1;
+
+    // For UI selection/navigation
+    [BsonElement("ActiveRound")]
+    public int? ActiveRound { get; set; }
+
+    [BsonElement("ActivePick")]
+    public int? ActivePick { get; set; }
+
+    [BsonElement("ActiveOverallPick")]
+    public int ActiveOverallPick { get; set; } = 1;
 }
 
 public class DraftRound
@@ -35,4 +49,7 @@ public class DraftPosition
     public string ManagerId { get; set; } = string.Empty;
     public int PickNumber { get; set; }
     public bool IsComplete { get; set; }
+    
+    [BsonElement("OverallPickNumber")]
+    public int OverallPickNumber { get; set; }
 }

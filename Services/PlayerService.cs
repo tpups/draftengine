@@ -8,15 +8,18 @@ namespace DraftEngine.Services
     {
         private readonly IMongoCollection<Player> _players;
         private readonly IMlbApiService _mlbApiService;
+        private readonly DraftService _draftService;
         private readonly ILogger<PlayerService> _logger;
 
         public PlayerService(
             MongoDbContext context, 
             IMlbApiService mlbApiService,
+            DraftService draftService,
             ILogger<PlayerService> logger)
         {
             _players = context.Players;
             _mlbApiService = mlbApiService;
+            _draftService = draftService;
             _logger = logger;
         }
 
@@ -236,27 +239,48 @@ namespace DraftEngine.Services
         }
 
         // Draft management methods
-        public async Task<bool> MarkAsDrafted(string id, DraftPickRequest request)
+        public async Task<bool> MarkAsDrafted(string id, DraftPickRequest request, string draftId)
         {
-            var update = Builders<Player>.Update
-                .Set(p => p.IsDrafted, true)
-                .Set(p => p.DraftedBy, request.DraftedBy)
-                .Set(p => p.DraftRound, request.Round)
-                .Set(p => p.DraftPick, request.Pick);
+            // Get the draft to find the overall pick number
+            var draft = await _draftService.GetByIdAsync(draftId);
+            if (draft == null) return false;
 
-            var result = await _players.UpdateOneAsync(player => player.Id == id, update);
+            var round = draft.Rounds.FirstOrDefault(r => r.RoundNumber == request.Round);
+            if (round == null) return false;
+
+            var pick = round.Picks.FirstOrDefault(p => p.PickNumber == request.Pick);
+            if (pick == null) return false;
+
+            var draftStatus = new DraftStatus
+            {
+                DraftId = draftId,
+                IsDrafted = true,
+                Round = request.Round,
+                Pick = request.Pick,
+                OverallPick = pick.OverallPickNumber,
+                ManagerId = request.DraftedBy
+            };
+
+            // First remove any existing status for this draft
+            var pullUpdate = Builders<Player>.Update
+                .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draftId);
+            await _players.UpdateOneAsync(player => player.Id == id, pullUpdate);
+
+            // Then add the new status
+            var pushUpdate = Builders<Player>.Update
+                .Push(p => p.DraftStatuses, draftStatus);
+
+            var result = await _players.UpdateOneAsync(player => player.Id == id, pushUpdate);
             return result.ModifiedCount > 0;
         }
 
-        public async Task<bool> UndraftPlayerAsync(string id)
+        public async Task<bool> UndraftPlayerAsync(string id, string draftId)
         {
+            // Remove draft status for the specified draft only
             var update = Builders<Player>.Update
-                .Set(p => p.IsDrafted, false)
-                .Set(p => p.DraftedBy, null)
-                .Set(p => p.DraftRound, null)
-                .Set(p => p.DraftPick, null);
+                .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draftId);
 
-            var result = await _players.UpdateOneAsync(player => player.Id == id, update);
+            var result = await _players.UpdateOneAsync(p => p.Id == id, update);
             return result.ModifiedCount > 0;
         }
 
@@ -292,16 +316,14 @@ namespace DraftEngine.Services
         }
 
         // Draft reset operation
-        public async Task<long> ResetDraftStatusAsync()
+        public async Task<long> ResetDraftStatusAsync(string draftId)
         {
+            // Remove draft status for the specified draft from all players
             var update = Builders<Player>.Update
-                .Set(p => p.IsDrafted, false)
-                .Set(p => p.DraftedBy, null)
-                .Set(p => p.DraftRound, null)
-                .Set(p => p.DraftPick, null);
+                .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draftId);
 
             var result = await _players.UpdateManyAsync(
-                Builders<Player>.Filter.Empty, 
+                player => player.DraftStatuses.Any(ds => ds.DraftId == draftId),
                 update
             );
             return result.ModifiedCount;

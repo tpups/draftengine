@@ -17,11 +17,16 @@ namespace DraftEngine.Controllers
     public class PlayerController : ControllerBase
     {
         private readonly PlayerService _playerService;
+        private readonly DraftService _draftService;
         private readonly ILogger<PlayerController> _logger;
 
-        public PlayerController(PlayerService playerService, ILogger<PlayerController> logger)
+        public PlayerController(
+            PlayerService playerService, 
+            DraftService draftService,
+            ILogger<PlayerController> logger)
         {
             _playerService = playerService;
+            _draftService = draftService;
             _logger = logger;
         }
 
@@ -264,7 +269,14 @@ namespace DraftEngine.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> MarkAsDrafted(string id, [FromBody] DraftPickRequest request)
         {
-            var success = await _playerService.MarkAsDrafted(id, request);
+            // Get the active draft
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null)
+            {
+                return BadRequest(new { message = "No active draft found" });
+            }
+
+            var success = await _playerService.MarkAsDrafted(id, request, draft.Id!);
             
             if (!success)
                 return NotFound();
@@ -284,7 +296,14 @@ namespace DraftEngine.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UndraftPlayer(string id)
         {
-            var success = await _playerService.UndraftPlayerAsync(id);
+            // Get the active draft
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null)
+            {
+                return BadRequest(new { message = "No active draft found" });
+            }
+
+            var success = await _playerService.UndraftPlayerAsync(id, draft.Id!);
             
             if (!success)
                 return NotFound();
@@ -301,7 +320,14 @@ namespace DraftEngine.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> ResetDraftStatus()
         {
-            var count = await _playerService.ResetDraftStatusAsync();
+            // Get the active draft
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null)
+            {
+                return BadRequest(new { message = "No active draft found" });
+            }
+
+            var count = await _playerService.ResetDraftStatusAsync(draft.Id!);
             return Ok(new { message = $"Reset draft status for {count} players" });
         }
 

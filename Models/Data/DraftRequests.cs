@@ -21,6 +21,8 @@ public class MarkPickRequest
     public int RoundNumber { get; set; }
     [Required]
     public string ManagerId { get; set; } = string.Empty;
+    [Required]
+    public string PlayerId { get; set; } = string.Empty;
 }
 
 public class AdvancePickRequest
@@ -34,4 +36,6 @@ public class UpdateActivePickRequest
     public int Round { get; set; }
     [Required]
     public int Pick { get; set; }
+    [Required]
+    public int OverallPickNumber { get; set; }
 }

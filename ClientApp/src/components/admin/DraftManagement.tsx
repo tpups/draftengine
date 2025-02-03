@@ -13,7 +13,10 @@ import {
   List,
   ListItem,
   IconButton,
-  Divider
+  Divider,
+  FormControlLabel,
+  Switch,
+  Tooltip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Draft, Manager } from '../../types/models';
@@ -37,6 +40,7 @@ export const DraftManagement: React.FC = () => {
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [initialRounds, setInitialRounds] = useState<string>('5');
+  const [isSnakeDraft, setIsSnakeDraft] = useState<boolean>(true);
 
   useEffect(() => {
     const loadCurrentDraft = async () => {
@@ -177,12 +181,13 @@ export const DraftManagement: React.FC = () => {
       const response = await draftService.createDraft({
         year: new Date().getFullYear(),
         type: 'standard',
-        isSnakeDraft: true,
+        isSnakeDraft,
         initialRounds: rounds,
         draftOrder: selectedManagers.map((managerId, index) => ({
           managerId,
           pickNumber: index + 1,
-          isComplete: false
+          isComplete: false,
+          overallPickNumber: 0  // Will be calculated by backend
         }))
       });
       setCurrentDraft(response.value);
@@ -288,15 +293,59 @@ export const DraftManagement: React.FC = () => {
                   {index > 0 && <Divider />}
                   <ListItem
                     secondaryAction={
-                      <IconButton
-                        edge="end"
-                        onClick={() => {
-                          setDraftToDelete(draft);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Tooltip title={draft.isActive ? "Deactivate Draft" : "Activate Draft"}>
+                          <span>
+                            <Switch
+                              checked={draft.isActive}
+                              onChange={async () => {
+                                try {
+                                  setDraftLoading(true);
+                                  setDraftStatus(null);
+                                  await draftService.toggleActive(draft.id!);
+                                  
+                                  // Refresh drafts list
+                                  const response = await draftService.getAll();
+                                  setAllDrafts(response.value);
+                                  
+                                  // Refresh current draft if needed
+                                  if (currentDraft?.id === draft.id) {
+                                    const activeDraftResponse = await draftService.getActiveDraft();
+                                    setCurrentDraft(activeDraftResponse.value);
+                                  }
+
+                                  setDraftStatus({
+                                    success: true,
+                                    message: `Draft ${draft.isActive ? 'deactivated' : 'activated'} successfully`
+                                  });
+                                } catch (error) {
+                                  setDraftStatus({
+                                    success: false,
+                                    message: `Error toggling draft status: ${error instanceof Error ? error.message : 'Unknown error'}`
+                                  });
+                                } finally {
+                                  setDraftLoading(false);
+                                }
+                              }}
+                              disabled={draftLoading}
+                            />
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Delete Draft">
+                          <span>
+                            <IconButton
+                              edge="end"
+                              onClick={() => {
+                                setDraftToDelete(draft);
+                                setDeleteDialogOpen(true);
+                              }}
+                              disabled={draftLoading}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </Box>
                     }
                   >
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -333,32 +382,45 @@ export const DraftManagement: React.FC = () => {
               maxSlots={managers.length}
             />
           </Box>
-          <Box sx={{ mt: 3, maxWidth: 300 }}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Number of Rounds"
-              value={initialRounds}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Allow empty string or valid numbers
-                if (value === '' || /^\d+$/.test(value)) {
-                  setInitialRounds(value);
+          <Box sx={{ mt: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <Box sx={{ width: 200 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Number of Rounds"
+                value={initialRounds}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or valid numbers
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setInitialRounds(value);
+                  }
+                }}
+                error={initialRounds !== '' && parseInt(initialRounds) < 1}
+                helperText={
+                  initialRounds !== '' && parseInt(initialRounds) < 1 
+                    ? 'Minimum 1 round required'
+                    : 'Enter number of rounds'
                 }
-              }}
-              error={initialRounds !== '' && parseInt(initialRounds) < 1}
-              helperText={
-                initialRounds !== '' && parseInt(initialRounds) < 1 
-                  ? 'Minimum 1 round required'
-                  : 'Enter number of rounds'
+                inputProps={{ min: 1 }}
+                margin="normal"
+                sx={{ 
+                  '& .MuiInputBase-root': {
+                    bgcolor: 'background.paper'
+                  }
+                }}
+              />
+            </Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isSnakeDraft}
+                  onChange={(e) => setIsSnakeDraft(e.target.checked)}
+                  color="primary"
+                />
               }
-              inputProps={{ min: 1 }}
-              margin="normal"
-              sx={{ 
-                '& .MuiInputBase-root': {
-                  bgcolor: 'background.paper'
-                }
-              }}
+              label="Snake Draft"
+              sx={{ transform: 'translateY(-8px)' }}
             />
           </Box>
         </DialogContent>
@@ -371,10 +433,11 @@ export const DraftManagement: React.FC = () => {
             )}
           </Box>
           <Button 
-            onClick={() => {
-              setDraftOrderDialogOpen(false);
-              setDraftStatus(null);
-            }}
+          onClick={() => {
+            setDraftOrderDialogOpen(false);
+            setDraftStatus(null);
+            setIsSnakeDraft(true); // Reset to default
+          }}
             disabled={draftLoading}
           >
             Cancel

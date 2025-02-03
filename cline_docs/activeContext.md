@@ -27,7 +27,79 @@
   * Scouting information
   * 2025 projections
 
+## Known Issues
+1. Draft Display Issues:
+   - Drafted players not showing manager in "Drafted By" column
+   - Duplicate key warning in manager selection modal
+   - DraftPickSelector styling needs improvement:
+     * Better visual distinction between completed and future picks
+     * Need different shading for completed vs incomplete picks
+     * Current pick highlight is good (blue)
+     * Need clear styling for: current, completed, skipped, and future picks
+   - Pick advancement issues:
+     * Buttons not working correctly after skipping picks
+     * State gets out of sync after drafting then returning to skipped picks
+     * Need to review pick state management flow
+
 ## Recent Changes
+
+33. Skip to Incomplete Button Enhancement: (2/3/25)
+    - Added proper button disabling when on current pick:
+      * Frontend check in canSkipToIncomplete
+      * Comparison of activeOverallPick vs currentOverallPick
+      * Material UI's built-in disabled styling
+    - Improved user experience:
+      * Clear visual feedback (grayed out when disabled)
+      * No console errors from attempted operations
+      * Maintained normal functionality when not on current pick
+    - Frontend-only solution:
+      * Avoided unnecessary backend complexity
+      * Better performance without extra API calls
+      * Cleaner state management
+
+32. Active Pick State Management Fix: (2/3/25)
+    - Fixed state management for active vs current pick:
+      * Changed invalidateQueries to refetchQueries
+      * Added Promise.all to wait for refetches
+      * Properly handled fresh data after state changes
+    - Enhanced React Query usage:
+      * Proper async/await in mutation handlers
+      * Consistent state updates across components
+      * Better error handling and feedback
+    - Improved logging and debugging:
+      * Added detailed pick state logging
+      * Clear before/after state comparisons
+      * Better error messages
+
+31. Admin Panel Layout Optimization: (2/2/25)
+    - Enhanced layout for large displays:
+      * Moved draft order to separate column
+      * Removed container width constraint
+      * Added responsive padding for different screen sizes
+      * Better space utilization in admin panel
+    - Improved three-column organization:
+      * Manager list as main content
+      * Draft management tools in middle column
+      * Draft order display in right column
+    - Enhanced visual hierarchy:
+      * Clear separation between sections
+      * Consistent spacing between columns
+      * Sticky positioning for side columns
+
+30. Admin Panel Draft Improvements: (2/2/25)
+    - Enhanced draft generation UI:
+      * Added snake draft toggle with default on
+      * Improved input layout with centered alignment
+      * Added proper spacing and vertical alignment
+    - Added draft order display:
+      * New component showing current draft order
+      * Visual indicators for snake rounds
+      * Only appears when draft is active
+      * Placed alongside Draft Management
+    - Improved draft status visibility:
+      * Clear indication of snake vs standard draft
+      * Proper draft order tracking
+      * Better UI organization
 
 29. Pick State Management Fix: (2/2/25)
     - Fixed pick advancement behavior:

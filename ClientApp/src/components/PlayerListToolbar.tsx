@@ -13,12 +13,14 @@ const logPickState = (activeDraft: Draft | undefined, currentPick: CurrentPickRe
 
   console.log(`[${context}] Pick State:`, {
     active: activeDraft ? {
-      round: activeDraft.currentRound,
-      pick: activeDraft.currentPick
+      round: activeDraft.activeRound,
+      pick: activeDraft.activePick,
+      overall: activeDraft.activeOverallPick
     } : null,
     current: currentPick ? {
       round: currentPick.round,
-      pick: currentPick.pick
+      pick: currentPick.pick,
+      overall: currentPick.overallPickNumber
     } : null
   });
 };
@@ -74,7 +76,7 @@ export function PlayerListToolbar({
         {gridMode === 'draft' && currentPick && (
           <>
             <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap' }}>
-              Round {currentPick.round}, Pick {currentPick.pick}
+              Round {currentPick.round}, Pick {currentPick.pick} (Overall #{currentPick.overallPickNumber})
               {getCurrentPickManager()?.name && ` - ${getCurrentPickManager()?.name}'s Pick`}
             </Typography>
             <IconButton

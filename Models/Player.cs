@@ -38,10 +38,10 @@ namespace DraftEngine.Models
         public ScoutingGrades? PersonalGrades { get; set; }
 
         // Draft tracking
-        public bool IsDrafted { get; set; }
-        public int? DraftRound { get; set; }
-        public int? DraftPick { get; set; }
-        public string? DraftedBy { get; set; }
+        public List<DraftStatus> DraftStatuses { get; set; } = new List<DraftStatus>();
+        
+        [BsonIgnore]
+        public bool IsDrafted => DraftStatuses.Any(ds => ds.IsDrafted);
 
         // Personal tracking
         public bool IsHighlighted { get; set; }

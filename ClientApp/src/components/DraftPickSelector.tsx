@@ -1,5 +1,5 @@
 import { Box, Paper, Tooltip, Typography } from '@mui/material';
-import { Draft, Manager } from '../types/models';
+import { Draft, Manager, DraftPosition } from '../types/models';
 import { useQuery } from '@tanstack/react-query';
 import { managerService } from '../services/managerService';
 import { config } from '../config/config';
@@ -53,24 +53,13 @@ export function DraftPickSelector({
 
       round.picks.forEach(pick => {
         const isAvailable = (() => {
-          // Can't select future rounds
-          if (roundNum > activeDraft.currentRound!) return false;
-
           // Can't select completed picks
           if (pick.isComplete) return false;
 
-          // For current round, need to compare based on snake order
-          if (roundNum === activeDraft.currentRound) {
-            if (roundNum % 2 === 0 && activeDraft.isSnakeDraft) {
-              // In snake rounds, higher numbers come first
-              return pick.pickNumber >= activeDraft.currentPick!;
-            } else {
-              // In normal rounds, lower numbers come first
-              return pick.pickNumber <= activeDraft.currentPick!;
-            }
-          }
+          // Can't select picks beyond current overall pick
+          if (pick.overallPickNumber > activeDraft.currentOverallPick) return false;
 
-          // Past rounds are all available
+          // Past picks are available
           return true;
         })();
 
@@ -91,9 +80,10 @@ export function DraftPickSelector({
     return pickAvailability[round]?.[pickNumber] ?? false;
   };
 
-  const getPickStyle = (round: number, pickNumber: number) => {
+  const getPickStyle = (round: number, pickNumber: number, pick: DraftPosition) => {
     const isSelected = round === selectedRound && pickNumber === selectedPick;
-    const isCurrent = round === activeDraft.currentRound && pickNumber === activeDraft.currentPick;
+    const isCurrent = pick.overallPickNumber === activeDraft.currentOverallPick;
+    const isActive = pick.overallPickNumber === activeDraft.activeOverallPick;
     const isAvailable = isPickAvailable(round, pickNumber);
     const isSnakeRound = round % 2 === 0 && activeDraft.isSnakeDraft;
 
@@ -106,6 +96,7 @@ export function DraftPickSelector({
       cursor: isAvailable ? 'pointer' : 'default',
       bgcolor: isSelected ? 'primary.main' : 
                isCurrent ? 'warning.light' :
+               isActive ? 'info.light' :
                isAvailable ? (isSnakeRound ? 'grey.100' : 'background.paper') : 'grey.200',
       color: isSelected ? 'common.white' : 
              isAvailable ? 'text.primary' : 'text.disabled',
@@ -113,6 +104,7 @@ export function DraftPickSelector({
         '&:hover': {
           bgcolor: isSelected ? 'primary.dark' : 
                   isCurrent ? 'warning.main' : 
+                  isActive ? 'info.main' :
                   isSnakeRound ? 'grey.200' : 'action.hover',
           transform: 'translateY(-1px)',
           transition: 'all 0.2s'
@@ -206,12 +198,12 @@ export function DraftPickSelector({
                   return (
                     <Tooltip
                       key={`${round.roundNumber}-${pick.pickNumber}`}
-                      title={`Round ${round.roundNumber}, Pick ${displayNumber} - ${managerName}`}
+                      title={`Round ${round.roundNumber}, Pick ${displayNumber} (Overall #${pick.overallPickNumber}) - ${managerName}`}
                       arrow
                     >
                       <Paper
                         elevation={0}
-                        sx={getPickStyle(round.roundNumber, pick.pickNumber)}
+                        sx={getPickStyle(round.roundNumber, pick.pickNumber, pick)}
                         onClick={() => isAvailable && onPickSelect(round.roundNumber, pick.pickNumber)}
                       >
                         <Typography 

@@ -70,10 +70,14 @@ export interface Draft {
     isActive: boolean;
     rounds: DraftRound[];
     draftOrder: DraftPosition[];
+    // Legacy pick tracking (nullable)
     currentRound?: number;
     currentPick?: number;
     activeRound?: number;
     activePick?: number;
+    // Overall pick tracking (non-nullable, initialized to 1)
+    currentOverallPick: number;
+    activeOverallPick: number;
 }
 
 export interface DraftRound {
@@ -85,6 +89,7 @@ export interface DraftPosition {
     managerId: string;
     pickNumber: number;
     isComplete: boolean;
+    overallPickNumber: number;  // Non-nullable, set during draft creation
 }
 
 export interface CreateDraftRequest {

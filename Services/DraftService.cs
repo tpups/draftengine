@@ -70,36 +70,23 @@ public class DraftService
             var draft = await GetActiveDraftAsync();
             if (draft == null) return null;
 
-            // If we have current pick stored, use it
-            if (draft.CurrentRound.HasValue && draft.CurrentPick.HasValue)
+            // Find pick with matching overall number
+            foreach (var round in draft.Rounds)
             {
-                return new CurrentPickResponse
+                var pick = round.Picks.FirstOrDefault(p => p.OverallPickNumber == draft.CurrentOverallPick);
+                if (pick != null)
                 {
-                    Round = draft.CurrentRound.Value,
-                    Pick = draft.CurrentPick.Value
-                };
-            }
-
-            // Otherwise find first incomplete pick
-            foreach (var round in draft.Rounds.OrderBy(r => r.RoundNumber))
-            {
-                var picks = round.RoundNumber % 2 == 0 && draft.IsSnakeDraft
-                    ? round.Picks.OrderByDescending(p => p.PickNumber)
-                    : round.Picks.OrderBy(p => p.PickNumber);
-
-                foreach (var pick in picks)
-                {
-                    if (!pick.IsComplete)
+                    return new CurrentPickResponse
                     {
-                        return new CurrentPickResponse
-                        {
-                            Round = round.RoundNumber,
-                            Pick = pick.PickNumber
-                        };
-                    }
+                        Round = round.RoundNumber,
+                        Pick = pick.PickNumber,
+                        OverallPickNumber = pick.OverallPickNumber
+                    };
                 }
             }
 
+            // If we didn't find the exact overall number (e.g., at end of draft),
+            // return null to indicate no more picks
             return null;
         }
         catch (Exception ex)
@@ -116,87 +103,52 @@ public class DraftService
             var draft = await GetActiveDraftAsync();
             if (draft == null) return null;
 
-            // Find current round
-            var round = draft.Rounds.FirstOrDefault(r => r.RoundNumber == currentRound);
-            if (round == null) return null;
+            // Find current pick's overall number
+            var currentPicks = draft.Rounds
+                .Where(r => r.RoundNumber == currentRound)
+                .SelectMany(r => r.Picks)
+                .Where(p => p.PickNumber == currentPick)
+                .ToList();
 
-            // Get picks in order for current round
-            var picks = round.Picks.OrderBy(p => p.PickNumber).ToList();
-            if (_enableConsoleLogging) Console.WriteLine($"Current round {currentRound} picks:");
-            _logger.LogInformation("Current round {round} picks:", currentRound);
+            var currentOverallNumber = currentPicks.FirstOrDefault()?.OverallPickNumber;
+            if (currentOverallNumber == null) return null;
 
-            foreach (var pick in picks)
+            if (_enableConsoleLogging)
             {
-                if (_enableConsoleLogging) Console.WriteLine($"Pick {pick.PickNumber}: IsComplete = {pick.IsComplete}, ManagerId = {pick.ManagerId}");
-                _logger.LogInformation("Pick {number}: IsComplete = {complete}, ManagerId = {manager}", 
-                    pick.PickNumber, pick.IsComplete, pick.ManagerId);
+                Console.WriteLine($"Looking for next pick after overall number: {currentOverallNumber}");
+            }
+
+            // Find next pick in overall sequence
+            var allPicks = draft.Rounds
+                .SelectMany(r => r.Picks.Select(p => new { 
+                    Round = r.RoundNumber, 
+                    Pick = p 
+                }))
+                .Where(rp => rp.Pick.OverallPickNumber > currentOverallNumber &&
+                            (!skipCompleted || !rp.Pick.IsComplete))
+                .OrderBy(rp => rp.Pick.OverallPickNumber)
+                .ToList();
+
+            var nextPick = allPicks.FirstOrDefault();
+
+            if (nextPick != null)
+            {
+                if (_enableConsoleLogging)
+                {
+                    Console.WriteLine($"Found next pick: Round {nextPick.Round}, Pick {nextPick.Pick.PickNumber} (Overall: {nextPick.Pick.OverallPickNumber})");
+                }
+
+                return new CurrentPickResponse
+                {
+                    Round = nextPick.Round,
+                    Pick = nextPick.Pick.PickNumber,
+                    OverallPickNumber = nextPick.Pick.OverallPickNumber
+                };
             }
 
             if (_enableConsoleLogging)
             {
-                Console.WriteLine("All picks in order:");
-                foreach (var p in picks)
-                {
-                    Console.WriteLine($"  Index {picks.IndexOf(p)}: Pick {p.PickNumber}");
-                }
-            }
-
-            var currentPickIndex = picks.FindIndex(p => p.PickNumber == currentPick);
-            if (_enableConsoleLogging)
-            {
-                Console.WriteLine($"Current pick value we're searching for: {currentPick}");
-                Console.WriteLine($"Found at index: {currentPickIndex}");
-                if (currentPickIndex >= 0 && currentPickIndex < picks.Count - 1)
-                {
-                    Console.WriteLine($"Next pick would be: {picks[currentPickIndex + 1].PickNumber}");
-                }
-            }
-            _logger.LogInformation("Looking for next pick after index {index} (pick {pick})", 
-                currentPickIndex, currentPick);
-
-            // Find next pick based on skipCompleted flag
-            var nextPickIndex = currentPickIndex + 1;
-            while (nextPickIndex < picks.Count)
-            {
-                var nextPick = picks[nextPickIndex];
-                if (!skipCompleted || !nextPick.IsComplete)
-                {
-                    if (_enableConsoleLogging) Console.WriteLine($"Found next pick: {nextPick.PickNumber}");
-                    _logger.LogInformation("Found next pick: {pick}", nextPick.PickNumber);
-                    return new CurrentPickResponse
-                    {
-                        Round = currentRound,
-                        Pick = nextPick.PickNumber
-                    };
-                }
-                nextPickIndex++;
-            }
-
-            if (_enableConsoleLogging) Console.WriteLine("No incomplete picks found in current round");
-            _logger.LogInformation("No incomplete picks found in current round");
-
-            // If no next pick in current round, try next rounds
-            for (int roundNum = currentRound + 1; roundNum <= draft.Rounds.Count; roundNum++)
-            {
-                var nextRound = draft.Rounds.FirstOrDefault(r => r.RoundNumber == roundNum);
-                if (nextRound != null)
-                {
-                    var roundPicks = (nextRound.RoundNumber % 2 == 0 && draft.IsSnakeDraft)
-                        ? nextRound.Picks.OrderByDescending(p => p.PickNumber)
-                        : nextRound.Picks.OrderBy(p => p.PickNumber);
-
-                    foreach (var pick in roundPicks)
-                    {
-                        if (!skipCompleted || !pick.IsComplete)
-                        {
-                            return new CurrentPickResponse
-                            {
-                                Round = nextRound.RoundNumber,
-                                Pick = pick.PickNumber
-                            };
-                        }
-                    }
-                }
+                Console.WriteLine("No next pick found");
             }
 
             return null;
@@ -208,57 +160,120 @@ public class DraftService
         }
     }
 
-    public async Task<CurrentPickResponse?> UpdateCurrentPickAsync(int round, int pick)
+    // Handles both current and active property updates
+    // Active Pick; Active Round; Active Overall Pick
+    // Current Pick; Current Round; Current Overall Pick
+    public async Task<CurrentPickResponse?> UpdateCurrentPickAsync(int round, int pick, int overallPickNumber)
     {
         try
         {
+            // Get fresh draft state
             var draft = await GetActiveDraftAsync();
             if (draft == null) return null;
 
-            // Find the round
+            // Find the target pick
             var draftRound = draft.Rounds.FirstOrDefault(r => r.RoundNumber == round);
             if (draftRound == null) return null;
 
-            // Find the pick
             var draftPick = draftRound.Picks.FirstOrDefault(p => p.PickNumber == pick);
             if (draftPick == null) return null;
 
             if (_enableConsoleLogging)
             {
-                Console.WriteLine($"Updating current pick from Round {draft.CurrentRound}, Pick {draft.CurrentPick} to Round {round}, Pick {pick}");
+                Console.WriteLine($"Updating pick state for Round {round}, Pick {pick}");
+                Console.WriteLine($"Current state - Current: {draft.CurrentOverallPick}, Active: {draft.ActiveOverallPick}");
             }
 
-            // Update the draft in MongoDB with the new current pick
             var filter = Builders<Draft>.Filter.Eq(d => d.Id, draft.Id);
-            var update = Builders<Draft>.Update
-                .Set(d => d.CurrentRound, round)
-                .Set(d => d.CurrentPick, pick);
+            UpdateDefinition<Draft> updateDefinition;
 
-            var result = await _drafts.UpdateOneAsync(filter, update);
+            // Always update active position to target pick
+            updateDefinition = Builders<Draft>.Update
+                .Set(d => d.ActiveRound, round)
+                .Set(d => d.ActivePick, pick)
+                .Set(d => d.ActiveOverallPick, overallPickNumber);
+
+            // Update current pick if advancing past the current overall pick
+            if (overallPickNumber > draft.CurrentOverallPick)
+            {
+                updateDefinition = Builders<Draft>.Update.Combine(
+                    updateDefinition,
+                    Builders<Draft>.Update
+                        .Set(d => d.CurrentRound, round)
+                        .Set(d => d.CurrentPick, pick)
+                        .Set(d => d.CurrentOverallPick, overallPickNumber)
+                );
+            }
+            // Otherwise, we might be going backwards, so check to see if we need to reset the current pick values
+            else
+            {
+                // Check if current pick is too far ahead of completed picks
+                var highestCompletedPick = draft.Rounds
+                    .SelectMany(r => r.Picks)
+                    .Where(p => p.IsComplete)
+                    .OrderByDescending(p => p.OverallPickNumber)
+                    .FirstOrDefault();
+
+                // if there are no completed picks, draft has not started
+                bool draftStarted = highestCompletedPick != null;
+
+                var nextPickAfterHighest = highestCompletedPick != null ? highestCompletedPick.OverallPickNumber + 1 : 1;
+                if (draft.CurrentOverallPick > nextPickAfterHighest)
+                {
+                    // Find pick with new overall number
+                    var newCurrentOverall = Math.Max(
+                        overallPickNumber,
+                        nextPickAfterHighest
+                    );
+
+                    var newCurrentPick = draft.Rounds
+                        .SelectMany(r => r.Picks)
+                        .FirstOrDefault(p => p.OverallPickNumber == newCurrentOverall);
+
+                    if (newCurrentPick != null)
+                    {
+                        var newCurrentRound = draft.Rounds
+                            .First(r => r.Picks.Contains(newCurrentPick))
+                            .RoundNumber;
+
+                        updateDefinition = Builders<Draft>.Update.Combine(
+                            updateDefinition,
+                            Builders<Draft>.Update
+                                .Set(d => d.CurrentRound, newCurrentRound)
+                                .Set(d => d.CurrentPick, newCurrentPick.PickNumber)
+                                .Set(d => d.CurrentOverallPick, newCurrentOverall)
+                        );
+                    }
+                }
+            }
+
+            var result = await _drafts.UpdateOneAsync(filter, updateDefinition);
             if (!result.IsAcknowledged)
             {
-                throw new Exception($"Failed to update current pick for draft {draft.Id}");
+                throw new Exception($"Failed to update pick state for draft {draft.Id}");
             }
-
-            // Update the draft object
-            draft.CurrentRound = round;
-            draft.CurrentPick = pick;
 
             if (_enableConsoleLogging)
             {
-                Console.WriteLine($"Current pick updated successfully to Round {round}, Pick {pick}");
-                Console.WriteLine($"Draft state: Active Round {draft.CurrentRound}, Active Pick {draft.CurrentPick}, Current Round {round}, Current Pick {pick}");
+                // Get fresh state after update
+                var updatedDraft = await GetByIdAsync(draft.Id!);
+                if (updatedDraft != null)
+                {
+                    Console.WriteLine($"Pick state updated successfully");
+                    Console.WriteLine($"New state - Current: {updatedDraft.CurrentOverallPick}, Active: {updatedDraft.ActiveOverallPick}");
+                }
             }
 
             return new CurrentPickResponse
             {
                 Round = round,
-                Pick = pick
+                Pick = pick,
+                OverallPickNumber = overallPickNumber
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating current pick");
+            _logger.LogError(ex, "Error updating pick state");
             throw;
         }
     }
@@ -283,21 +298,51 @@ public class DraftService
                 IsActive = true,
                 DraftOrder = draftOrder,
                 Rounds = new List<DraftRound>(),
+                // Initialize current pick tracking
                 CurrentRound = 1,
-                CurrentPick = 1
+                CurrentPick = 1,
+                CurrentOverallPick = 1,
+                // Initialize active pick tracking (matches current initially)
+                ActiveRound = 1,
+                ActivePick = 1,
+                ActiveOverallPick = 1
             };
 
-            // Generate initial rounds
+            int totalManagers = draftOrder.Length;
+            
+            // Generate initial rounds with overall pick numbers
             for (int i = 1; i <= initialRounds; i++)
             {
-                var picks = i % 2 == 0 && isSnakeDraft 
-                    ? draftOrder.Reverse().ToArray() 
-                    : draftOrder.ToArray();
+                var roundPicks = new DraftPosition[totalManagers];
+                
+                for (int j = 0; j < totalManagers; j++)
+                {
+                    var originalPosition = draftOrder[j];
+                    var newPosition = new DraftPosition
+                    {
+                        ManagerId = originalPosition.ManagerId,
+                        PickNumber = originalPosition.PickNumber,
+                        IsComplete = false
+                    };
+
+                    if (isSnakeDraft && i % 2 == 0)
+                    {
+                        // Even rounds (snake back)
+                        newPosition.OverallPickNumber = (i * totalManagers) - j;
+                        roundPicks[totalManagers - 1 - j] = newPosition;  // Reverse array position
+                    }
+                    else
+                    {
+                        // Odd rounds (normal order)
+                        newPosition.OverallPickNumber = ((i - 1) * totalManagers) + j + 1;
+                        roundPicks[j] = newPosition;  // Normal array position
+                    }
+                }
 
                 draft.Rounds.Add(new DraftRound
                 {
                     RoundNumber = i,
-                    Picks = picks
+                    Picks = roundPicks
                 });
             }
 
@@ -321,8 +366,21 @@ public class DraftService
             {
                 if (currentDraft.CurrentRound != draft.CurrentRound || currentDraft.CurrentPick != draft.CurrentPick)
                 {
-                    Console.WriteLine($"Updating active pick from Round {currentDraft.CurrentRound}, Pick {currentDraft.CurrentPick} to Round {draft.CurrentRound}, Pick {draft.CurrentPick}");
+                    Console.WriteLine($"Updating pick state from:");
+                    Console.WriteLine($"Current: Round {currentDraft.CurrentRound}, Pick {currentDraft.CurrentPick}, Overall {currentDraft.CurrentOverallPick}");
+                    Console.WriteLine($"Active: Round {currentDraft.ActiveRound}, Pick {currentDraft.ActivePick}, Overall {currentDraft.ActiveOverallPick}");
+                    Console.WriteLine($"to:");
+                    Console.WriteLine($"Current: Round {draft.CurrentRound}, Pick {draft.CurrentPick}, Overall {draft.CurrentOverallPick}");
+                    Console.WriteLine($"Active: Round {draft.ActiveRound}, Pick {draft.ActivePick}, Overall {draft.ActiveOverallPick}");
                 }
+            }
+
+            // When updating current pick, also update active pick to match
+            if (draft.CurrentOverallPick > currentDraft?.CurrentOverallPick)
+            {
+                draft.ActiveRound = draft.CurrentRound;
+                draft.ActivePick = draft.CurrentPick;
+                draft.ActiveOverallPick = draft.CurrentOverallPick;
             }
 
             var result = await _drafts.ReplaceOneAsync(d => d.Id == draft.Id, draft);
@@ -335,7 +393,7 @@ public class DraftService
             {
                 if (currentDraft.CurrentRound != draft.CurrentRound || currentDraft.CurrentPick != draft.CurrentPick)
                 {
-                    Console.WriteLine($"Active pick updated successfully to Round {draft.CurrentRound}, Pick {draft.CurrentPick}");
+                    Console.WriteLine($"Pick state updated successfully");
                 }
             }
 
