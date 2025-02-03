@@ -43,7 +43,7 @@
 
 ## Recent Changes
 
-33. Skip to Incomplete Button Enhancement: (2/3/25)
+33. Skip to Incomplete Button Enhancement: (2/2/25)
     - Added proper button disabling when on current pick:
       * Frontend check in canSkipToIncomplete
       * Comparison of activeOverallPick vs currentOverallPick
@@ -57,7 +57,7 @@
       * Better performance without extra API calls
       * Cleaner state management
 
-32. Active Pick State Management Fix: (2/3/25)
+32. Active Pick State Management Fix: (2/2/25)
     - Fixed state management for active vs current pick:
       * Changed invalidateQueries to refetchQueries
       * Added Promise.all to wait for refetches
