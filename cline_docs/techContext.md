@@ -41,14 +41,36 @@
 ### API
 - ASP.NET Core Web API
 - RESTful architecture
-- Swagger/OpenAPI documentation:
-  * XML documentation for all endpoints
-  * Standard ASP.NET Core conventions for schema naming
-  * Simple file upload configuration using IFormFile mapping
-  * Built-in multipart/form-data support
-  * Development-time debugging capabilities
-  * Proper error handling and logging
-- JSON response format
+- Documentation Patterns:
+  * XML Documentation:
+    - Comprehensive endpoint documentation
+    - Parameter descriptions and constraints
+    - Response type specifications
+    - Error scenarios and handling
+    - Example request/response pairs
+  * TypeScript Documentation:
+    - TSDoc comments for service methods
+    - Interface and type definitions
+    - Parameter and return type documentation
+    - Error handling patterns
+    - Usage examples
+  * Component Documentation:
+    - Clear props documentation
+    - State management patterns
+    - Event handling documentation
+    - Visual state documentation
+    - Accessibility considerations
+- Swagger/OpenAPI Integration:
+  * Standard ASP.NET Core conventions
+  * Proper response type attributes
+  * Error response documentation
+  * File upload configuration
+  * Debug mode support
+- JSON Response Format:
+  * Consistent ApiResponse<T> wrapper
+  * Standard error format
+  * Validation error structure
+  * Debug information handling
 - File Upload Support:
   * Dedicated request models
   * Multipart/form-data handling

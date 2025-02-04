@@ -29,6 +29,14 @@ public class DraftController : ControllerBase
         _enableConsoleLogging = debugOptions.Value.EnableConsoleLogging;
     }
 
+    /// <summary>
+    /// Retrieves all drafts in the system
+    /// </summary>
+    /// <remarks>
+    /// Returns a complete list of all drafts, including inactive and completed drafts.
+    /// </remarks>
+    /// <response code="200">Returns list of Draft objects</response>
+    /// <response code="500">Internal server error retrieving drafts</response>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<List<Draft>>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
@@ -46,6 +54,15 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Retrieves the currently active draft
+    /// </summary>
+    /// <remarks>
+    /// Returns the draft marked as active in the system. Only one draft can be active at a time.
+    /// Also returns debug settings if console logging is enabled.
+    /// </remarks>
+    /// <response code="200">Returns the active Draft object with debug settings</response>
+    /// <response code="500">Internal server error retrieving active draft</response>
     [HttpGet("active")]
     [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
@@ -68,7 +85,19 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gets the current pick in the active draft
+    /// </summary>
+    /// <remarks>
+    /// Returns information about the current pick in the draft, including round number, pick number, and overall pick number.
+    /// </remarks>
+    /// <response code="200">Returns the current pick information</response>
+    /// <response code="404">No active draft found</response>
+    /// <response code="500">Internal server error retrieving current pick</response>
     [HttpGet("currentPick")]
+    [ProducesResponseType(typeof(ApiResponse<CurrentPickResponse>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> GetCurrentPick()
     {
         try
@@ -89,7 +118,23 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Advances the current pick to the next available pick
+    /// </summary>
+    /// <remarks>
+    /// Moves the current pick forward based on the provided request. Can optionally skip completed picks.
+    /// Includes detailed logging of the pick advancement process when console logging is enabled.
+    /// </remarks>
+    /// <param name="request">Contains options for pick advancement, including whether to skip completed picks</param>
+    /// <response code="200">Returns the updated pick information</response>
+    /// <response code="400">No next pick available or failed to update pick state</response>
+    /// <response code="404">No current pick found</response>
+    /// <response code="500">Internal server error advancing pick</response>
     [HttpPost("advancePick")]
+    [ProducesResponseType(typeof(ApiResponse<CurrentPickResponse>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> AdvanceCurrentPick([FromBody] AdvancePickRequest request)
     {
         try
@@ -149,7 +194,20 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Creates a new draft
+    /// </summary>
+    /// <remarks>
+    /// Creates a draft with specified settings including year, type, snake draft option, initial rounds, and draft order.
+    /// </remarks>
+    /// <param name="request">Draft creation parameters including year, type, rounds, and order</param>
+    /// <response code="200">Returns the newly created Draft object</response>
+    /// <response code="400">Invalid draft creation parameters</response>
+    /// <response code="500">Internal server error creating draft</response>
     [HttpPost]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> CreateDraft([FromBody] CreateDraftRequest request)
     {
         try
@@ -174,7 +232,24 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Marks a pick as complete in the specified draft
+    /// </summary>
+    /// <remarks>
+    /// Completes a pick by assigning a player to a manager and advancing the draft state.
+    /// Updates both the draft state and player's draft status.
+    /// </remarks>
+    /// <param name="draftId">The ID of the draft</param>
+    /// <param name="request">Pick completion details including round, manager, and player</param>
+    /// <response code="200">Returns the updated Draft object</response>
+    /// <response code="400">Pick is already complete</response>
+    /// <response code="404">Draft, round, or pick not found</response>
+    /// <response code="500">Internal server error marking pick complete</response>
     [HttpPost("{draftId}/pick")]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> MarkPickComplete(string draftId, [FromBody] MarkPickRequest request)
     {
         try
@@ -264,7 +339,21 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Adds a new round to an existing draft
+    /// </summary>
+    /// <remarks>
+    /// Creates a new round with picks for each manager, handling snake draft ordering if enabled.
+    /// Automatically calculates pick numbers and overall pick numbers.
+    /// </remarks>
+    /// <param name="draftId">The ID of the draft to add a round to</param>
+    /// <response code="200">Returns the updated Draft object</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error adding round</response>
     [HttpPost("{draftId}/addRound")]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> AddRound(string draftId)
     {
         try
@@ -321,7 +410,22 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Removes the last round from a draft
+    /// </summary>
+    /// <remarks>
+    /// Removes the highest numbered round from the draft. Cannot remove rounds that contain completed picks.
+    /// </remarks>
+    /// <param name="draftId">The ID of the draft to remove a round from</param>
+    /// <response code="200">Returns the updated Draft object</response>
+    /// <response code="400">Cannot remove round with completed picks</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error removing round</response>
     [HttpPost("{draftId}/removeRound")]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> RemoveRound(string draftId)
     {
         try
@@ -341,7 +445,21 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Resets a draft to its initial state
+    /// </summary>
+    /// <remarks>
+    /// Clears all completed picks, resets pick tracking to round 1, pick 1, and resets draft status for all players.
+    /// Both current and active picks are reset to the start.
+    /// </remarks>
+    /// <param name="draftId">The ID of the draft to reset</param>
+    /// <response code="200">Returns true if reset successful</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error resetting draft</response>
     [HttpPost("{draftId}/reset")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> ResetDraft(string draftId)
     {
         try
@@ -383,6 +501,17 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes a draft and resets associated player draft statuses
+    /// </summary>
+    /// <remarks>
+    /// Permanently removes the draft from the system and clears draft status for all players that were drafted.
+    /// This operation cannot be undone.
+    /// </remarks>
+    /// <param name="draftId">The ID of the draft to delete</param>
+    /// <response code="200">Returns true if deletion successful</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error deleting draft</response>
     [HttpDelete("{draftId}")]
     [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
@@ -409,6 +538,17 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Toggles the active status of a draft
+    /// </summary>
+    /// <remarks>
+    /// Activates or deactivates a draft. When activating a draft, any currently active draft will be deactivated
+    /// as only one draft can be active at a time.
+    /// </remarks>
+    /// <param name="draftId">The ID of the draft to toggle active status</param>
+    /// <response code="200">Returns the updated Draft object</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error toggling draft status</response>
     [HttpPost("{draftId}/toggleActive")]
     [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
@@ -447,7 +587,23 @@ public class DraftController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates the active pick in the current draft
+    /// </summary>
+    /// <remarks>
+    /// Sets the active pick to a specific round and pick number. Used for manual pick selection and navigation.
+    /// Updates both the active pick state and refreshes the draft state.
+    /// </remarks>
+    /// <param name="request">Contains the round, pick, and overall pick number to set as active</param>
+    /// <response code="200">Returns the updated Draft object</response>
+    /// <response code="400">Failed to update pick state</response>
+    /// <response code="404">No active draft found</response>
+    /// <response code="500">Internal server error updating pick state</response>
     [HttpPost("updateActivePick")]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> UpdateActivePick([FromBody] UpdateActivePickRequest request)
     {
         try

@@ -4,6 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { managerService } from '../services/managerService';
 import { config } from '../config/config';
 
+/**
+ * Props for the DraftPickSelector component
+ * @property activeDraft - The current active draft
+ * @property currentRound - The round number of the current pick
+ * @property currentPick - The pick number within the current round
+ * @property selectedRound - The round number of the selected pick
+ * @property selectedPick - The pick number of the selected pick
+ * @property onPickSelect - Callback when a pick is selected
+ */
 interface DraftPickSelectorProps {
   activeDraft: Draft;
   currentRound: number;
@@ -33,6 +42,12 @@ export function DraftPickSelector({
     return manager?.name ?? '';
   };
 
+  /**
+   * Calculates the display pick number based on draft type
+   * For snake drafts:
+   * - Even rounds reverse the pick order (e.g., pick 12 becomes pick 1)
+   * - Odd rounds maintain normal order
+   */
   const getDisplayPickNumber = (round: number, actualPickNumber: number) => {
     const totalManagers = activeDraft.draftOrder.length;
     if (round % 2 === 0 && activeDraft.isSnakeDraft) {
@@ -41,7 +56,23 @@ export function DraftPickSelector({
     return actualPickNumber;
   };
 
-  // Build pick availability dictionary
+  /**
+   * Builds a dictionary of pick availability for the draft board
+   * A pick is available if:
+   * 1. It is not already complete
+   * 2. It is not beyond the current overall pick
+   * 3. It is in a past round or the current round
+   * 
+   * For snake drafts:
+   * - Even rounds have reversed pick order but maintain sequential overall numbers
+   * - Pick availability follows the same rules regardless of round type
+   * 
+   * Returns an object mapping:
+   * - round number → {
+   *     pickOrder: number[], // Order of picks in this round
+   *     [pickNumber]: boolean // Availability of each pick
+   *   }
+   */
   const getPickAvailability = () => {
     const availability: Record<number, { [key: number]: boolean; pickOrder: number[] }> = {};
 
@@ -80,6 +111,25 @@ export function DraftPickSelector({
     return pickAvailability[round]?.[pickNumber] ?? false;
   };
 
+  /**
+   * Determines the visual style for a pick cell
+   * Visual States:
+   * - Selected: Blue background (primary.main)
+   * - Current Pick: Orange background (warning.light)
+   * - Active Pick: Light blue background (info.light)
+   * - Available Pick: White or light grey based on round type
+   * - Unavailable Pick: Grey background (grey.200)
+   * 
+   * Hover Effects:
+   * - Only available picks show hover effects
+   * - Slight elevation and color change on hover
+   * - Different hover colors based on pick state
+   * 
+   * Border Rules:
+   * - Left border for first round and normal rounds
+   * - Right border for snake rounds
+   * - Creates visual separation between normal and snake rounds
+   */
   const getPickStyle = (round: number, pickNumber: number, pick: DraftPosition) => {
     const isSelected = round === selectedRound && pickNumber === selectedPick;
     const isCurrent = pick.overallPickNumber === activeDraft.currentOverallPick;

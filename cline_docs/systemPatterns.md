@@ -48,14 +48,30 @@ The DraftEngine follows a modern web API architecture with clear separation of c
 
 3. UI Feedback
    - Visual pick state indicators:
-     * Selected pick highlighting
-     * Current pick warning color
-     * Available vs unavailable styling
-     * Snake round differentiation
-   - Manager name display
-   - Pick number calculations for snake rounds
-   - Hover effects for available picks
-   - Tooltip information
+     * Selected pick: Blue background (primary.main)
+     * Current pick: Orange background (warning.light)
+     * Active pick: Light blue background (info.light)
+     * Available pick: White/light grey based on round type
+     * Unavailable pick: Grey background (grey.200)
+   - Interactive elements:
+     * Hover effects only on available picks
+     * Elevation and color change on hover
+     * Different hover colors based on pick state
+     * Cursor changes for available/unavailable picks
+   - Border styling:
+     * Left border for first round and normal rounds
+     * Right border for snake rounds
+     * Visual separation between round types
+   - Information display:
+     * Manager name in pick cell
+     * Tooltip with round, pick, and overall numbers
+     * Pick number calculations for snake rounds
+     * Clear visual hierarchy of information
+   - Accessibility:
+     * High contrast color choices
+     * Clear visual state indicators
+     * Proper cursor feedback
+     * Informative tooltips
 
 ### Admin Panel Organization
 1. Component Structure
@@ -150,13 +166,32 @@ The DraftEngine follows a modern web API architecture with clear separation of c
   * Progress tracking and logging
 
 ### Swagger Configuration
-- XML documentation for all endpoints
-- Standard ASP.NET Core conventions for schema naming
-- Simple file upload configuration using IFormFile mapping
-- Built-in multipart/form-data support
-- Proper error handling and logging
-- Development-time debugging capabilities
-- Focus on clean, maintainable documentation
+- XML documentation for all endpoints:
+  * Clear operation descriptions
+  * Detailed parameter documentation
+  * Response type specifications
+  * Error response documentation
+  * Example request/response pairs
+- Standard ASP.NET Core conventions:
+  * Schema naming conventions
+  * Route attribute usage
+  * Model binding patterns
+  * Response type attributes
+- Error handling documentation:
+  * HTTP status code usage
+  * Error response formats
+  * Validation error handling
+  * Business rule violations
+- Development support:
+  * Debug mode configuration
+  * Console logging options
+  * State transition logging
+  * Pick state debugging
+- File upload configuration:
+  * IFormFile mapping
+  * Multipart/form-data support
+  * Upload progress tracking
+  * Error handling
 
 ### Data Layer
 1. Draft Data Structure

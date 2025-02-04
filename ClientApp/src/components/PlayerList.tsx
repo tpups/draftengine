@@ -42,7 +42,17 @@ export function PlayerList() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [draftModalOpen, setDraftModalOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [gridMode, setGridMode] = useState<'prep' | 'draft'>('prep');
+  // Initialize gridMode from localStorage or default to 'prep'
+  const [gridMode, setGridMode] = useState<'prep' | 'draft'>(() => {
+    const savedMode = localStorage.getItem('gridMode');
+    return (savedMode === 'draft' || savedMode === 'prep') ? savedMode : 'prep';
+  });
+
+  // Update localStorage when gridMode changes
+  const handleGridModeChange = (mode: 'prep' | 'draft') => {
+    setGridMode(mode);
+    localStorage.setItem('gridMode', mode);
+  };
   const [pickSelectorAnchor, setPickSelectorAnchor] = useState<HTMLElement | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -119,7 +129,11 @@ export function PlayerList() {
     return manager ? { name: manager.name } : null;
   }, [activeDraft, currentPick, managers]);
 
-  // Determines if user has reached last pick of draft
+  // Determines if user can advance to the next pick
+  // Returns false if:
+  // 1. No active draft or current pick exists
+  // 2. User is at the last pick of the last round
+  // For snake drafts, considers reversed pick order in even rounds
   const canAdvance = useCallback(() => {
     if (!activeDraft || !currentPick) return false;
     
@@ -133,6 +147,12 @@ export function PlayerList() {
     return !isLastPick;
   }, [activeDraft, currentPick]);
 
+  // Determines if user can skip to the next incomplete pick
+  // Returns false if:
+  // 1. No active draft or current pick exists
+  // 2. Currently on the active pick (prevents skipping current pick)
+  // 3. No incomplete picks remain after current pick
+  // For snake drafts, considers reversed pick order in even rounds when searching
   const canSkipToIncomplete = useCallback(() => {
     if (!activeDraft || !currentPick) return false;
     
@@ -158,6 +178,14 @@ export function PlayerList() {
     return hasIncomplete;
   }, [activeDraft, currentPick]);
 
+  // Determines if a player can be drafted with the current pick
+  // Returns false if:
+  // 1. No active draft, current pick, or round exists
+  // 2. Pick is already complete
+  // 3. Selected pick is in a future round
+  // 4. In current round:
+  //    - For normal rounds: if pick number > current pick
+  //    - For snake rounds: if pick number < current pick (reversed order)
   const canDraft = useCallback((playerId: string) => {
     if (!activeDraft || !currentPick || !activeDraft.currentRound || !activeDraft.currentPick) return false;
 
@@ -188,6 +216,12 @@ export function PlayerList() {
     return true;
   }, [activeDraft, currentPick]);
 
+  // Handles the draft pick process
+  // 1. Marks the pick as complete in the draft
+  // 2. Updates the player's draft status
+  // 3. Advances to next pick (handled by backend)
+  // 4. Refreshes all relevant queries to sync UI state
+  // Includes detailed logging in debug mode
   const handleDraft = async (managerId: string) => {
     if (!selectedPlayerId || !activeDraft || !activeDraft.currentRound || !activeDraft.currentPick) return;
 
@@ -351,7 +385,7 @@ export function PlayerList() {
       <Box display="flex" flexDirection="column" gap={2}>
         <PlayerListToolbar
           gridMode={gridMode}
-          onGridModeChange={setGridMode}
+          onGridModeChange={handleGridModeChange}
           onAddPlayer={() => setAddDialogOpen(true)}
           onResetDraft={() => setResetDialogOpen(true)}
           currentPick={currentPick}
@@ -404,7 +438,7 @@ export function PlayerList() {
     }}>
       <PlayerListToolbar
         gridMode={gridMode}
-        onGridModeChange={setGridMode}
+          onGridModeChange={handleGridModeChange}
         onAddPlayer={() => setAddDialogOpen(true)}
         onResetDraft={() => setResetDialogOpen(true)}
         currentPick={currentPick}

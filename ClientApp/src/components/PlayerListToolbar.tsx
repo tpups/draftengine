@@ -75,42 +75,46 @@ export function PlayerListToolbar({
         </ToggleButtonGroup>
         {gridMode === 'draft' && currentPick && (
           <>
-            <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap' }}>
-              Round {currentPick.round}, Pick {currentPick.pick} (Overall #{currentPick.overallPickNumber})
-              {getCurrentPickManager()?.name && ` - ${getCurrentPickManager()?.name}'s Pick`}
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={(event) => {
-                logPickState(activeDraft, currentPick, 'Before Edit Pick');
-                onPickSelectorClick(event);
-              }}
-              title="Edit active pick"
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={() => {
-                logPickState(activeDraft, currentPick, 'Before Advance Pick');
-                onAdvancePick(false);
-              }}
-              disabled={!canAdvance}
-              title="Next pick"
-            >
-              <SkipNextIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={() => {
-                logPickState(activeDraft, currentPick, 'Before Skip to Incomplete');
-                onAdvancePick(true);
-              }}
-              disabled={!canSkipToIncomplete}
-              title="Skip to next incomplete pick"
-            >
-              <FastForwardIcon fontSize="small" />
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    logPickState(activeDraft, currentPick, 'Before Advance Pick');
+                    onAdvancePick(false);
+                  }}
+                  disabled={!canAdvance}
+                  title="Next pick"
+                >
+                  <SkipNextIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    logPickState(activeDraft, currentPick, 'Before Skip to Incomplete');
+                    onAdvancePick(true);
+                  }}
+                  disabled={!canSkipToIncomplete}
+                  title="Skip to next incomplete pick"
+                >
+                  <FastForwardIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    logPickState(activeDraft, currentPick, 'Before Edit Pick');
+                    onPickSelectorClick(event);
+                  }}
+                  title="Edit active pick"
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap' }}>
+                Round {currentPick.round}, Pick {currentPick.pick} (Overall #{currentPick.overallPickNumber})
+                {getCurrentPickManager()?.name && ` - ${getCurrentPickManager()?.name}'s Pick`}
+              </Typography>
+            </Box>
           </>
         )}
       </Box>

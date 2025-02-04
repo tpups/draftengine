@@ -22,6 +22,11 @@ public class DraftService
         _enableConsoleLogging = debugOptions.Value.EnableConsoleLogging;
     }
 
+    /// <summary>
+    /// Retrieves all drafts in the system, ordered by creation date
+    /// </summary>
+    /// <returns>List of all drafts, sorted with newest first</returns>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<List<Draft>> GetAllDraftsAsync()
     {
         try
@@ -37,6 +42,11 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Retrieves the currently active draft in the system
+    /// </summary>
+    /// <returns>The active draft, or null if no draft is active</returns>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<Draft?> GetActiveDraftAsync()
     {
         try
@@ -50,6 +60,12 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Retrieves a specific draft by its ID
+    /// </summary>
+    /// <param name="id">The ID of the draft to retrieve</param>
+    /// <returns>The requested draft, or null if not found</returns>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<Draft?> GetByIdAsync(string id)
     {
         try
@@ -63,6 +79,15 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Gets information about the current pick in the active draft
+    /// </summary>
+    /// <remarks>
+    /// Searches through all rounds to find the pick matching the draft's CurrentOverallPick number.
+    /// Returns null if no active draft exists or if no matching pick is found (e.g., at end of draft).
+    /// </remarks>
+    /// <returns>Current pick information including round, pick number, and overall pick number</returns>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<CurrentPickResponse?> GetCurrentPickAsync()
     {
         try
@@ -96,6 +121,19 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Finds the next available pick after the specified pick
+    /// </summary>
+    /// <remarks>
+    /// Uses overall pick numbers to determine the next pick in sequence.
+    /// When skipCompleted is true, skips over picks that are already complete.
+    /// Returns null if no next pick is available or if at the end of the draft.
+    /// </remarks>
+    /// <param name="currentRound">The current round number</param>
+    /// <param name="currentPick">The current pick number within the round</param>
+    /// <param name="skipCompleted">Whether to skip over completed picks when finding the next pick</param>
+    /// <returns>Next pick information including round, pick number, and overall pick number</returns>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<CurrentPickResponse?> GetNextPickAsync(int currentRound, int currentPick, bool skipCompleted = false)
     {
         try
@@ -160,9 +198,34 @@ public class DraftService
         }
     }
 
-    // Handles both current and active property updates
-    // Active Pick; Active Round; Active Overall Pick
-    // Current Pick; Current Round; Current Overall Pick
+
+    /// <summary>
+    /// Updates both current and active pick states in the draft
+    /// </summary>
+    /// <remarks>
+    /// This method manages the two-tier pick tracking system:
+    /// 1. Active Pick (UI Selection):
+    ///    - Always updates to the target pick
+    ///    - Used for viewing and editing specific picks
+    ///    - Can move freely to any pick
+    /// 
+    /// 2. Current Pick (Draft Progress):
+    ///    - Only updates when advancing forward
+    ///    - Tracks actual draft progress
+    ///    - Cannot move backward beyond the last completed pick + 1
+    ///    
+    /// State Management Rules:
+    /// - Active pick always updates to target position
+    /// - Current pick updates if:
+    ///   a) Moving forward (overallPickNumber > currentOverallPick)
+    ///   b) Current pick is too far ahead of completed picks
+    /// - When moving backward, current pick may reset to earliest available pick
+    /// </remarks>
+    /// <param name="round">Target round number</param>
+    /// <param name="pick">Target pick number within the round</param>
+    /// <param name="overallPickNumber">Target overall pick number</param>
+    /// <returns>Updated pick information if successful, null if target pick not found</returns>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<CurrentPickResponse?> UpdateCurrentPickAsync(int round, int pick, int overallPickNumber)
     {
         try
@@ -278,6 +341,27 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Creates a new draft with specified settings
+    /// </summary>
+    /// <remarks>
+    /// Creates a draft with the given parameters and generates the initial rounds.
+    /// For snake drafts, even-numbered rounds reverse the draft order.
+    /// Only one draft can be active at a time.
+    /// 
+    /// Pick Numbering:
+    /// - Each pick has both a round-specific number and an overall number
+    /// - Overall numbers are sequential through the entire draft
+    /// - For snake drafts, even rounds reverse the order but maintain sequential overall numbers
+    /// </remarks>
+    /// <param name="year">Draft year</param>
+    /// <param name="type">Type of draft</param>
+    /// <param name="isSnakeDraft">Whether to use snake draft ordering</param>
+    /// <param name="initialRounds">Number of rounds to create initially</param>
+    /// <param name="draftOrder">Array of draft positions defining the order</param>
+    /// <returns>The newly created draft</returns>
+    /// <exception cref="InvalidOperationException">Thrown when another draft is already active</exception>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<Draft> CreateDraftAsync(int year, string type, bool isSnakeDraft, int initialRounds, DraftPosition[] draftOrder)
     {
         try
@@ -356,6 +440,18 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Updates a draft's state in the database
+    /// </summary>
+    /// <remarks>
+    /// Handles synchronization between current and active pick states:
+    /// - When current pick advances, active pick automatically follows
+    /// - Logs detailed state changes when console logging is enabled
+    /// - Validates update acknowledgment from database
+    /// </remarks>
+    /// <param name="draft">The draft to update</param>
+    /// <returns>The updated draft</returns>
+    /// <exception cref="Exception">Thrown when update fails or is not acknowledged</exception>
     public async Task<Draft> UpdateAsync(Draft draft)
     {
         try
@@ -406,6 +502,11 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Permanently deletes a draft from the system
+    /// </summary>
+    /// <param name="id">The ID of the draft to delete</param>
+    /// <exception cref="Exception">Thrown when deletion fails or is not acknowledged</exception>
     public async Task DeleteAsync(string id)
     {
         try
@@ -423,6 +524,17 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Removes the last round from a draft
+    /// </summary>
+    /// <remarks>
+    /// Removes the highest-numbered round from the draft.
+    /// Cannot remove the last remaining round.
+    /// </remarks>
+    /// <param name="draftId">The ID of the draft to modify</param>
+    /// <returns>The updated draft</returns>
+    /// <exception cref="InvalidOperationException">Thrown when draft not found or attempting to remove last round</exception>
+    /// <exception cref="Exception">Thrown when database operation fails</exception>
     public async Task<Draft> RemoveRoundAsync(string draftId)
     {
         try

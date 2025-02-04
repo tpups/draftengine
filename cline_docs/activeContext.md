@@ -43,6 +43,51 @@
 
 ## Recent Changes
 
+36. Grid Mode State Persistence: (2/3/25)
+    - Added localStorage persistence for grid mode:
+      * Initializes from localStorage on component mount
+      * Updates localStorage when mode changes
+      * Maintains mode across page refreshes
+      * Preserves mode during navigation
+    - Improved user experience:
+      * Remembers user's last selected mode
+      * Consistent state across sessions
+      * Seamless mode restoration
+      * No unexpected mode resets
+
+35. PlayerListToolbar Layout Fix: (2/3/25)
+    - Fixed button position jumping in toolbar:
+      * Moved pick control buttons to left of pick info
+      * Added consistent spacing with gap property
+      * Improved button order for logical flow
+      * Maintained vertical alignment
+    - Enhanced UI stability:
+      * Prevented layout shifts from varying text length
+      * Kept related elements grouped together
+      * Improved visual hierarchy
+      * Better user experience with stable controls
+
+34. Pick Advance Documentation Enhancement: (2/3/25)
+    - Added comprehensive documentation across pick advance system:
+      * Added XML docs to all DraftController endpoints for Swagger
+      * Documented two-tier pick tracking in DraftService
+      * Added TSDoc comments to draftService methods
+      * Added detailed comments to PlayerList pick operations
+      * Documented DraftPickSelector UI states and behaviors
+    - Improved pick state documentation:
+      * Clear explanation of current vs active pick states
+      * Documented snake draft handling logic
+      * Added validation rules documentation
+      * Documented visual feedback system
+    - Enhanced error response documentation:
+      * Added proper response codes
+      * Documented error scenarios
+      * Added clear error messages
+    - Added debug logging documentation:
+      * Documented pick state logging
+      * Added context for state transitions
+      * Documented debug mode features
+
 33. Skip to Incomplete Button Enhancement: (2/2/25)
     - Added proper button disabling when on current pick:
       * Frontend check in canSkipToIncomplete
