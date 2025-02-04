@@ -1,3 +1,17 @@
+export interface ProjectionData {
+    updatedDate: string;
+    stats: Record<string, number>;
+}
+
+export interface DraftStatus {
+    draftId: string;
+    isDrafted: boolean;
+    round: number;
+    pick: number;
+    overallPick: number;
+    managerId: string;
+}
+
 export interface Player {
     id?: string;
     name: string;
@@ -6,21 +20,25 @@ export interface Player {
     prospectRank?: Record<string, number>;
     mlbTeam?: string;
     level?: string;
-    birthDate?: string;
+    birthDate?: string;  // ISO date string
     eta?: number | null;
     prospectRisk?: Record<string, string>;
     personalRiskAssessment?: string;
+    externalIds?: Record<string, string>;
+    lastUpdated: string;  // ISO date string
     scoutingGrades?: Record<string, ScoutingGrades>;
     personalGrades?: ScoutingGrades;
-    isDrafted?: boolean;
-    draftRound?: number | null;
-    draftPick?: number | null;
-    draftedBy?: string | null;
+    draftStatuses: DraftStatus[];
     isHighlighted?: boolean;
     notes?: string | null;
     personalRank?: number | null;
-    starsRating?: number | null;  // 0-5 in 0.5 increments
+    starsRating?: number | null;  // 0-5 in 0.5 increments (matches C# decimal)
+    projections?: Record<string, ProjectionData>;
 }
+
+// Computed property to match C# model
+export const isDrafted = (player: Player): boolean => 
+    player.draftStatuses?.some(ds => ds.isDrafted) ?? false;
 
 export interface ScoutingGrades {
     hit?: number | null;

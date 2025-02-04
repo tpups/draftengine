@@ -209,33 +209,46 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Draft Status */}
             <Typography variant="h6">Draft Status</Typography>
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary">
-                Status
-              </Typography>
+            {player.draftStatuses && player.draftStatuses.length > 0 ? (
+              player.draftStatuses.map((status, index) => (
+                <Box key={index} sx={{ mb: 2 }}>
+                  <Typography variant="subtitle1" color="text.primary" gutterBottom>
+                    Draft #{status.draftId}
+                  </Typography>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Status
+                    </Typography>
+                    <Typography variant="body1">
+                      {status.isDrafted ? 'Drafted' : 'Available'}
+                    </Typography>
+                  </Box>
+                  {status.isDrafted && (
+                    <>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Drafted By
+                        </Typography>
+                        <Typography variant="body1">
+                          {status.managerId || 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Draft Position
+                        </Typography>
+                        <Typography variant="body1">
+                          Round {status.round || 'N/A'}, Pick {status.pick || 'N/A'} (Overall #{status.overallPick || 'N/A'})
+                        </Typography>
+                      </Box>
+                    </>
+                  )}
+                </Box>
+              ))
+            ) : (
               <Typography variant="body1">
-                {player.isDrafted ? 'Drafted' : 'Available'}
+                Not drafted in any drafts
               </Typography>
-            </Box>
-            {player.isDrafted && (
-              <>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Drafted By
-                  </Typography>
-                  <Typography variant="body1">
-                    {player.draftedBy || 'N/A'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Draft Position
-                  </Typography>
-                  <Typography variant="body1">
-                    Round {player.draftRound || 'N/A'}, Pick {player.draftPick || 'N/A'}
-                  </Typography>
-                </Box>
-              </>
             )}
             {player.eta !== null && player.eta !== undefined && (
               <Box>

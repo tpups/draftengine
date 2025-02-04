@@ -43,6 +43,30 @@
 
 ## Recent Changes
 
+38. Draft Manager Selection UI Improvement: (2/3/25)
+    - Replaced modal with popover for manager selection:
+      * Smaller, more focused UI next to draft icon
+      * Proper positioning relative to click location
+      * Improved visual hierarchy with MUI Popover
+    - Enhanced manager list display:
+      * Shows managers in draft order
+      * Highlights current user
+      * Highlights manager with active pick
+      * Clear visual feedback for selection
+    - Improved interaction flow:
+      * Single click to open manager list
+      * Direct manager selection
+      * Automatic close after selection
+      * Better UX for drafting process
+
+37. Draft Grid Column Fixes: (2/3/25)
+    - Fixed Round, Pick, and Drafted By columns in player grid:
+      * Added draftRound and draftPick to GridPlayer interface
+      * Fixed draftingManagerName mapping from draft status
+      * Values now appear correctly when players are drafted
+      * Fixed type safety with proper null handling
+      * Improved manager name lookup for Drafted By column
+
 36. Grid Mode State Persistence: (2/3/25)
     - Added localStorage persistence for grid mode:
       * Initializes from localStorage on component mount

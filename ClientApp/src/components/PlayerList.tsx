@@ -40,7 +40,6 @@ export function PlayerList() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [draftModalOpen, setDraftModalOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   // Initialize gridMode from localStorage or default to 'prep'
   const [gridMode, setGridMode] = useState<'prep' | 'draft'>(() => {
@@ -222,8 +221,12 @@ export function PlayerList() {
   // 3. Advances to next pick (handled by backend)
   // 4. Refreshes all relevant queries to sync UI state
   // Includes detailed logging in debug mode
-  const handleDraft = async (managerId: string) => {
-    if (!selectedPlayerId || !activeDraft || !activeDraft.currentRound || !activeDraft.currentPick) return;
+  const handleDraftClick = (playerId: string) => {
+    setSelectedPlayerId(playerId);
+  };
+
+  const handleManagerSelect = async (managerId: string) => {
+    if (!selectedPlayerId || !activeDraft?.currentRound || !activeDraft?.currentPick) return;
 
     if (config.debug.enableConsoleLogging) {
       console.log('Starting draft for:', {
@@ -261,7 +264,6 @@ export function PlayerList() {
       const updatedDraft = queryClient.getQueryData<{ value: Draft }>(['activeDraft']);
       const updatedPick = queryClient.getQueryData<{ value: CurrentPickResponse }>(['currentPick']);
       logPickState(updatedDraft?.value, updatedPick?.value, 'After Draft Complete');
-      setDraftModalOpen(false);
       setSelectedPlayerId(null);
       setSnackbar({ open: true, message: 'Player drafted successfully', severity: 'success' });
     } catch (error) {
@@ -412,9 +414,6 @@ export function PlayerList() {
           editDialogOpen={editModalOpen}
           onEditDialogClose={() => setEditModalOpen(false)}
           onPlayerSave={handleSaveEdit}
-          draftDialogOpen={draftModalOpen}
-          onDraftDialogClose={() => setDraftModalOpen(false)}
-          onManagerSelect={handleDraft}
           activeDraft={activeDraft}
         />
         <Snackbar
@@ -464,11 +463,9 @@ export function PlayerList() {
         }}
         onPlayerDelete={handleDelete}
         onPlayerHighlight={handleToggleHighlight}
-        onPlayerDraft={(id) => {
-          setSelectedPlayerId(id);
-          setDraftModalOpen(true);
-        }}
+        onPlayerDraft={handleDraftClick}
         canDraft={canDraft}
+        activeDraft={activeDraft}
       />
       {activeDraft && currentPick && (
         <Popover
@@ -549,10 +546,7 @@ export function PlayerList() {
         editDialogOpen={editModalOpen}
         onEditDialogClose={() => setEditModalOpen(false)}
         onPlayerSave={handleSaveEdit}
-        draftDialogOpen={draftModalOpen}
-        onDraftDialogClose={() => setDraftModalOpen(false)}
-        onManagerSelect={handleDraft}
-        activeDraft={activeDraft}
+          activeDraft={activeDraft}
       />
       <Snackbar
         open={snackbar.open}

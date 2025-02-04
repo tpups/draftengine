@@ -2,7 +2,6 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
 import { Draft, Player } from '../types/models';
 import { PlayerDetailsModal } from './PlayerDetailsModal';
 import { PlayerEditModal } from './PlayerEditModal';
-import { DraftPlayerModal } from './DraftPlayerModal';
 
 interface PlayerListDialogsProps {
   addDialogOpen: boolean;
@@ -17,9 +16,6 @@ interface PlayerListDialogsProps {
   editDialogOpen: boolean;
   onEditDialogClose: () => void;
   onPlayerSave: (player: Player) => void;
-  draftDialogOpen: boolean;
-  onDraftDialogClose: () => void;
-  onManagerSelect: (managerId: string) => void;
   activeDraft?: Draft;
 }
 
@@ -36,9 +32,6 @@ export function PlayerListDialogs({
   editDialogOpen,
   onEditDialogClose,
   onPlayerSave,
-  draftDialogOpen,
-  onDraftDialogClose,
-  onManagerSelect,
   activeDraft
 }: PlayerListDialogsProps) {
   const initialPlayerState: Omit<Player, 'id'> = {
@@ -67,10 +60,8 @@ export function PlayerListDialogs({
       control: null,
       command: null
     },
-    isDrafted: false,
-    draftRound: null,
-    draftPick: null,
-    draftedBy: null,
+    draftStatuses: [],
+    lastUpdated: new Date().toISOString(),
     isHighlighted: false,
     notes: null,
     personalRank: null
@@ -200,11 +191,6 @@ export function PlayerListDialogs({
         open={editDialogOpen}
         onClose={onEditDialogClose}
         onSave={onPlayerSave}
-      />
-      <DraftPlayerModal
-        open={draftDialogOpen}
-        onClose={onDraftDialogClose}
-        onManagerSelect={onManagerSelect}
       />
     </>
   );

@@ -1,6 +1,8 @@
 import { Box } from '@mui/material';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import { Draft, Manager, Player } from '../types/models';
+import { useState } from 'react';
+import { DraftManagerFlyout } from './DraftManagerFlyout';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import StarIcon from '@mui/icons-material/Star';
@@ -17,10 +19,16 @@ interface GridPlayer {
   rank: number | null;
   age: number | null;
   draftingManagerName: string;
-  isDrafted?: boolean;
   draftRound?: number | null;
   draftPick?: number | null;
-  draftedBy?: string | null;
+  draftStatus?: {
+    draftId: string;
+    isDrafted: boolean;
+    round: number;
+    pick: number;
+    overallPick: number;
+    managerId: string;
+  } | null;
   isHighlighted?: boolean;
   notes?: string | null;
   personalRank?: number | null;
@@ -32,6 +40,7 @@ interface PlayerListGridProps {
   players: Player[];
   managers: Manager[];
   currentUser?: Manager;
+  activeDraft?: Draft;
   onPlayerClick: (player: Player) => void;
   onPlayerEdit: (player: Player) => void;
   onPlayerDelete: (id: string) => void;
@@ -45,6 +54,7 @@ export function PlayerListGrid({
   players,
   managers,
   currentUser,
+  activeDraft,
   onPlayerClick,
   onPlayerEdit,
   onPlayerDelete,
@@ -52,9 +62,27 @@ export function PlayerListGrid({
   onPlayerDraft,
   canDraft
 }: PlayerListGridProps) {
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  const handleDraftClick = (event: React.MouseEvent<HTMLElement>, playerId: string) => {
+    event.stopPropagation();
+    setSelectedPlayerId(playerId);
+    setAnchorEl(event.currentTarget);
+    setFlyoutOpen(true);
+  };
+
+  const handleManagerSelect = (managerId: string) => {
+    if (selectedPlayerId) {
+      onPlayerDraft(selectedPlayerId);
+    }
+    setSelectedPlayerId(null);
+  };
   const gridData: GridPlayer[] = players.map(player => {
-    const draftingManager = player.draftedBy 
-      ? managers.find((m: Manager) => m.id === player.draftedBy)
+    const draftStatus = player.draftStatuses?.find(ds => ds.isDrafted);
+    const draftingManager = draftStatus
+      ? managers.find((m: Manager) => m.id === draftStatus.managerId)
       : null;
 
     return {
@@ -65,11 +93,17 @@ export function PlayerListGrid({
       rank: player.rank?.['steamer_2025'] || null,
       age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
       position: player.position?.join(', ') || '',
-      draftingManagerName: draftingManager?.name ?? '',
-      isDrafted: player.isDrafted,
-      draftRound: player.draftRound,
-      draftPick: player.draftPick,
-      draftedBy: player.draftedBy,
+      draftingManagerName: draftingManager?.name ?? (draftStatus?.managerId ? '[Manager Deleted]' : ''),
+      draftRound: draftStatus?.isDrafted ? draftStatus.round : null,
+      draftPick: draftStatus?.isDrafted ? draftStatus.pick : null,
+      draftStatus: draftStatus?.isDrafted ? {
+        draftId: draftStatus.draftId,
+        isDrafted: draftStatus.isDrafted,
+        round: draftStatus.round,
+        pick: draftStatus.pick,
+        overallPick: draftStatus.overallPick,
+        managerId: draftStatus.managerId
+      } : null,
       isHighlighted: player.isHighlighted,
       notes: player.notes,
       personalRank: player.personalRank,
@@ -78,14 +112,16 @@ export function PlayerListGrid({
   });
 
   const getRowClassName = (params: GridRowParams<GridPlayer>) => {
+    if (!params?.row) return '';
+    
     const classes: string[] = [];
     
     if (params.row.isHighlighted) {
       classes.push('highlighted');
     }
     
-    if (params.row.isDrafted) {
-      if (params.row.draftedBy === currentUser?.id) {
+    if (params.row.draftStatus?.managerId) {
+      if (params.row.draftStatus.managerId === currentUser?.id) {
         classes.push('drafted-by-user');
       } else {
         classes.push('drafted-by-other');
@@ -155,7 +191,7 @@ export function PlayerListGrid({
       width: 100,
       getActions: (params: GridRowParams<GridPlayer>) => {
         if (gridMode === 'draft') {
-          if (!params.row.isDrafted) {
+          if (!params.row.draftStatus) {
             const canMakePick = canDraft(params.row.id!);
             return [
               <GridActionsCellItem
@@ -167,7 +203,7 @@ export function PlayerListGrid({
                   } : {}
                 }} />}
                 disabled={!canMakePick}
-                onClick={() => onPlayerDraft(params.row.id!.toString())}
+                onClick={(event) => handleDraftClick(event, params.row.id!.toString())}
                 label="Draft"
                 title={canMakePick ? "Draft this player" : "No active draft or current pick"}
               />
@@ -247,13 +283,14 @@ export function PlayerListGrid({
       {
         field: 'draftingManagerName',
         headerName: 'Drafted By',
-        width: 150,
+        width: 150
       }
     ] : [])
   ];
 
   return (
-    <DataGrid
+    <>
+      <DataGrid
       getRowClassName={getRowClassName}
       rows={gridData}
       columns={columns}
@@ -295,6 +332,21 @@ export function PlayerListGrid({
           }
         }
       }}
-    />
+      />
+      {activeDraft && (
+        <DraftManagerFlyout
+          open={flyoutOpen}
+          onClose={() => {
+            setFlyoutOpen(false);
+            setAnchorEl(null);
+          }}
+          anchorEl={anchorEl}
+          activeDraft={activeDraft}
+          currentUser={currentUser}
+          onManagerSelect={handleManagerSelect}
+          managers={managers}
+        />
+      )}
+    </>
   );
 }

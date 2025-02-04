@@ -132,5 +132,13 @@ export const draftService = {
    * @returns Promise containing the updated draft
    */
   toggleActive: (draftId: string) =>
-    apiClient.post<ApiResponse<Draft>>(`/draft/${draftId}/toggleActive`)
+    apiClient.post<ApiResponse<Draft>>(`/draft/${draftId}/toggleActive`),
+
+  /**
+   * Retrieves the draft order for the active draft
+   * Returns the ordered list of managers and their positions
+   * @returns Promise containing the draft order positions
+   */
+  getDraftOrder: () =>
+    apiClient.get<ApiResponse<DraftPosition[]>>('/draft/order')
 };

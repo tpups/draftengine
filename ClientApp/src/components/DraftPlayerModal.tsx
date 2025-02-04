@@ -81,10 +81,13 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
     return round.picks.map(pick => {
       const manager = managers.find(m => m.id === pick.managerId);
       const draftedPlayer = players.find(p => 
-        p.isDrafted && 
-        p.draftedBy === pick.managerId && 
-        p.draftRound === selectedRound && 
-        p.draftPick === pick.pickNumber
+        p.draftStatuses?.some(status => 
+          status.isDrafted && 
+          status.managerId === pick.managerId && 
+          status.round === selectedRound && 
+          status.pick === pick.pickNumber &&
+          status.draftId === activeDraft.id
+        )
       );
 
       return {
@@ -113,24 +116,26 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
       maxWidth="xl"
       fullWidth
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Typography variant="h6" sx={{ flex: 1 }}>
-          Select Manager
-        </Typography>
-        {selectedRound && currentPick && (
-          <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-            Round {selectedRound}, Pick {selectedPick}
-            {(selectedRound !== currentPick.round || selectedPick !== currentPick.pick) && (
-              ` (Current: ${currentPick.round}.${currentPick.pick})`
-            )}
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography component="span" variant="h6" sx={{ flex: 1 }}>
+            Select Manager
           </Typography>
-        )}
-        <IconButton 
-          size="small"
-          onClick={(event) => setAnchorEl(event.currentTarget)}
-        >
-          <EditIcon />
-        </IconButton>
+          {selectedRound && currentPick && (
+            <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+              Round {selectedRound}, Pick {selectedPick}
+              {(selectedRound !== currentPick.round || selectedPick !== currentPick.pick) && (
+                ` (Current: ${currentPick.round}.${currentPick.pick})`
+              )}
+            </Typography>
+          )}
+          <IconButton 
+            size="small"
+            onClick={(event) => setAnchorEl(event.currentTarget)}
+          >
+            <EditIcon />
+          </IconButton>
+        </Box>
       </DialogTitle>
       <DialogContent>
         <Box sx={{
@@ -149,7 +154,7 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
         }}>
           {managersInRound.map((manager) => (
             <Paper
-              key={manager.id}
+              key={`${manager.id}-${manager.pickNumber}`}
               elevation={0}
               sx={{
                 p: 1,

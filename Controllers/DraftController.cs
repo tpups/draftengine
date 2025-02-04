@@ -238,6 +238,12 @@ public class DraftController : ControllerBase
     /// <remarks>
     /// Completes a pick by assigning a player to a manager and advancing the draft state.
     /// Updates both the draft state and player's draft status.
+    /// 
+    /// Draft Status Updates:
+    /// - Adds a new draft status to the player's draftStatuses array
+    /// - Each status contains the draft ID, manager ID, round, pick, and overall pick number
+    /// - Multiple draft statuses allow tracking a player across different drafts
+    /// - Draft status is immutable once created
     /// </remarks>
     /// <param name="draftId">The ID of the draft</param>
     /// <param name="request">Pick completion details including round, manager, and player</param>
