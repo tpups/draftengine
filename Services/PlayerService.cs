@@ -238,7 +238,15 @@ namespace DraftEngine.Services
             return result;
         }
 
-        // Draft management methods
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <remarks>
+        /// 
+        /// </remarks>
+        /// <param name="id"></param>
+        /// <param name="request"></param>
+        /// <param name="draftId"></param>
         public async Task<bool> MarkAsDrafted(string id, DraftPickRequest request, string draftId)
         {
             // Get the draft to find the overall pick number

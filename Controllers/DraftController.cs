@@ -85,6 +85,39 @@ public class DraftController : ControllerBase
         }
     }
 
+        /// <summary>
+    /// Gets the active pick in the active draft
+    /// </summary>
+    /// <remarks>
+    /// Returns information about the active pick in the draft, including round number, pick number, and overall pick number.
+    /// </remarks>
+    /// <response code="200">Returns the active pick information</response>
+    /// <response code="404">No active draft found</response>
+    /// <response code="500">Internal server error retrieving active pick</response>
+    [HttpGet("activePick")]
+    [ProducesResponseType(typeof(ApiResponse<PickResponse>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
+    public async Task<IActionResult> GetActivePick()
+    {
+        try
+        {
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null)
+            {
+                return NotFound(new { message = "No active draft found" });
+            }
+
+            var currentPick = await _draftService.GetActivePickAsync();
+            return Ok(new { value = currentPick });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting current pick");
+            return StatusCode(500, new { message = "Error getting current pick" });
+        }
+    }
+
     /// <summary>
     /// Gets the current pick in the active draft
     /// </summary>
@@ -95,7 +128,7 @@ public class DraftController : ControllerBase
     /// <response code="404">No active draft found</response>
     /// <response code="500">Internal server error retrieving current pick</response>
     [HttpGet("currentPick")]
-    [ProducesResponseType(typeof(ApiResponse<CurrentPickResponse>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<PickResponse>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
     public async Task<IActionResult> GetCurrentPick()
@@ -131,7 +164,7 @@ public class DraftController : ControllerBase
     /// <response code="404">No current pick found</response>
     /// <response code="500">Internal server error advancing pick</response>
     [HttpPost("advancePick")]
-    [ProducesResponseType(typeof(ApiResponse<CurrentPickResponse>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<PickResponse>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 400)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
