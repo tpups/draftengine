@@ -50,7 +50,7 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
   const managers = managersResponse?.value ?? [];
   const activeDraft = activeDraftResponse?.value;
   const currentPick = currentPickResponse?.value;
-  const players = playersResponse?.value ?? [];
+  const players = playersResponse ?? [];
 
   // Reset selected pick when modal opens or current pick changes
   useEffect(() => {

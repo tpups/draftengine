@@ -123,6 +123,14 @@ export interface MarkPickRequest {
     managerId: string;
 }
 
+export interface PaginatedResult<T> {
+    items: T[];
+    totalCount: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+}
+
 export interface ApiResponse<T> {
     value: T;
     message?: string;

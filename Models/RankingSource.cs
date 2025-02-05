@@ -63,7 +63,7 @@ namespace DraftEngine.Models
         // Sorts the players by their rank from a specific source
         public void SortPlayersByRank(string source)
         {
-            Players = Players.OrderBy(p => p.Rank.ContainsKey(source) ? p.Rank[source] : int.MaxValue).ToList();
+            Players = Players.OrderBy(p => p.Rank?.ContainsKey(source) == true ? p.Rank[source] : int.MaxValue).ToList();
         }
     }
 }

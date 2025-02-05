@@ -139,6 +139,12 @@
     - Value property for success responses
     - Message property for error details
     - Consistent structure across endpoints
+  * Pagination support:
+    - PaginatedResult<T> for list responses
+    - Default page size of 100 items
+    - Total count for UI pagination
+    - Optional page and pageSize parameters
+    - Consistent pagination across endpoints
   * Standard error format:
     - HTTP status code mapping
     - Descriptive error messages

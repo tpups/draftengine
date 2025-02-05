@@ -47,7 +47,7 @@ namespace DraftEngine.Services
             existing.LastUpdated = DateTime.UtcNow;
 
             // Helper function to merge dictionaries
-            void MergeDictionary<T>(Dictionary<string, T> existing, Dictionary<string, T> newData)
+            void MergeDictionary<T>(Dictionary<string, T>? existing, Dictionary<string, T>? newData)
             {
                 if (newData == null) return;
                 existing ??= new Dictionary<string, T>();
@@ -422,13 +422,93 @@ namespace DraftEngine.Services
             ).ToListAsync();
         }
 
-        public async Task<List<Player>> GetByETAAsync(int year) =>
-            await _players.Find(player => player.ETA == year).ToListAsync();
+        /// <summary>
+        /// Gets a paginated list of players
+        /// </summary>
+        /// <param name="pageNumber">The page number to retrieve (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
+        /// <param name="filter">Optional filter to apply to the query</param>
+        /// <returns>A paginated result containing the requested players</returns>
+        public async Task<PaginatedResult<Player>> GetPaginatedAsync(
+            int pageNumber = 1,
+            int pageSize = 100,
+            FilterDefinition<Player>? filter = null)
+        {
+            filter ??= Builders<Player>.Filter.Empty;
 
-        public async Task<List<Player>> GetByRiskLevelAsync(string source, string riskLevel) =>
-            await _players.Find(player => 
-                player.ProspectRisk.ContainsKey(source) && 
-                player.ProspectRisk[source] == riskLevel
-            ).ToListAsync();
+            var totalCount = await _players.CountDocumentsAsync(filter);
+            var skip = (pageNumber - 1) * pageSize;
+
+            var items = await _players.Find(filter)
+                .Skip(skip)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<Player>
+            {
+                Items = items,
+                TotalCount = (int)totalCount,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        /// <summary>
+        /// Gets a paginated list of players by level
+        /// </summary>
+        public async Task<PaginatedResult<Player>> GetByLevelPaginatedAsync(
+            string level,
+            int pageNumber = 1,
+            int pageSize = 100)
+        {
+            var filter = Builders<Player>.Filter.Eq(p => p.Level, level);
+            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+        }
+
+        /// <summary>
+        /// Gets a paginated list of players by team
+        /// </summary>
+        public async Task<PaginatedResult<Player>> GetByTeamPaginatedAsync(
+            string team,
+            int pageNumber = 1,
+            int pageSize = 100)
+        {
+            var filter = Builders<Player>.Filter.Eq(p => p.MLBTeam, team);
+            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+        }
+
+        /// <summary>
+        /// Gets a paginated list of players by position
+        /// </summary>
+        public async Task<PaginatedResult<Player>> GetByPositionPaginatedAsync(
+            string position,
+            int pageNumber = 1,
+            int pageSize = 100)
+        {
+            var filter = Builders<Player>.Filter.AnyEq(p => p.Position, position);
+            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+        }
+
+        /// <summary>
+        /// Gets a paginated list of undrafted players
+        /// </summary>
+        public async Task<PaginatedResult<Player>> GetUndraftedPlayersPaginatedAsync(
+            int pageNumber = 1,
+            int pageSize = 100)
+        {
+            var filter = Builders<Player>.Filter.Eq(p => p.IsDrafted, false);
+            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+        }
+
+        /// <summary>
+        /// Gets a paginated list of highlighted players
+        /// </summary>
+        public async Task<PaginatedResult<Player>> GetHighlightedPlayersPaginatedAsync(
+            int pageNumber = 1,
+            int pageSize = 100)
+        {
+            var filter = Builders<Player>.Filter.Eq(p => p.IsHighlighted, true);
+            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+        }
     }
 }

@@ -5,7 +5,8 @@ import {
   AgeRangeParams, 
   RiskLevelParams, 
   ApiResponse,
-  BirthDateVerificationResult 
+  BirthDateVerificationResult,
+  PaginatedResult
 } from '../types/models';
 import { useMemo } from 'react';
 
@@ -13,36 +14,45 @@ const BASE_PATH = '/player';
 
 const playerService = {
   // Basic CRUD operations
-  getAll: () => 
-    apiClient.get<ApiResponse<Player[]>>(BASE_PATH),
+  getAll: (pageNumber: number = 1, pageSize: number = 100) => 
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
 
   getById: (id: string) =>
-    apiClient.get<Player>(`${BASE_PATH}/${id}`),
+    apiClient.get<ApiResponse<Player>>(`${BASE_PATH}/${id}`)
+      .then(response => response.value),
 
   create: (player: Omit<Player, 'id'>) =>
-    apiClient.post<Player>(BASE_PATH, player),
+    apiClient.post<ApiResponse<Player>>(BASE_PATH, player)
+      .then(response => response.value),
 
   update: (id: string, player: Player) =>
-    apiClient.put<ApiResponse<Player>>(`${BASE_PATH}/${id}`, player),
+    apiClient.put<ApiResponse<Player>>(`${BASE_PATH}/${id}`, player)
+      .then(response => response.value),
 
   delete: (id: string) =>
     apiClient.delete<void>(`${BASE_PATH}/${id}`),
 
   // Filtering operations
-  getByLevel: (level: string) =>
-    apiClient.get<Player[]>(`${BASE_PATH}/byLevel/${level}`),
+  getByLevel: (level: string, pageNumber: number = 1, pageSize: number = 100) =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/byLevel/${level}?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
 
-  getByTeam: (team: string) =>
-    apiClient.get<Player[]>(`${BASE_PATH}/byTeam/${team}`),
+  getByTeam: (team: string, pageNumber: number = 1, pageSize: number = 100) =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/byTeam/${team}?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
 
-  getByPosition: (position: string) =>
-    apiClient.get<Player[]>(`${BASE_PATH}/byPosition/${position}`),
+  getByPosition: (position: string, pageNumber: number = 1, pageSize: number = 100) =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/byPosition/${position}?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
 
-  getUndrafted: () =>
-    apiClient.get<Player[]>(`${BASE_PATH}/undrafted`),
+  getUndrafted: (pageNumber: number = 1, pageSize: number = 100) =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/undrafted?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
 
-  getHighlighted: () =>
-    apiClient.get<Player[]>(`${BASE_PATH}/highlighted`),
+  getHighlighted: (pageNumber: number = 1, pageSize: number = 100) =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/highlighted?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
 
   // Draft management
   markAsDrafted: (id: string, request: { draftedBy: string; round: number; pick: number }) =>
@@ -62,14 +72,9 @@ const playerService = {
     apiClient.put<void>(`${BASE_PATH}/${id}/personalRank`, rank),
 
   // Advanced filtering
-  getByAgeRange: ({ minAge, maxAge }: AgeRangeParams) =>
-    apiClient.get<Player[]>(`${BASE_PATH}/byAge?minAge=${minAge}&maxAge=${maxAge}`),
-
-  getByETA: (year: number) =>
-    apiClient.get<Player[]>(`${BASE_PATH}/byETA/${year}`),
-
-  getByRiskLevel: ({ source, riskLevel }: RiskLevelParams) =>
-    apiClient.get<Player[]>(`${BASE_PATH}/byRiskLevel?source=${source}&riskLevel=${riskLevel}`),
+  getByAgeRange: ({ minAge, maxAge }: AgeRangeParams, pageNumber: number = 1, pageSize: number = 100) =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/byAge?minAge=${minAge}&maxAge=${maxAge}&pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
 
   // Batch operations
   importPlayers: (players: Omit<Player, 'id'>[]) =>

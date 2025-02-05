@@ -158,6 +158,13 @@ The DraftEngine follows a modern web API architecture with clear separation of c
   * Value property contains actual data
   * Count property for collection metadata
   * Consistent structure across endpoints
+- Pagination support:
+  * PaginatedResult<T> for list responses
+  * Default page size of 100 items
+  * Total count for client-side calculations
+  * Consistent pagination across all list endpoints
+  * Optional pagination parameters (page, pageSize)
+  * Proper metadata for client-side pagination UI
 - File Upload Handling:
   * Dedicated request models for file uploads
   * Proper multipart/form-data configuration

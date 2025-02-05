@@ -76,12 +76,10 @@ export function PlayerList() {
     enabled: !!activeDraftResponse?.value
   });
 
-  const { data: response, isLoading, error } = useQuery({
+  const { data: players = [], isLoading, error } = useQuery({
     queryKey: ['players'],
     queryFn: () => playerService.getAll(),
   });
-
-  const players = response?.value ?? [];
   const managers = managersResponse?.value ?? [];
   const activeDraft = activeDraftResponse?.value;
   const currentPick = currentPickResponse?.value;
@@ -316,7 +314,7 @@ export function PlayerList() {
   const handleSaveEdit = async (updatedPlayer: Player) => {
     try {
       const response = await playerService.update(updatedPlayer.id!, updatedPlayer);
-      if (response?.value) {
+      if (response) {
         await queryClient.refetchQueries({ queryKey: ['players'] });
         setEditModalOpen(false);
         setSelectedPlayer(null);
