@@ -18,7 +18,7 @@ public class CreateDraftRequest
 public class MarkPickRequest
 {
     [Required]
-    public int RoundNumber { get; set; }
+    public int OverallPickNumber { get; set; }
     [Required]
     public string ManagerId { get; set; } = string.Empty;
     [Required]

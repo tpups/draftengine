@@ -239,39 +239,46 @@ namespace DraftEngine.Services
         }
 
         /// <summary>
-        /// 
+        /// Marks a player as drafted in the active draft
         /// </summary>
         /// <remarks>
+        /// Updates the player's draft status to reflect being drafted:
+        /// - Adds a new draft status entry with draft details
+        /// - Removes any existing status for this draft
+        /// - Sets the player's drafted state
         /// 
+        /// Draft Status Updates:
+        /// - Draft ID from active draft
+        /// - Manager ID who made the pick
+        /// - Round and pick numbers
+        /// - Overall pick number
         /// </remarks>
-        /// <param name="id"></param>
-        /// <param name="request"></param>
-        /// <param name="draftId"></param>
-        public async Task<bool> MarkAsDrafted(string id, DraftPickRequest request, string draftId)
+        /// <param name="id">The ID of the player being drafted</param>
+        /// <param name="request">Draft pick details including manager, round, and pick numbers</param>
+        /// <returns>True if the player was successfully marked as drafted, false otherwise</returns>
+        public async Task<bool> MarkAsDrafted(string id, DraftPickRequest request)
         {
-            // Get the draft to find the overall pick number
-            var draft = await _draftService.GetByIdAsync(draftId);
-            if (draft == null) return false;
-
-            var round = draft.Rounds.FirstOrDefault(r => r.RoundNumber == request.Round);
-            if (round == null) return false;
-
-            var pick = round.Picks.FirstOrDefault(p => p.PickNumber == request.Pick);
-            if (pick == null) return false;
+            // Get the active draft
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null)
+            {
+                _logger.LogWarning("No active draft found when marking player {PlayerId} as drafted", id);
+                return false;
+            }
 
             var draftStatus = new DraftStatus
             {
-                DraftId = draftId,
+                DraftId = draft.Id!,
                 IsDrafted = true,
                 Round = request.Round,
                 Pick = request.Pick,
-                OverallPick = pick.OverallPickNumber,
+                OverallPick = request.OverallPick,
                 ManagerId = request.DraftedBy
             };
 
             // First remove any existing status for this draft
             var pullUpdate = Builders<Player>.Update
-                .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draftId);
+                .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draft.Id);
             await _players.UpdateOneAsync(player => player.Id == id, pullUpdate);
 
             // Then add the new status
@@ -279,17 +286,55 @@ namespace DraftEngine.Services
                 .Push(p => p.DraftStatuses, draftStatus);
 
             var result = await _players.UpdateOneAsync(player => player.Id == id, pushUpdate);
-            return result.ModifiedCount > 0;
+            
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation(
+                    "Marked player {PlayerId} as drafted in round {Round} pick {Pick} ({OverallPick} overall) by manager {ManagerId}", 
+                    id, request.Round, request.Pick, request.OverallPick, request.DraftedBy);
+                return true;
+            }
+            
+            _logger.LogWarning("Failed to mark player {PlayerId} as drafted", id);
+            return false;
         }
 
-        public async Task<bool> UndraftPlayerAsync(string id, string draftId)
+        /// <summary>
+        /// Removes a player's draft status from the active draft
+        /// </summary>
+        /// <remarks>
+        /// Removes only the draft status entry for the active draft:
+        /// - Preserves draft status entries for other drafts
+        /// - Does not affect the player's other attributes
+        /// - Logs the operation for tracking
+        /// - Used to undo a pick
+        /// </remarks>
+        /// <param name="id">The ID of the player to undraft</param>
+        /// <returns>True if the player's draft status was removed, false otherwise</returns>
+        public async Task<bool> UndraftPlayerAsync(string id)
         {
-            // Remove draft status for the specified draft only
+            // Get the active draft
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null)
+            {
+                _logger.LogWarning("No active draft found when undrafting player {PlayerId}", id);
+                return false;
+            }
+
+            // Remove draft status for the active draft only
             var update = Builders<Player>.Update
-                .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draftId);
+                .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draft.Id);
 
             var result = await _players.UpdateOneAsync(p => p.Id == id, update);
-            return result.ModifiedCount > 0;
+            
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation("Removed draft status for player {PlayerId} from draft {DraftId}", id, draft.Id);
+                return true;
+            }
+            
+            _logger.LogWarning("Failed to remove draft status for player {PlayerId}", id);
+            return false;
         }
 
         // Personal tracking methods
@@ -323,9 +368,26 @@ namespace DraftEngine.Services
             return result.ModifiedCount > 0;
         }
 
-        // Draft reset operation
+        /// <summary>
+        /// Resets draft status for all players in the specified draft
+        /// </summary>
+        /// <remarks>
+        /// Removes all draft status entries for the active draft:
+        /// - Affects all players that were drafted in this draft
+        /// - Preserves draft status entries for other drafts
+        /// - Logs the operation for tracking
+        /// - Used when resetting a draft to its initial state
+        /// </remarks>
+        /// <returns>The number of players whose draft status was reset</returns>
         public async Task<long> ResetDraftStatusAsync(string draftId)
         {
+            var draft = await _draftService.GetByIdAsync(draftId);
+            if (draft == null)
+            {
+                _logger.LogWarning("Draft {DraftId} not found when resetting draft status", draftId);
+                return 0;
+            }
+
             // Remove draft status for the specified draft from all players
             var update = Builders<Player>.Update
                 .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draftId);
@@ -334,6 +396,17 @@ namespace DraftEngine.Services
                 player => player.DraftStatuses.Any(ds => ds.DraftId == draftId),
                 update
             );
+
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation("Reset draft status for {Count} players in draft {Year} ({Type})", 
+                    result.ModifiedCount, draft.Year, draft.Type);
+            }
+            else
+            {
+                _logger.LogInformation("No players found with draft status for draft {Year} ({Type}", draft.Year, draft.Type);
+            }
+
             return result.ModifiedCount;
         }
 

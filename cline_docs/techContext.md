@@ -19,6 +19,37 @@
   - Cross-platform support
   - Modern C# features
   - Built-in dependency injection
+  - Service Layer Architecture:
+    * Two-tier state tracking (current/active):
+      - Unified current pick tracking
+      - Clear separation between states
+      - Intuitive advancement logic
+      - State synchronization patterns
+    * Comprehensive error handling:
+      - Consistent validation across endpoints
+      - Enhanced error messages
+      - Proper response codes
+      - Detailed error logging
+    * Input validation patterns:
+      - Request model validation
+      - Business rule validation
+      - State transition validation
+      - Draft integrity checks
+    * Robust MongoDB integration:
+      - Efficient querying patterns
+      - Transaction support
+      - State persistence
+      - Data consistency
+    * Standardized documentation:
+      - Comprehensive XML docs
+      - Response type documentation
+      - Validation rules
+      - Error scenarios
+    * Clear separation of concerns:
+      - Controller/Service boundaries
+      - State management isolation
+      - Data access patterns
+      - Business logic encapsulation
 
 ### Database
 - MongoDB
@@ -43,11 +74,27 @@
 - RESTful architecture
 - Documentation Patterns:
   * XML Documentation:
-    - Comprehensive endpoint documentation
-    - Parameter descriptions and constraints
-    - Response type specifications
-    - Error scenarios and handling
-    - Example request/response pairs
+    - Comprehensive endpoint documentation:
+      * Clear operation descriptions
+      * Detailed parameter constraints
+      * Response type specifications
+      * Error scenario documentation
+      * Validation rule documentation
+    - Response type documentation:
+      * Consistent ApiResponse<T> usage
+      * Complete status code coverage
+      * Error response formats
+      * Success response structures
+    - Parameter documentation:
+      * Input validation rules
+      * Business rule constraints
+      * Type safety requirements
+      * Example values and formats
+    - Error documentation:
+      * Specific error scenarios
+      * Error response formats
+      * Status code usage
+      * Error handling patterns
   * TypeScript Documentation:
     - TSDoc comments for service methods
     - Interface and type definitions
@@ -61,16 +108,52 @@
     - Visual state documentation
     - Accessibility considerations
 - Swagger/OpenAPI Integration:
-  * Standard ASP.NET Core conventions
-  * Proper response type attributes
-  * Error response documentation
-  * File upload configuration
-  * Debug mode support
+  * Standard ASP.NET Core conventions:
+    - Route attribute usage
+    - Model binding patterns
+    - Controller action patterns
+    - Service injection
+  * Response type attributes:
+    - Consistent ApiResponse<T> usage
+    - Complete status code coverage
+    - Proper type specification
+    - Attribute ordering
+  * Error response documentation:
+    - HTTP status code mapping
+    - Error message formats
+    - Validation error structure
+    - Business rule violations
+  * File upload configuration:
+    - Multipart/form-data support
+    - Progress tracking
+    - Validation rules
+    - Error handling
+  * Debug mode support:
+    - Console logging options
+    - State transition logging
+    - Pick state debugging
+    - Development environment features
 - JSON Response Format:
-  * Consistent ApiResponse<T> wrapper
-  * Standard error format
-  * Validation error structure
-  * Debug information handling
+  * Consistent ApiResponse<T> wrapper:
+    - Generic type parameter for response data
+    - Value property for success responses
+    - Message property for error details
+    - Consistent structure across endpoints
+  * Standard error format:
+    - HTTP status code mapping
+    - Descriptive error messages
+    - Validation error details
+    - Business rule violation info
+  * Validation error structure:
+    - Field-level validation errors
+    - Business rule validation errors
+    - State transition errors
+    - Data integrity errors
+  * Debug information handling:
+    - Console logging configuration
+    - State transition details
+    - Pick state information
+    - Development environment data
 - File Upload Support:
   * Dedicated request models
   * Multipart/form-data handling

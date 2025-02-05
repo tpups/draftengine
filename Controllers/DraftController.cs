@@ -85,7 +85,7 @@ public class DraftController : ControllerBase
         }
     }
 
-        /// <summary>
+    /// <summary>
     /// Gets the active pick in the active draft
     /// </summary>
     /// <remarks>
@@ -108,13 +108,13 @@ public class DraftController : ControllerBase
                 return NotFound(new { message = "No active draft found" });
             }
 
-            var currentPick = await _draftService.GetActivePickAsync();
-            return Ok(new { value = currentPick });
+            var activePick = await _draftService.GetActivePickAsync();
+            return Ok(new { value = activePick });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting current pick");
-            return StatusCode(500, new { message = "Error getting current pick" });
+            _logger.LogError(ex, "Error getting active pick");
+            return StatusCode(500, new { message = "Error getting active pick" });
         }
     }
 
@@ -151,81 +151,74 @@ public class DraftController : ControllerBase
         }
     }
 
+    
     /// <summary>
-    /// Advances the current pick to the next available pick
+    /// Updates the active pick in the current draft
     /// </summary>
     /// <remarks>
-    /// Moves the current pick forward based on the provided request. Can optionally skip completed picks.
-    /// Includes detailed logging of the pick advancement process when console logging is enabled.
+    /// Sets the active pick using an overall pick number. Used for pick selection and navigation.
+    /// Updates both the active pick state and refreshes the draft state.
+    /// 
+    /// Pick State Updates:
+    /// - Updates active pick to the specified overall pick number
+    /// - Maintains draft integrity and pick sequence
+    /// - Preserves current pick tracking for draft progress
     /// </remarks>
-    /// <param name="request">Contains options for pick advancement, including whether to skip completed picks</param>
-    /// <response code="200">Returns the updated pick information</response>
-    /// <response code="400">No next pick available or failed to update pick state</response>
-    /// <response code="404">No current pick found</response>
-    /// <response code="500">Internal server error advancing pick</response>
-    [HttpPost("advancePick")]
-    [ProducesResponseType(typeof(ApiResponse<PickResponse>), 200)]
+    /// <param name="request">Contains the overall pick number to set as active</param>
+    /// <response code="200">Returns the updated Draft object</response>
+    /// <response code="400">Failed to update pick state</response>
+    /// <response code="404">No active draft found</response>
+    /// <response code="500">Internal server error updating pick state</response>
+    [HttpPost("updateActivePick")]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 400)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> AdvanceCurrentPick([FromBody] AdvancePickRequest request)
+    public async Task<IActionResult> UpdateActivePick([FromBody] UpdateActivePickRequest request)
     {
         try
         {
-            if (_enableConsoleLogging) Console.WriteLine("Starting advance pick operation");
-            _logger.LogInformation("Starting advance pick operation");
-            
-            var currentPick = await _draftService.GetCurrentPickAsync();
-            if (currentPick == null)
+            if (_enableConsoleLogging)
             {
-                if (_enableConsoleLogging) Console.WriteLine("No current pick found");
-                _logger.LogWarning("No current pick found");
-                return NotFound(new { message = "No current pick found" });
+                Console.WriteLine($"Updating active pick to overall pick {request.OverallPickNumber}");
             }
-            if (_enableConsoleLogging) Console.WriteLine($"Current pick: Round {currentPick.Round}, Pick {currentPick.Pick}, Overall {currentPick.OverallPickNumber}");
-            _logger.LogInformation("Current pick: Round {round}, Pick {pick}, Overall {overall}", 
-                currentPick.Round, currentPick.Pick, currentPick.OverallPickNumber);
 
-            var nextPick = await _draftService.GetNextPickAsync(currentPick.Round, currentPick.Pick, request?.SkipCompleted ?? false);
-            if (nextPick == null)
+            _logger.LogInformation("Updating active pick to overall pick {OverallPickNumber}", request.OverallPickNumber);
+
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null)
             {
-                if (_enableConsoleLogging) Console.WriteLine("No next pick available");
-                _logger.LogWarning("No next pick available");
-                return BadRequest(new { message = "No next pick available" });
+                if (_enableConsoleLogging) Console.WriteLine("No active draft found");
+                return NotFound(new { message = "No active draft found" });
             }
-            if (_enableConsoleLogging) Console.WriteLine($"Found next pick: Round {nextPick.Round}, Pick {nextPick.Pick}, Overall {nextPick.OverallPickNumber}");
-            _logger.LogInformation("Found next pick: Round {round}, Pick {pick}, Overall {overall}", 
-                nextPick.Round, nextPick.Pick, nextPick.OverallPickNumber);
 
-            // Update pick state using our new method
-            var updatedPick = await _draftService.UpdateCurrentPickAsync(
-                nextPick.Round,
-                nextPick.Pick,
-                nextPick.OverallPickNumber
-            );
+            // Update pick state
+            var updatedPick = await _draftService.UpdatePickStateAsync(request.OverallPickNumber);
             if (updatedPick == null)
             {
                 if (_enableConsoleLogging) Console.WriteLine("Failed to update pick state");
-                _logger.LogError("Failed to update pick state");
                 return BadRequest(new { message = "Failed to update pick state" });
             }
+
+            // Get updated draft
+            draft = await _draftService.GetByIdAsync(draft.Id!);
 
             if (_enableConsoleLogging)
             {
                 Console.WriteLine($"Successfully updated pick state");
-                Console.WriteLine($"New pick: Round {updatedPick.Round}, Pick {updatedPick.Pick}, Overall {updatedPick.OverallPickNumber}");
+                Console.WriteLine($"Current: Round {draft.CurrentRound}, Pick {draft.CurrentPick}, Overall {draft.CurrentOverallPick}");
+                Console.WriteLine($"Active: Round {draft.ActiveRound}, Pick {draft.ActivePick}, Overall {draft.ActiveOverallPick}");
             }
-            _logger.LogInformation("Successfully updated to Round {round}, Pick {pick}, Overall {overall}", 
-                updatedPick.Round, updatedPick.Pick, updatedPick.OverallPickNumber);
 
-            return Ok(new { value = updatedPick });
+            return Ok(new { value = draft });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error advancing pick");
-            return StatusCode(500, new { message = "Error advancing pick" });
+            _logger.LogError(ex, "Error updating pick state");
+            return StatusCode(500, new { message = "Error updating pick state" });
         }
     }
+
 
     /// <summary>
     /// Creates a new draft
@@ -256,6 +249,7 @@ public class DraftController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation when creating draft");
+
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
@@ -266,7 +260,7 @@ public class DraftController : ControllerBase
     }
 
     /// <summary>
-    /// Marks a pick as complete in the specified draft
+    /// Marks a pick as complete in the active draft
     /// </summary>
     /// <remarks>
     /// Completes a pick by assigning a player to a manager and advancing the draft state.
@@ -278,103 +272,97 @@ public class DraftController : ControllerBase
     /// - Multiple draft statuses allow tracking a player across different drafts
     /// - Draft status is immutable once created
     /// </remarks>
-    /// <param name="draftId">The ID of the draft</param>
     /// <param name="request">Pick completion details including round, manager, and player</param>
     /// <response code="200">Returns the updated Draft object</response>
     /// <response code="400">Pick is already complete</response>
-    /// <response code="404">Draft, round, or pick not found</response>
+    /// <response code="404">No active draft found or pick not found</response>
     /// <response code="500">Internal server error marking pick complete</response>
-    [HttpPost("{draftId}/pick")]
+    [HttpPost("pick")]
     [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 400)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> MarkPickComplete(string draftId, [FromBody] MarkPickRequest request)
+    public async Task<IActionResult> MarkPickComplete([FromBody] MarkPickRequest request)
     {
         try
         {
-            if (_enableConsoleLogging) Console.WriteLine($"Marking pick complete for draft {draftId}, round {request.RoundNumber}, manager {request.ManagerId}");
-            
-            var draft = await _draftService.GetByIdAsync(draftId);
-            if (draft == null)
+            Draft? existingDraft = await _draftService.GetActiveDraftAsync();
+            if (existingDraft == null)
             {
-                if (_enableConsoleLogging) Console.WriteLine("Draft not found");
-                return NotFound(new { message = "Draft not found" });
+                _logger.LogWarning("No active draft found");
+                return NotFound(new { message = "No active draft found" });
             }
-
-            var round = draft.Rounds.FirstOrDefault(r => r.RoundNumber == request.RoundNumber);
+            var round = existingDraft?.Rounds.FirstOrDefault(r => r.Picks.Any(p => p.OverallPickNumber == request.OverallPickNumber));
             if (round == null)
             {
-                if (_enableConsoleLogging) Console.WriteLine($"Round {request.RoundNumber} not found");
+                _logger.LogWarning("Round not found: {RoundNumber}", round?.RoundNumber);
                 return NotFound(new { message = "Round not found" });
             }
-
-            if (_enableConsoleLogging)
-            {
-                Console.WriteLine($"Current round picks:");
-                foreach (var p in round.Picks)
-                {
-                    Console.WriteLine($"Pick {p.PickNumber}: IsComplete = {p.IsComplete}, ManagerId = {p.ManagerId}");
-                }
-            }
-
-            // Find the current pick
-            var currentPick = await _draftService.GetCurrentPickAsync();
-            if (currentPick == null)
-            {
-                if (_enableConsoleLogging) Console.WriteLine("No current pick found");
-                return NotFound(new { message = "No current pick found" });
-            }
-
-            // Find the specific pick we want to mark complete
-            var pick = round.Picks.FirstOrDefault(p => p.PickNumber == currentPick.Pick);
+            DraftPosition? pick = existingDraft?.Rounds.SelectMany(r => r.Picks).FirstOrDefault(p => p.OverallPickNumber == request.OverallPickNumber);
             if (pick == null)
             {
-                if (_enableConsoleLogging) Console.WriteLine($"Pick {currentPick.Pick} not found in round {request.RoundNumber}");
-                return NotFound(new { message = "Pick not found in round" });
+                _logger.LogWarning("Pick {OverallPick} not found", request.OverallPickNumber);
+                return NotFound(new { message = "Pick not found in draft" });
             }
 
             if (pick.IsComplete)
             {
-                if (_enableConsoleLogging) Console.WriteLine($"Pick {pick.PickNumber} is already complete");
+                _logger.LogWarning("Round {RoundNumber} pick {PickNumber} is already complete", round?.RoundNumber, pick?.PickNumber);
                 return BadRequest(new { message = "Pick is already complete" });
-            }
-
-            if (_enableConsoleLogging) Console.WriteLine($"Found pick {pick.PickNumber}");
-
-            // Mark the pick as complete for the selected manager
-            pick.ManagerId = request.ManagerId;
-            pick.IsComplete = true;
-
-            // Save the draft to persist the completed pick
-            await _draftService.UpdateAsync(draft);
-
-            // Get next pick to advance to
-            var nextPick = await _draftService.GetNextPickAsync(request.RoundNumber, pick.PickNumber, false);
-            if (nextPick != null)
+            }            
+            if (_enableConsoleLogging)
             {
-                // Update pick state using our new method
-                await _draftService.UpdateCurrentPickAsync(nextPick.Round, nextPick.Pick, nextPick.OverallPickNumber);
+                Console.WriteLine("Marking pick [round {RoundNumber} pick {PickNumber} ({OverallPick} overall)] complete in active draft", round?.RoundNumber, pick?.PickNumber, pick?.OverallPickNumber);
+            }
+            // Get the current pick so we can determine if completed pick is also current pick
+            PickResponse? currentPick = await _draftService.GetCurrentPickAsync();
+            if (currentPick == null)
+            {
+                _logger.LogWarning("No current pick found");
+                return NotFound(new { message = "No current pick found" });
             }
 
-            // Mark the player as drafted in this draft
-            await _playerService.MarkAsDrafted(request.PlayerId, new DraftPickRequest
+
+            // If the completed pick is the current pick, advance to the next pick
+            // We can use overall pick number to determine the next pick
+            if (currentPick.OverallPickNumber == pick.OverallPickNumber)
+            {
+                // We should handle the case where the current pick is the last pick in the draft
+                await _draftService.UpdatePickStateAsync(pick.OverallPickNumber + 1, true);
+            }
+            // else
+            // If not current pick, we don't change state, but we still mark the pick as complete        
+            // Mark the player as drafted in the active draft
+            var success = await _playerService.MarkAsDrafted(request.PlayerId, new DraftPickRequest
             {
                 DraftedBy = request.ManagerId,
-                Round = request.RoundNumber,
-                Pick = pick.PickNumber
-            }, draftId);
+                Round = round.RoundNumber,
+                Pick = pick.PickNumber,
+                OverallPick = pick.OverallPickNumber
+            });
 
-            if (_enableConsoleLogging) Console.WriteLine($"Successfully marked pick {pick.PickNumber} as complete");
+            if (!success)
+            {
+                _logger.LogWarning("Failed to mark player {PlayerId} as drafted", request.PlayerId);
+                return StatusCode(500, new { message = "Failed to mark player as drafted" });
+            }
 
-            // Get updated draft after pick state changes
-            draft = await _draftService.GetByIdAsync(draftId);
+            _logger.LogInformation(
+                "Completed pick {PickNumber} in round {RoundNumber} of {DraftType} draft", pick.PickNumber, round.RoundNumber, existingDraft.IsSnakeDraft ? "snake" : "standard");
+
+            // Get updated draft
+            var draft = await _draftService.GetActiveDraftAsync();
             return Ok(new { value = draft });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Cannot complete pick: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error marking pick complete");
-            return StatusCode(500, new { message = "Error marking pick complete" });
+            _logger.LogError(ex, "Failed to complete pick");
+            return StatusCode(500, new { message = "Error completing pick" });
         }
     }
 
@@ -382,198 +370,115 @@ public class DraftController : ControllerBase
     /// Adds a new round to an existing draft
     /// </summary>
     /// <remarks>
-    /// Creates a new round with picks for each manager, handling snake draft ordering if enabled.
-    /// Automatically calculates pick numbers and overall pick numbers.
+    /// Creates a new round with picks for each manager, handling the following:
+    /// - Maintains snake draft ordering if enabled
+    /// - Automatically calculates pick numbers and overall pick numbers
+    /// - Preserves draft order consistency
+    /// - Maintains pick sequence integrity
+    /// 
+    /// Round Addition Rules:
+    /// - All picks in new round start as incomplete
+    /// - Pick numbers follow draft order pattern
+    /// - Overall pick numbers maintain sequence
+    /// - Snake draft rounds reverse manager order
     /// </remarks>
-    /// <param name="draftId">The ID of the draft to add a round to</param>
-    /// <response code="200">Returns the updated Draft object</response>
+    /// <param name="id">The ID of the draft to add a round to</param>
+    /// <response code="200">Returns the updated Draft object with the new round</response>
+    /// <response code="400">Invalid operation (e.g., draft state prevents round addition)</response>
     /// <response code="404">Draft not found</response>
     /// <response code="500">Internal server error adding round</response>
-    [HttpPost("{draftId}/addRound")]
+    [HttpPost("{id}/addRound")]
     [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> AddRound(string draftId)
+    public async Task<IActionResult> AddRound(string id)
     {
         try
         {
-            var draft = await _draftService.GetByIdAsync(draftId);
-            if (draft == null)
+            if (_enableConsoleLogging)
             {
+                Console.WriteLine($"Adding round to draft {id}");
+            }
+
+            var existingDraft = await _draftService.GetByIdAsync(id);
+            if (existingDraft == null)
+            {
+                _logger.LogWarning("Draft not found: {DraftId}", id);
                 return NotFound(new { message = "Draft not found" });
             }
 
-            var newRoundNumber = draft.Rounds.Count + 1;
-            var totalManagers = draft.DraftOrder.Length;
-            var roundPicks = new DraftPosition[totalManagers];
-
-            for (int j = 0; j < totalManagers; j++)
-            {
-                var originalPosition = draft.DraftOrder[j];
-                var newPosition = new DraftPosition
-                {
-                    ManagerId = originalPosition.ManagerId,
-                    PickNumber = originalPosition.PickNumber,
-                    IsComplete = false
-                };
-
-                if (draft.IsSnakeDraft && newRoundNumber % 2 == 0)
-                {
-                    // Even rounds (snake back)
-                    newPosition.OverallPickNumber = (newRoundNumber * totalManagers) - j;
-                    roundPicks[totalManagers - 1 - j] = newPosition;  // Reverse array position
-                }
-                else
-                {
-                    // Odd rounds (normal order)
-                    newPosition.OverallPickNumber = ((newRoundNumber - 1) * totalManagers) + j + 1;
-                    roundPicks[j] = newPosition;  // Normal array position
-                }
-            }
-
-            var newRound = new DraftRound
-            {
-                RoundNumber = newRoundNumber,
-                Picks = roundPicks
-            };
-
-            draft.Rounds.Add(newRound);
-            await _draftService.UpdateAsync(draft);
+            var draft = await _draftService.AddRemoveRoundAsync(id, true);
+            
+            _logger.LogInformation(
+                "Added round {RoundNumber} to {DraftType} draft", 
+                draft.Rounds.Count,
+                draft.IsSnakeDraft ? "snake" : "standard");
 
             return Ok(new { value = draft });
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Cannot add round: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding round");
+            _logger.LogError(ex, "Failed to add round");
             return StatusCode(500, new { message = "Error adding round" });
         }
     }
 
     /// <summary>
-    /// Removes the last round from a draft
+    /// Removes the last round from an existing draft
     /// </summary>
     /// <remarks>
-    /// Removes the highest numbered round from the draft. Cannot remove rounds that contain completed picks.
+    /// Removes the highest numbered round from the draft with strict validation:
+    /// - Cannot remove the only remaining round
+    /// - Cannot remove a round with any completed picks
+    /// - Maintains draft integrity by preventing destructive modifications
     /// </remarks>
-    /// <param name="draftId">The ID of the draft to remove a round from</param>
-    /// <response code="200">Returns the updated Draft object</response>
-    /// <response code="400">Cannot remove round with completed picks</response>
-    /// <response code="404">Draft not found</response>
-    /// <response code="500">Internal server error removing round</response>
-    [HttpPost("{draftId}/removeRound")]
+    /// <param name="id">The unique identifier of the draft to remove a round from</param>
+    /// <returns>The updated draft with the last round removed</returns>
+    [HttpPost("{id}/removeRound")]
     [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 400)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> RemoveRound(string draftId)
+    public async Task<IActionResult> RemoveRound(string id)
     {
         try
         {
-            var draft = await _draftService.RemoveRoundAsync(draftId);
+            if (_enableConsoleLogging)
+            {
+                Console.WriteLine($"Removing round from draft {id}");
+            }
+
+            var existingDraft = await _draftService.GetByIdAsync(id);
+            if (existingDraft == null)
+            {
+                _logger.LogWarning("Draft not found: {DraftId}", id);
+                return NotFound(new { message = "Draft not found" });
+            }
+
+            var draft = await _draftService.AddRemoveRoundAsync(id, false);
+            
+            _logger.LogInformation(
+                "Removed round {RoundNumber} from {DraftType} draft", 
+                draft.Rounds.Count + 1,
+                draft.IsSnakeDraft ? "snake" : "standard");
+
             return Ok(new { value = draft });
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation when removing round");
+            _logger.LogWarning("Cannot remove round: {Message}", ex.Message);
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing round");
+            _logger.LogError(ex, "Failed to remove round");
             return StatusCode(500, new { message = "Error removing round" });
-        }
-    }
-
-    /// <summary>
-    /// Resets a draft to its initial state
-    /// </summary>
-    /// <remarks>
-    /// Clears all completed picks, resets pick tracking to round 1, pick 1, and resets draft status for all players.
-    /// Both current and active picks are reset to the start.
-    /// </remarks>
-    /// <param name="draftId">The ID of the draft to reset</param>
-    /// <response code="200">Returns true if reset successful</response>
-    /// <response code="404">Draft not found</response>
-    /// <response code="500">Internal server error resetting draft</response>
-    [HttpPost("{draftId}/reset")]
-    [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
-    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
-    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> ResetDraft(string draftId)
-    {
-        try
-        {
-            var draft = await _draftService.GetByIdAsync(draftId);
-            if (draft == null)
-            {
-                return NotFound(new { message = "Draft not found" });
-            }
-
-            // Reset all picks and current position
-            foreach (var round in draft.Rounds)
-            {
-                foreach (var pick in round.Picks)
-                {
-                    pick.IsComplete = false;
-                }
-            }
-
-            // Reset pick tracking to initial state
-            draft.CurrentRound = 1;
-            draft.CurrentPick = 1;
-            draft.CurrentOverallPick = 1;
-            draft.ActiveRound = 1;
-            draft.ActivePick = 1;
-            draft.ActiveOverallPick = 1;
-
-            await _draftService.UpdateAsync(draft);
-
-            // Reset draft status for players in this draft
-            await _playerService.ResetDraftStatusAsync(draftId);
-
-            return Ok(new { value = true });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error resetting draft");
-            return StatusCode(500, new { message = "Error resetting draft" });
-        }
-    }
-
-    /// <summary>
-    /// Deletes a draft and resets associated player draft statuses
-    /// </summary>
-    /// <remarks>
-    /// Permanently removes the draft from the system and clears draft status for all players that were drafted.
-    /// This operation cannot be undone.
-    /// </remarks>
-    /// <param name="draftId">The ID of the draft to delete</param>
-    /// <response code="200">Returns true if deletion successful</response>
-    /// <response code="404">Draft not found</response>
-    /// <response code="500">Internal server error deleting draft</response>
-    [HttpDelete("{draftId}")]
-    [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
-    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
-    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> DeleteDraft(string draftId)
-    {
-        try
-        {
-            var draft = await _draftService.GetByIdAsync(draftId);
-            if (draft == null)
-            {
-                return NotFound(new { message = "Draft not found" });
-            }
-
-            // Reset draft status for players before deleting the draft
-            await _playerService.ResetDraftStatusAsync(draftId);
-            await _draftService.DeleteAsync(draftId);
-            return Ok(new { value = true });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting draft");
-            return StatusCode(500, new { message = "Error deleting draft" });
         }
     }
 
@@ -584,103 +489,176 @@ public class DraftController : ControllerBase
     /// Activates or deactivates a draft. When activating a draft, any currently active draft will be deactivated
     /// as only one draft can be active at a time.
     /// </remarks>
-    /// <param name="draftId">The ID of the draft to toggle active status</param>
-    /// <response code="200">Returns the updated Draft object</response>
+    /// <param name="id">The ID of the draft to toggle active status</param>
+    /// <response code="200">Returns true if toggle successful</response>
+    /// <response code="400">Invalid operation (e.g., cannot toggle draft with active picks)</response>
     /// <response code="404">Draft not found</response>
     /// <response code="500">Internal server error toggling draft status</response>
-    [HttpPost("{draftId}/toggleActive")]
-    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
-    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
-    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> ToggleActive(string draftId)
-    {
-        try
-        {
-            var draft = await _draftService.GetByIdAsync(draftId);
-            if (draft == null)
-            {
-                return NotFound(new { message = "Draft not found" });
-            }
-
-            // If we're activating this draft, deactivate any other active draft
-            if (!draft.IsActive)
-            {
-                var activeDraft = await _draftService.GetActiveDraftAsync();
-                if (activeDraft != null)
-                {
-                    activeDraft.IsActive = false;
-                    await _draftService.UpdateAsync(activeDraft);
-                }
-            }
-
-            // Toggle the active status
-            draft.IsActive = !draft.IsActive;
-            await _draftService.UpdateAsync(draft);
-
-            return Ok(new { value = draft });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error toggling draft active status");
-            return StatusCode(500, new { message = "Error toggling draft active status" });
-        }
-    }
-
-    /// <summary>
-    /// Updates the active pick in the current draft
-    /// </summary>
-    /// <remarks>
-    /// Sets the active pick to a specific round and pick number. Used for manual pick selection and navigation.
-    /// Updates both the active pick state and refreshes the draft state.
-    /// </remarks>
-    /// <param name="request">Contains the round, pick, and overall pick number to set as active</param>
-    /// <response code="200">Returns the updated Draft object</response>
-    /// <response code="400">Failed to update pick state</response>
-    /// <response code="404">No active draft found</response>
-    /// <response code="500">Internal server error updating pick state</response>
-    [HttpPost("updateActivePick")]
+    [HttpPost("{id}/toggleActive")]
     [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
     [ProducesResponseType(typeof(ApiResponse<string>), 400)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> UpdateActivePick([FromBody] UpdateActivePickRequest request)
+    public async Task<IActionResult> ToggleActive(string id)
     {
         try
         {
-            if (_enableConsoleLogging) Console.WriteLine($"Updating active pick to Round {request.Round}, Pick {request.Pick}");
-            _logger.LogInformation("Updating active pick to Round {round}, Pick {pick}", request.Round, request.Pick);
-
-            var draft = await _draftService.GetActiveDraftAsync();
-            if (draft == null)
-            {
-                if (_enableConsoleLogging) Console.WriteLine("No active draft found");
-                return NotFound(new { message = "No active draft found" });
-            }
-
-            // Update pick state using our new method
-            var updatedPick = await _draftService.UpdateCurrentPickAsync(request.Round, request.Pick, request.OverallPickNumber);
-            if (updatedPick == null)
-            {
-                if (_enableConsoleLogging) Console.WriteLine("Failed to update pick state");
-                return BadRequest(new { message = "Failed to update pick state" });
-            }
-
-            // Get updated draft
-            draft = await _draftService.GetByIdAsync(draft.Id!);
-
             if (_enableConsoleLogging)
             {
-                Console.WriteLine($"Successfully updated pick state");
-                Console.WriteLine($"Current: Round {draft.CurrentRound}, Pick {draft.CurrentPick}, Overall {draft.CurrentOverallPick}");
-                Console.WriteLine($"Active: Round {draft.ActiveRound}, Pick {draft.ActivePick}, Overall {draft.ActiveOverallPick}");
+                Console.WriteLine($"Toggling active status for draft {id}");
             }
 
-            return Ok(new { value = draft });
+            var existingDraft = await _draftService.GetByIdAsync(id);
+            if (existingDraft == null)
+            {
+                _logger.LogWarning("Draft not found: {DraftId}", id);
+                return NotFound(new { message = "Draft not found" });
+            }
+
+            await _draftService.ToggleActiveAsync(id);
+            
+            _logger.LogInformation(
+                "{Action} {DraftType} draft {DraftId}", 
+                existingDraft.IsActive ? "Deactivated" : "Activated",
+                existingDraft.IsSnakeDraft ? "snake" : "standard",
+                id);
+
+            return Ok(new { value = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Cannot toggle draft: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating pick state");
-            return StatusCode(500, new { message = "Error updating pick state" });
+            _logger.LogError(ex, "Failed to toggle draft status");
+            return StatusCode(500, new { message = "Error toggling draft status" });
+        }
+    }
+
+    /// <summary>
+    /// Resets a draft to its initial state
+    /// </summary>
+    /// <remarks>
+    /// Resets a draft to its initial state with the following validations and operations:
+    /// - Draft must exist and be active
+    /// - Clears all completed picks
+    /// - Resets pick tracking to round 1, pick 1
+    /// - Resets draft status for all players
+    /// - Both current and active picks are reset to the start
+    /// </remarks>
+    /// <param name="id">The ID of the draft to reset</param>
+    /// <response code="200">Returns the updated Draft object</response>
+    /// <response code="400">Draft is not active</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error resetting draft</response>
+    [HttpPost("{id}/reset")]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
+    public async Task<IActionResult> ResetDraft(string id)
+    {
+        try
+        {
+            var existingDraft = await _draftService.GetByIdAsync(id);
+            if (existingDraft == null)
+            {
+                _logger.LogWarning("Draft not found: {DraftId}", id);
+                return NotFound(new { message = "Draft not found" });
+            }
+            if (!existingDraft.IsActive)
+            {
+                _logger.LogWarning("Draft {Year} {Type} {DraftId} is not active", existingDraft.Year, existingDraft.Type, id);
+                return BadRequest(new { message = "Draft is not active" });
+            }
+
+            if (_enableConsoleLogging)
+            {
+                Console.WriteLine($"Resetting draft {existingDraft.Year} {existingDraft.Type} {id}");
+            }
+
+            // Reset player statuses
+            var playersResult = await _playerService.ResetDraftStatusAsync(id);
+
+            // Reset the draft itself
+            var draftResult = await _draftService.ResetAsync(id);
+            
+            _logger.LogInformation(
+                "Reset {DraftType} draft with {RoundCount} rounds", 
+                draftResult.IsSnakeDraft ? "snake" : "standard",
+                draftResult.Rounds.Count);
+
+            return Ok(new { value = draftResult });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Cannot reset draft: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reset draft");
+            return StatusCode(500, new { message = "Error resetting draft" });
+        }
+    }    
+
+    /// <summary>
+    /// Deletes a draft and resets associated player draft statuses
+    /// </summary>
+    /// <remarks>
+    /// Permanently removes the draft from the system and clears draft status for all players that were drafted.
+    /// This operation cannot be undone.
+    /// </remarks>
+    /// <param name="id">The ID of the draft to delete</param>
+    /// <response code="200">Returns true if deletion successful</response>
+    /// <response code="400">Invalid operation (e.g., cannot delete active draft)</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error deleting draft</response>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
+    public async Task<IActionResult> DeleteDraft(string id)
+    {
+        try
+        {
+            if (_enableConsoleLogging)
+            {
+                Console.WriteLine($"Deleting draft {id}");
+            }
+
+            var existingDraft = await _draftService.GetByIdAsync(id);
+            if (existingDraft == null)
+            {
+                _logger.LogWarning("Draft not found: {DraftId}", id);
+                return NotFound(new { message = "Draft not found" });
+            }
+            
+            // Reset draft status for players before deleting the draft
+            await _playerService.ResetDraftStatusAsync(id);
+            
+            // Delete the draft
+            await _draftService.DeleteAsync(id);
+            
+            _logger.LogInformation(
+                "Deleted {DraftType} draft with {RoundCount} rounds", 
+                existingDraft.IsSnakeDraft ? "snake" : "standard",
+                existingDraft.Rounds.Count);
+
+            return Ok(new { value = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Cannot delete draft: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete draft");
+            return StatusCode(500, new { message = "Error deleting draft" });
         }
     }
 }

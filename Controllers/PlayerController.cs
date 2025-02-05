@@ -276,7 +276,7 @@ namespace DraftEngine.Controllers
                 return BadRequest(new { message = "No active draft found" });
             }
 
-            var success = await _playerService.MarkAsDrafted(id, request, draft.Id!);
+            var success = await _playerService.MarkAsDrafted(id, request);
             
             if (!success)
                 return NotFound();
@@ -303,7 +303,7 @@ namespace DraftEngine.Controllers
                 return BadRequest(new { message = "No active draft found" });
             }
 
-            var success = await _playerService.UndraftPlayerAsync(id, draft.Id!);
+            var success = await _playerService.UndraftPlayerAsync(id);
             
             if (!success)
                 return NotFound();
@@ -316,18 +316,20 @@ namespace DraftEngine.Controllers
         /// </summary>
         /// <returns>A message indicating how many players were reset</returns>
         /// <response code="200">Returns the number of players reset</response>
-        [HttpPost("reset-draft-status")]
+        /// <param name="draftId">The ID of the draft to reset status for</param>
+        [HttpPost("{draftId}/reset-draft-status")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> ResetDraftStatus()
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ResetDraftStatus(string draftId)
         {
             // Get the active draft
-            var draft = await _draftService.GetActiveDraftAsync();
+            var draft = await _draftService.GetByIdAsync(draftId);
             if (draft == null)
             {
-                return BadRequest(new { message = "No active draft found" });
+                return BadRequest(new { message = "Draft not found" });
             }
 
-            var count = await _playerService.ResetDraftStatusAsync(draft.Id!);
+            var count = await _playerService.ResetDraftStatusAsync(draftId);
             return Ok(new { message = $"Reset draft status for {count} players" });
         }
 

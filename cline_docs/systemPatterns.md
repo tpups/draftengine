@@ -271,10 +271,38 @@ The DraftEngine follows a modern web API architecture with clear separation of c
      * Handle auto-generated values appropriately
 
 ### Service Layer
-- Service class per domain entity
-- Dependency injection
-- Repository pattern implementation
-- Async operations
+1. Draft Service Design
+   - Two-tier pick tracking system:
+     * Current Pick: Tracks actual draft progress
+     * Active Pick: Manages UI selection state
+   - Robust error handling and validation:
+     * Input parameter validation
+     * Database operation error handling
+     * State consistency checks
+     * Protection against invalid states
+   - Comprehensive documentation:
+     * XML documentation for all methods
+     * Clear parameter descriptions
+     * Exception documentation
+     * Usage remarks and examples
+   - Draft state management:
+     * Single active draft enforcement
+     * Draft creation with validation
+     * Round management (add/remove)
+     * Pick state synchronization
+   - MongoDB integration:
+     * Async operations throughout
+     * Proper filter and update definitions
+     * Efficient query patterns
+     * Result validation
+
+2. Service Layer Patterns
+   - Service class per domain entity
+   - Dependency injection
+   - Repository pattern implementation
+   - Async operations
+   - Standardized error handling
+   - Consistent logging practices
 
 ### API Controllers
 - Attribute routing
