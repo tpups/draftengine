@@ -4,11 +4,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import FastForwardIcon from '@mui/icons-material/FastForward';
 import { Draft } from '../types/models';
-import { CurrentPickResponse } from '../services/draftService';
+import { PickResponse } from '../services/draftService';
 import { config } from '../config/config';
 
 // Helper function to log pick state
-const logPickState = (activeDraft: Draft | undefined, currentPick: CurrentPickResponse | undefined, context: string) => {
+const logPickState = (activeDraft: Draft | undefined, context: string) => {
   if (!config.debug.enableConsoleLogging) return;
 
   console.log(`[${context}] Pick State:`, {
@@ -16,11 +16,6 @@ const logPickState = (activeDraft: Draft | undefined, currentPick: CurrentPickRe
       round: activeDraft.activeRound,
       pick: activeDraft.activePick,
       overall: activeDraft.activeOverallPick
-    } : null,
-    current: currentPick ? {
-      round: currentPick.round,
-      pick: currentPick.pick,
-      overall: currentPick.overallPickNumber
     } : null
   });
 };
@@ -30,13 +25,12 @@ interface PlayerListToolbarProps {
   onGridModeChange: (mode: 'prep' | 'draft') => void;
   onAddPlayer: () => void;
   onResetDraft: () => void;
-  currentPick?: CurrentPickResponse;
   activeDraft?: Draft;
   onAdvancePick: (skipCompleted: boolean) => void;
   onPickSelectorClick: (event: React.MouseEvent<HTMLElement>) => void;
   canAdvance: boolean;
   canSkipToIncomplete: boolean;
-  getCurrentPickManager: () => { name?: string } | null;
+  getActivePickManager: () => { name?: string } | null;
 }
 
 export function PlayerListToolbar({
@@ -44,13 +38,12 @@ export function PlayerListToolbar({
   onGridModeChange,
   onAddPlayer,
   onResetDraft,
-  currentPick,
   activeDraft,
   onAdvancePick,
   onPickSelectorClick,
   canAdvance,
   canSkipToIncomplete,
-  getCurrentPickManager
+  getActivePickManager
 }: PlayerListToolbarProps) {
   return (
     <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -73,14 +66,14 @@ export function PlayerListToolbar({
             Draft Mode
           </ToggleButton>
         </ToggleButtonGroup>
-        {gridMode === 'draft' && currentPick && (
+        {gridMode === 'draft' && activeDraft && (
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <IconButton
                   size="small"
                   onClick={() => {
-                    logPickState(activeDraft, currentPick, 'Before Advance Pick');
+                    logPickState(activeDraft, 'Before Advance Pick');
                     onAdvancePick(false);
                   }}
                   disabled={!canAdvance}
@@ -91,7 +84,7 @@ export function PlayerListToolbar({
                 <IconButton
                   size="small"
                   onClick={() => {
-                    logPickState(activeDraft, currentPick, 'Before Skip to Incomplete');
+                    logPickState(activeDraft, 'Before Skip to Incomplete');
                     onAdvancePick(true);
                   }}
                   disabled={!canSkipToIncomplete}
@@ -102,7 +95,7 @@ export function PlayerListToolbar({
                 <IconButton
                   size="small"
                   onClick={(event) => {
-                    logPickState(activeDraft, currentPick, 'Before Edit Pick');
+                    logPickState(activeDraft, 'Before Edit Pick');
                     onPickSelectorClick(event);
                   }}
                   title="Edit active pick"
@@ -111,8 +104,8 @@ export function PlayerListToolbar({
                 </IconButton>
               </Box>
               <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap' }}>
-                Round {currentPick.round}, Pick {currentPick.pick} (Overall #{currentPick.overallPickNumber})
-                {getCurrentPickManager()?.name && ` - ${getCurrentPickManager()?.name}'s Pick`}
+                Round {activeDraft.activeRound}, Pick {activeDraft.activePick} (Overall #{activeDraft.activeOverallPick})
+                {getActivePickManager()?.name && ` - ${getActivePickManager()?.name}'s Pick`}
               </Typography>
             </Box>
           </>

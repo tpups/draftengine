@@ -55,7 +55,7 @@ const playerService = {
       .then(response => response.value.items),
 
   // Draft management
-  markAsDrafted: (id: string, request: { draftedBy: string; round: number; pick: number }) =>
+  markAsDrafted: (id: string, request: { draftedBy: string; round: number; pick: number; overallPick: number }) =>
     apiClient.post<void>(`${BASE_PATH}/${id}/draft`, request),
 
   undraftPlayer: (id: string) =>

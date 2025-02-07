@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Box, 
   Button, 
@@ -23,10 +23,12 @@ import { Draft, Manager } from '../../types/models';
 import { DraftOrderList } from '../DraftOrderList';
 import { draftService } from '../../services/draftService';
 import { managerService } from '../../services/managerService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export const DraftManagement: React.FC = () => {
-  const [currentDraft, setCurrentDraft] = useState<Draft | null>(null);
-  const [allDrafts, setAllDrafts] = useState<Draft[]>([]);
+  const queryClient = useQueryClient();
+
+  // State
   const [draftStatus, setDraftStatus] = useState<{
     success: boolean;
     message: string;
@@ -36,140 +38,128 @@ export const DraftManagement: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [removeRoundDialogOpen, setRemoveRoundDialogOpen] = useState(false);
   const [draftToDelete, setDraftToDelete] = useState<Draft | null>(null);
-  const [draftLoading, setDraftLoading] = useState(false);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
-  const [managers, setManagers] = useState<Manager[]>([]);
   const [initialRounds, setInitialRounds] = useState<string>('5');
   const [isSnakeDraft, setIsSnakeDraft] = useState<boolean>(true);
 
-  useEffect(() => {
-    const loadCurrentDraft = async () => {
-      try {
-        const response = await draftService.getActiveDraft();
-        setCurrentDraft(response.value);
-      } catch (error) {
-        console.error('Error loading current draft:', error);
-      }
-    };
+  // Queries
+  const { data: managersResponse } = useQuery({
+    queryKey: ['managers'],
+    queryFn: () => managerService.getAll(),
+    staleTime: 0
+  });
 
-    loadCurrentDraft();
-  }, []);
+  const { data: activeDraftResponse } = useQuery({
+    queryKey: ['activeDraft'],
+    queryFn: () => draftService.getActiveDraft(),
+    staleTime: 0
+  });
 
-  useEffect(() => {
-    const loadAllDrafts = async () => {
-      try {
-        const response = await draftService.getAll();
-        setAllDrafts(response.value);
-      } catch (error) {
-        console.error('Error loading drafts:', error);
-      }
-    };
+  const { data: allDraftsResponse } = useQuery({
+    queryKey: ['drafts'],
+    queryFn: () => draftService.getAll(),
+    staleTime: 0
+  });
 
-    loadAllDrafts();
-  }, []);
+  const currentDraft = activeDraftResponse?.value;
+  const allDrafts = allDraftsResponse?.value ?? [];
+  const managers = managersResponse?.value ?? [];
 
-  const loadManagers = useCallback(async () => {
-    try {
-      const response = await managerService.getAll();
-      setManagers(response.value);
-    } catch (error) {
-      console.error('Error loading managers:', error);
-      setDraftStatus({
-        success: false,
-        message: `Error loading managers: ${error instanceof Error ? error.message : 'Unknown error'}`
+  // Mutations
+  const resetDraftMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      await draftService.resetDraft(draftId);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch all queries
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] }),
+        queryClient.invalidateQueries({ queryKey: ['currentPick'] }),
+        queryClient.invalidateQueries({ queryKey: ['players'] })
+      ]).then(() => {
+        setDraftStatus({
+          success: true,
+          message: 'Successfully reset draft'
+        });
+        setResetDialogOpen(false);
       });
-    }
-  }, []);
-
-  useEffect(() => {
-    loadManagers();
-  }, [loadManagers]);
-
-  const handleResetDraft = async () => {
-    try {
-      setDraftLoading(true);
-      setDraftStatus(null);
-      if (!currentDraft?.id) {
-        throw new Error('No active draft');
-      }
-      await draftService.resetDraft(currentDraft.id);
-      await loadManagers(); // Refresh manager list
-      setCurrentDraft(null);
-      setDraftStatus({
-        success: true,
-        message: 'Successfully reset draft'
-      });
-      setResetDialogOpen(false);
-    } catch (error) {
+    },
+    onError: (error) => {
       setDraftStatus({
         success: false,
         message: `Error resetting draft: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
-    } finally {
-      setDraftLoading(false);
     }
-  };
+  });
 
-  const handleDeleteDraft = async () => {
-    if (!draftToDelete?.id) return;
-
-    try {
-      setDraftLoading(true);
-      setDraftStatus(null);
-      await draftService.deleteDraft(draftToDelete.id);
-      
-      // Refresh drafts list
-      const response = await draftService.getAll();
-      setAllDrafts(response.value);
-      
-      // If we deleted the current draft, clear it
-      if (draftToDelete.id === currentDraft?.id) {
-        setCurrentDraft(null);
-      }
-
-      setDraftStatus({
-        success: true,
-        message: 'Successfully deleted draft'
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      await draftService.deleteDraft(draftId);
+    },
+    onSuccess: () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['drafts'] }),
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] })
+      ]).then(() => {
+        setDraftStatus({
+          success: true,
+          message: 'Successfully deleted draft'
+        });
+        setDeleteDialogOpen(false);
+        setDraftToDelete(null);
       });
-      setDeleteDialogOpen(false);
-      setDraftToDelete(null);
-    } catch (error) {
+    },
+    onError: (error) => {
       setDraftStatus({
         success: false,
         message: `Error deleting draft: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
-    } finally {
-      setDraftLoading(false);
     }
-  };
+  });
 
-  const handleRemoveRound = async () => {
-    try {
-      setDraftLoading(true);
-      setDraftStatus(null);
-      if (!currentDraft?.id) {
-        throw new Error('No active draft');
-      }
-      const response = await draftService.removeRound(currentDraft.id);
-      setCurrentDraft(response.value);
-      setDraftStatus({
-        success: true,
-        message: 'Successfully removed round'
+  const removeRoundMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      return draftService.removeRound(draftId);
+    },
+    onSuccess: (response) => {
+      return queryClient.invalidateQueries({ queryKey: ['activeDraft'] }).then(() => {
+        setDraftStatus({
+          success: true,
+          message: 'Successfully removed round'
+        });
+        setRemoveRoundDialogOpen(false);
       });
-      setRemoveRoundDialogOpen(false);
-    } catch (error) {
+    },
+    onError: (error) => {
       setDraftStatus({
         success: false,
         message: `Error removing round: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
-    } finally {
-      setDraftLoading(false);
     }
-  };
+  });
 
-  const handleCreateDraft = async () => {
-    try {
-      setDraftLoading(true);
+  const addRoundMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      return draftService.addRound(draftId);
+    },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({ queryKey: ['activeDraft'] }).then(() => {
+        setDraftStatus({
+          success: true,
+          message: 'Successfully added new round'
+        });
+      });
+    },
+    onError: (error) => {
+      setDraftStatus({
+        success: false,
+        message: `Error adding round: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+  });
+
+  const createDraftMutation = useMutation({
+    mutationFn: async () => {
       if (selectedManagers.length !== managers.length) {
         throw new Error('All managers must be included in the draft order');
       }
@@ -177,8 +167,7 @@ export const DraftManagement: React.FC = () => {
       if (rounds < 1) {
         throw new Error('Number of rounds must be at least 1');
       }
-      setDraftStatus(null);
-      const response = await draftService.createDraft({
+      return draftService.createDraft({
         year: new Date().getFullYear(),
         type: 'standard',
         isSnakeDraft,
@@ -187,30 +176,78 @@ export const DraftManagement: React.FC = () => {
           managerId,
           pickNumber: index + 1,
           isComplete: false,
-          overallPickNumber: 0  // Will be calculated by backend
+          overallPickNumber: 0
         }))
       });
-      setCurrentDraft(response.value);
-      
-      // Refresh drafts list
-      const draftsResponse = await draftService.getAll();
-      setAllDrafts(draftsResponse.value);
-
-      setDraftStatus({
-        success: true,
-        message: 'Successfully created new draft'
+    },
+    onSuccess: () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['drafts'] }),
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] })
+      ]).then(() => {
+        setDraftStatus({
+          success: true,
+          message: 'Successfully created new draft'
+        });
+        setDraftOrderDialogOpen(false);
       });
-      setDraftOrderDialogOpen(false);
-      await loadManagers(); // Refresh manager list
-    } catch (error) {
+    },
+    onError: (error) => {
       setDraftStatus({
         success: false,
         message: `Error creating draft: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
-    } finally {
-      setDraftLoading(false);
     }
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async (draftId: string) => {
+      return draftService.toggleActive(draftId);
+    },
+    onSuccess: (_, draftId) => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['drafts'] }),
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] })
+      ]).then(() => {
+        setDraftStatus({
+          success: true,
+          message: 'Draft status toggled successfully'
+        });
+      });
+    },
+    onError: (error) => {
+      setDraftStatus({
+        success: false,
+        message: `Error toggling draft status: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+  });
+
+  const handleResetDraft = () => {
+    if (!currentDraft?.id) return;
+    resetDraftMutation.mutate(currentDraft.id);
   };
+
+  const handleDeleteDraft = () => {
+    if (!draftToDelete?.id) return;
+    deleteDraftMutation.mutate(draftToDelete.id);
+  };
+
+  const handleRemoveRound = () => {
+    if (!currentDraft?.id) return;
+    removeRoundMutation.mutate(currentDraft.id);
+  };
+
+  const handleCreateDraft = () => {
+    createDraftMutation.mutate();
+  };
+
+  const isLoading = resetDraftMutation.isPending || 
+    deleteDraftMutation.isPending || 
+    removeRoundMutation.isPending || 
+    addRoundMutation.isPending || 
+    createDraftMutation.isPending || 
+    toggleActiveMutation.isPending;
 
   return (
     <Paper sx={{ p: 4 }}>
@@ -227,57 +264,38 @@ export const DraftManagement: React.FC = () => {
             setDraftStatus(null);
             setDraftOrderDialogOpen(true);
           }}
-          disabled={draftLoading}
+          disabled={isLoading}
         >
-          {draftLoading ? 'Generating...' : 'Generate Draft'}
+          {isLoading ? 'Generating...' : 'Generate Draft'}
         </Button>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="contained"
             color="primary"
-            onClick={async () => {
-              try {
-                setDraftLoading(true);
-                setDraftStatus(null);
-                if (!currentDraft?.id) {
-                  throw new Error('No active draft');
-                }
-                const response = await draftService.addRound(currentDraft.id);
-                await loadManagers(); // Refresh manager list
-                setCurrentDraft(response.value);
-                setDraftStatus({
-                  success: true,
-                  message: 'Successfully added new round'
-                });
-              } catch (error) {
-                setDraftStatus({
-                  success: false,
-                  message: `Error adding round: ${error instanceof Error ? error.message : 'Unknown error'}`
-                });
-              } finally {
-                setDraftLoading(false);
-              }
+            onClick={() => {
+              if (!currentDraft?.id) return;
+              addRoundMutation.mutate(currentDraft.id);
             }}
-            disabled={!currentDraft?.id || draftLoading}
+            disabled={!currentDraft?.id || isLoading}
           >
-            {draftLoading ? 'Adding...' : 'Add Round'}
+            {isLoading ? 'Adding...' : 'Add Round'}
           </Button>
           <Button
             variant="contained"
             color="primary"
             onClick={() => setRemoveRoundDialogOpen(true)}
-            disabled={!currentDraft?.id || currentDraft?.rounds.length <= 1 || draftLoading}
+            disabled={!currentDraft?.id || currentDraft?.rounds.length <= 1 || isLoading}
           >
-            {draftLoading ? 'Removing...' : 'Remove Round'}
+            {isLoading ? 'Removing...' : 'Remove Round'}
           </Button>
         </Box>
         <Button
           variant="contained"
           color="error"
           onClick={() => setResetDialogOpen(true)}
-          disabled={!currentDraft?.id || draftLoading}
+          disabled={!currentDraft?.id || isLoading}
         >
-          {draftLoading ? 'Resetting...' : 'Reset Draft'}
+          {isLoading ? 'Resetting...' : 'Reset Draft'}
         </Button>
       </Box>
 
@@ -298,36 +316,8 @@ export const DraftManagement: React.FC = () => {
                           <span>
                             <Switch
                               checked={draft.isActive}
-                              onChange={async () => {
-                                try {
-                                  setDraftLoading(true);
-                                  setDraftStatus(null);
-                                  await draftService.toggleActive(draft.id!);
-                                  
-                                  // Refresh drafts list
-                                  const response = await draftService.getAll();
-                                  setAllDrafts(response.value);
-                                  
-                                  // Refresh current draft if needed
-                                  if (currentDraft?.id === draft.id) {
-                                    const activeDraftResponse = await draftService.getActiveDraft();
-                                    setCurrentDraft(activeDraftResponse.value);
-                                  }
-
-                                  setDraftStatus({
-                                    success: true,
-                                    message: `Draft ${draft.isActive ? 'deactivated' : 'activated'} successfully`
-                                  });
-                                } catch (error) {
-                                  setDraftStatus({
-                                    success: false,
-                                    message: `Error toggling draft status: ${error instanceof Error ? error.message : 'Unknown error'}`
-                                  });
-                                } finally {
-                                  setDraftLoading(false);
-                                }
-                              }}
-                              disabled={draftLoading}
+                              onChange={() => toggleActiveMutation.mutate(draft.id!)}
+                              disabled={isLoading}
                             />
                           </span>
                         </Tooltip>
@@ -339,7 +329,7 @@ export const DraftManagement: React.FC = () => {
                                 setDraftToDelete(draft);
                                 setDeleteDialogOpen(true);
                               }}
-                              disabled={draftLoading}
+                              disabled={isLoading}
                             >
                               <DeleteIcon />
                             </IconButton>
@@ -366,7 +356,7 @@ export const DraftManagement: React.FC = () => {
 
       <Dialog
         open={draftOrderDialogOpen}
-        onClose={() => !draftLoading && setDraftOrderDialogOpen(false)}
+        onClose={() => !isLoading && setDraftOrderDialogOpen(false)}
         maxWidth={false}
       >
         <DialogTitle sx={{ bgcolor: 'grey.100' }}>Set Draft Order</DialogTitle>
@@ -433,12 +423,12 @@ export const DraftManagement: React.FC = () => {
             )}
           </Box>
           <Button 
-          onClick={() => {
-            setDraftOrderDialogOpen(false);
-            setDraftStatus(null);
-            setIsSnakeDraft(true); // Reset to default
-          }}
-            disabled={draftLoading}
+            onClick={() => {
+              setDraftOrderDialogOpen(false);
+              setDraftStatus(null);
+              setIsSnakeDraft(true); // Reset to default
+            }}
+            disabled={isLoading}
           >
             Cancel
           </Button>
@@ -446,7 +436,7 @@ export const DraftManagement: React.FC = () => {
             variant="contained"
             disabled={
               selectedManagers.length !== managers.length || 
-              draftLoading || 
+              isLoading || 
               initialRounds === '' || 
               parseInt(initialRounds) < 1
             }
@@ -459,7 +449,7 @@ export const DraftManagement: React.FC = () => {
 
       <Dialog
         open={resetDialogOpen}
-        onClose={() => !draftLoading && setResetDialogOpen(false)}
+        onClose={() => !isLoading && setResetDialogOpen(false)}
       >
         <DialogTitle sx={{ bgcolor: 'grey.100' }}>Reset Draft</DialogTitle>
         <DialogContent sx={{ bgcolor: 'grey.100' }}>
@@ -494,7 +484,7 @@ export const DraftManagement: React.FC = () => {
         <DialogActions sx={{ bgcolor: 'grey.100', px: 3 }}>
           <Button 
             onClick={() => setResetDialogOpen(false)}
-            disabled={draftLoading}
+            disabled={isLoading}
           >
             Cancel
           </Button>
@@ -502,16 +492,16 @@ export const DraftManagement: React.FC = () => {
             variant="contained"
             color="error"
             onClick={handleResetDraft}
-            disabled={draftLoading}
+            disabled={isLoading}
           >
-            {draftLoading ? 'Resetting...' : 'Reset Draft'}
+            {isLoading ? 'Resetting...' : 'Reset Draft'}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog
         open={removeRoundDialogOpen}
-        onClose={() => !draftLoading && setRemoveRoundDialogOpen(false)}
+        onClose={() => !isLoading && setRemoveRoundDialogOpen(false)}
       >
         <DialogTitle sx={{ bgcolor: 'grey.100' }}>Remove Round</DialogTitle>
         <DialogContent sx={{ bgcolor: 'grey.100' }}>
@@ -538,7 +528,7 @@ export const DraftManagement: React.FC = () => {
         <DialogActions sx={{ bgcolor: 'grey.100', px: 3 }}>
           <Button 
             onClick={() => setRemoveRoundDialogOpen(false)}
-            disabled={draftLoading}
+            disabled={isLoading}
           >
             Cancel
           </Button>
@@ -546,16 +536,16 @@ export const DraftManagement: React.FC = () => {
             variant="contained"
             color="primary"
             onClick={handleRemoveRound}
-            disabled={draftLoading}
+            disabled={isLoading}
           >
-            {draftLoading ? 'Removing...' : 'Remove Round'}
+            {isLoading ? 'Removing...' : 'Remove Round'}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog
         open={deleteDialogOpen}
-        onClose={() => !draftLoading && setDeleteDialogOpen(false)}
+        onClose={() => !isLoading && setDeleteDialogOpen(false)}
       >
         <DialogTitle sx={{ bgcolor: 'grey.100' }}>Delete Draft</DialogTitle>
         <DialogContent sx={{ bgcolor: 'grey.100' }}>
@@ -589,7 +579,7 @@ export const DraftManagement: React.FC = () => {
               setDeleteDialogOpen(false);
               setDraftToDelete(null);
             }}
-            disabled={draftLoading}
+            disabled={isLoading}
           >
             Cancel
           </Button>
@@ -597,9 +587,9 @@ export const DraftManagement: React.FC = () => {
             variant="contained"
             color="error"
             onClick={handleDeleteDraft}
-            disabled={draftLoading}
+            disabled={isLoading}
           >
-            {draftLoading ? 'Deleting...' : 'Delete Draft'}
+            {isLoading ? 'Deleting...' : 'Delete Draft'}
           </Button>
         </DialogActions>
       </Dialog>

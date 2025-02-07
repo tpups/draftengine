@@ -2,7 +2,7 @@ import { Dialog, DialogTitle, DialogContent, Box, Typography, Paper, IconButton,
 import { Manager, Draft, Player } from '../types/models';
 import { useQuery } from '@tanstack/react-query';
 import { managerService } from '../services/managerService';
-import { draftService, CurrentPickResponse } from '../services/draftService';
+import { draftService, PickResponse } from '../services/draftService';
 import { playerService } from '../services/playerService';
 import EditIcon from '@mui/icons-material/Edit';
 import { DraftPickSelector } from './DraftPickSelector';
@@ -29,22 +29,26 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
   const { data: managersResponse } = useQuery({
     queryKey: ['managers'],
     queryFn: () => managerService.getAll(),
+    staleTime: 0
   });
 
   const { data: activeDraftResponse } = useQuery({
     queryKey: ['activeDraft'],
     queryFn: () => draftService.getActiveDraft(),
+    staleTime: 0
   });
 
   const { data: currentPickResponse } = useQuery({
     queryKey: ['currentPick'],
     queryFn: () => draftService.getCurrentPick(),
-    enabled: !!activeDraftResponse?.value
+    enabled: !!activeDraftResponse?.value,
+    staleTime: 0
   });
 
   const { data: playersResponse } = useQuery({
     queryKey: ['players'],
     queryFn: () => playerService.getAll(),
+    staleTime: 0
   });
 
   const managers = managersResponse?.value ?? [];

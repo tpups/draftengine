@@ -1,15 +1,20 @@
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Box, AppBar, Toolbar, Typography, Button } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button, IconButton } from '@mui/material';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { theme } from './utils/theme';
 import { Home } from './pages/Home';
 import { AdminPanel } from './pages/AdminPanel';
+import { DebugLogWindow } from './components/DebugLogWindow';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import { useState } from 'react';
+import { debugService } from './services/debugService';
 
 function AppContent() {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const isAdmin = location.pathname === '/admin';
+  const [showDebugLogs, setShowDebugLogs] = useState(false);
   
   return (
     <ThemeProvider theme={theme}>
@@ -49,7 +54,7 @@ function AppContent() {
                 Home
               </Button>
             </Link>
-            <Link to="/admin" style={{ textDecoration: 'none' }}>
+            <Link to="/admin" style={{ textDecoration: 'none', marginRight: '16px' }}>
               <Button 
                 variant="contained"
                 sx={{ 
@@ -65,6 +70,26 @@ function AppContent() {
                 Admin
               </Button>
             </Link>
+            <IconButton
+              onClick={() => {
+                const newState = !showDebugLogs;
+                setShowDebugLogs(newState);
+                if (newState) {
+                  debugService.enablePolling();
+                } else {
+                  debugService.disablePolling();
+                }
+              }}
+              sx={{ 
+                color: showDebugLogs ? 'warning.main' : 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+              title={showDebugLogs ? 'Hide Debug Logs' : 'Show Debug Logs'}
+            >
+              <BugReportIcon />
+            </IconButton>
           </Toolbar>
         </AppBar>
         
@@ -72,6 +97,15 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/admin" element={<AdminPanel />} />
         </Routes>
+
+        {showDebugLogs && (
+          <DebugLogWindow 
+            onClose={() => {
+              setShowDebugLogs(false);
+              debugService.disablePolling();
+            }} 
+          />
+        )}
       </Box>
     </ThemeProvider>
   );

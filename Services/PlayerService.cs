@@ -117,8 +117,22 @@ namespace DraftEngine.Services
         public async Task<List<Player>> GetByPositionAsync(string position) =>
             await _players.Find(player => player.Position.Contains(position)).ToListAsync();
 
-        public async Task<List<Player>> GetUndraftedPlayersAsync() =>
-            await _players.Find(player => !player.IsDrafted).ToListAsync();
+        public async Task<List<Player>> GetUndraftedPlayersAsync()
+        {
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null) return new List<Player>();
+
+            var filter = Builders<Player>.Filter.Or(
+                Builders<Player>.Filter.Eq(p => p.DraftStatuses, null),
+                Builders<Player>.Filter.Not(
+                    Builders<Player>.Filter.ElemMatch(
+                        p => p.DraftStatuses,
+                        ds => ds.DraftId == draft.Id
+                    )
+                )
+            );
+            return await _players.Find(filter).ToListAsync();
+        }
 
         public async Task<List<Player>> GetHighlightedPlayersAsync() =>
             await _players.Find(player => player.IsHighlighted).ToListAsync();
@@ -392,10 +406,13 @@ namespace DraftEngine.Services
             var update = Builders<Player>.Update
                 .PullFilter(p => p.DraftStatuses, ds => ds.DraftId == draftId);
 
-            var result = await _players.UpdateManyAsync(
-                player => player.DraftStatuses.Any(ds => ds.DraftId == draftId),
-                update
+            // Find all players with a draft status for this draft
+            var filter = Builders<Player>.Filter.ElemMatch(
+                p => p.DraftStatuses,
+                ds => ds.DraftId == draftId
             );
+
+            var result = await _players.UpdateManyAsync(filter, update);
 
             if (result.ModifiedCount > 0)
             {
@@ -496,7 +513,24 @@ namespace DraftEngine.Services
             int pageNumber = 1,
             int pageSize = 100)
         {
-            var filter = Builders<Player>.Filter.Eq(p => p.IsDrafted, false);
+            var draft = await _draftService.GetActiveDraftAsync();
+            if (draft == null) return new PaginatedResult<Player>
+            {
+                Items = new List<Player>(),
+                TotalCount = 0,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
+
+            var filter = Builders<Player>.Filter.Or(
+                Builders<Player>.Filter.Eq(p => p.DraftStatuses, null),
+                Builders<Player>.Filter.Not(
+                    Builders<Player>.Filter.ElemMatch(
+                        p => p.DraftStatuses,
+                        ds => ds.DraftId == draft.Id
+                    )
+                )
+            );
             return await GetPaginatedAsync(pageNumber, pageSize, filter);
         }
 

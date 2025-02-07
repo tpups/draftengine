@@ -25,7 +25,7 @@ public class Draft
     public int? CurrentPick { get; set; }
 
     [BsonElement("CurrentOverallPick")]
-    public int CurrentOverallPick { get; set; } = 1;
+    public int? CurrentOverallPick { get; set; } = 1;
 
     // For UI selection/navigation
     [BsonElement("ActiveRound")]

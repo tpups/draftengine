@@ -22,8 +22,7 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 builder.Services.AddSingleton<MongoDbContext>(sp => new MongoDbContext(builder.Configuration));
 builder.Services.AddSingleton<DraftService>(sp => new DraftService(
     sp.GetRequiredService<MongoDbContext>(),
-    sp.GetRequiredService<ILogger<DraftService>>(),
-    sp.GetRequiredService<IOptions<DebugOptions>>()
+    sp.GetRequiredService<ILogger<DraftService>>()
 ));
 builder.Services.AddSingleton<PlayerService>(sp => new PlayerService(
     sp.GetRequiredService<MongoDbContext>(),
@@ -38,6 +37,15 @@ builder.Services.AddSingleton<ManagerService>(sp => new ManagerService(
 builder.Services.AddHttpClient();
 builder.Services.Configure<MlbApiOptions>(builder.Configuration.GetSection("MlbApi"));
 builder.Services.Configure<DebugOptions>(builder.Configuration.GetSection("Debug"));
+
+// Configure debug service and logging
+builder.Services.AddSingleton<DebugService>();
+builder.Logging.Services.AddSingleton<ILoggerProvider>(sp =>
+{
+    var debugService = sp.GetRequiredService<DebugService>();
+    return new DebugLoggerProvider(debugService);
+});
+
 builder.Services.AddSingleton<IMlbApiService, MlbApiService>();
 
 // Configure CORS
@@ -165,7 +173,6 @@ builder.Services.AddSwaggerGen(c =>
         Type = "string",
         Format = "binary"
     });
-
 });
 
 var app = builder.Build();

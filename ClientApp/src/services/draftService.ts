@@ -2,12 +2,12 @@ import { apiClient } from './apiClient';
 import { ApiResponse, Draft, DraftPosition } from '../types/models';
 
 /**
- * Response type for current pick information
+ * Response type for pick information
  * @property round - The round number of the pick
  * @property pick - The pick number within the round
  * @property overallPickNumber - The overall pick number across all rounds
  */
-export interface CurrentPickResponse {
+export interface PickResponse {
   round: number;
   pick: number;
   overallPickNumber: number;
@@ -34,11 +34,27 @@ export const draftService = {
     apiClient.get<ApiResponse<Draft>>('/draft/active'),
 
   /**
+   * Gets information about the active pick in the active draft
+   * @returns Promise containing the current pick information
+   */
+  getActivePick: () => 
+    apiClient.get<ApiResponse<PickResponse>>('/draft/activePick'),
+
+  /**
    * Gets information about the current pick in the active draft
    * @returns Promise containing the current pick information
    */
   getCurrentPick: () => 
-    apiClient.get<ApiResponse<CurrentPickResponse>>('/draft/currentPick'),
+    apiClient.get<ApiResponse<PickResponse>>('/draft/currentPick'),
+
+  /**
+   * Gets the next pick in the draft sequence
+   * @param pick - The active overall pick number
+   * @param skipCompleted - Whether to skip completed picks (default is true)
+   * @returns Promise containing information about the next pick
+   */
+  getNextPick: (pick: number, skipCompleted: boolean = true) =>
+    apiClient.get<ApiResponse<PickResponse>>(`/draft/nextPick?pick=${pick}&skipCompleted=${skipCompleted}`),
 
   /**
    * Creates a new draft with specified settings
@@ -81,8 +97,12 @@ export const draftService = {
    * @param params.playerId - ID of the player being drafted
    * @returns Promise containing the updated draft
    */
-  markPickComplete: (draftId: string, params: { roundNumber: number; managerId: string; playerId: string }) => 
-    apiClient.post<ApiResponse<Draft>>(`/draft/${draftId}/pick`, params),
+  markPickComplete: (draftId: string, params: { managerId: string; playerId: string; overallPickNumber: number }) => 
+    apiClient.post<ApiResponse<Draft>>(`/draft/pick`, { 
+      overallPickNumber: params.overallPickNumber,
+      managerId: params.managerId,
+      playerId: params.playerId
+    }),
 
   /**
    * Resets a draft to its initial state
@@ -91,7 +111,7 @@ export const draftService = {
    * @returns Promise containing success status
    */
   resetDraft: (draftId: string) => 
-    apiClient.post<ApiResponse<boolean>>(`/draft/${draftId}/reset`),
+    apiClient.post<ApiResponse<Draft>>(`/draft/${draftId}/reset`),
 
   /**
    * Permanently deletes a draft
@@ -102,25 +122,11 @@ export const draftService = {
     apiClient.delete<ApiResponse<boolean>>(`/draft/${draftId}`),
 
   /**
-   * Advances to the next pick in the draft
-   * @param skipCompleted - When true, skips over completed picks to find the next available pick
-   * @returns Promise containing information about the next pick
-   * For snake drafts:
-   * - Even rounds reverse the pick order
-   * - Overall pick numbers remain sequential
-   */
-  advancePick: (skipCompleted: boolean = false) =>
-    apiClient.post<ApiResponse<CurrentPickResponse>>('/draft/advancePick', { skipCompleted }),
-
-  /**
-   * Updates the active pick selection in the draft
-   * Part of the two-tier pick tracking system:
-   * - Active Pick: UI selection for viewing/editing
-   * - Current Pick: Actual draft progress
+   * Updates the active pick in the draft
    * @param params.round - Target round number
    * @param params.pick - Target pick number within the round
-   * @param params.overallPickNumber - Overall pick number across all rounds
-   * @returns Promise containing the updated draft state
+   * @param params.overallPickNumber - Target overall pick number
+   * @returns Promise containing information about the next pick
    */
   updateActivePick: (params: { round: number; pick: number; overallPickNumber: number }) =>
     apiClient.post<ApiResponse<Draft>>('/draft/updateActivePick', params),

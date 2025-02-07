@@ -33,6 +33,7 @@ export function DraftPickSelector({
   const { data: managersResponse } = useQuery({
     queryKey: ['managers'],
     queryFn: () => managerService.getAll(),
+    staleTime: 0
   });
 
   const managers = managersResponse?.value ?? [];

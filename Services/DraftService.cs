@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using MongoDB.Bson;
 using DraftEngine.Models;
 using DraftEngine.Models.Data;
 using Microsoft.Extensions.Options;
@@ -10,16 +11,12 @@ public class DraftService
 {
     private readonly IMongoCollection<Draft> _drafts;
     private readonly ILogger<DraftService> _logger;
-    private readonly bool _enableConsoleLogging;
-
     public DraftService(
         MongoDbContext dbContext, 
-        ILogger<DraftService> logger,
-        IOptions<DebugOptions> debugOptions)
+        ILogger<DraftService> logger)
     {
         _drafts = dbContext.Database.GetCollection<Draft>("drafts");
         _logger = logger;
-        _enableConsoleLogging = debugOptions.Value.EnableConsoleLogging;
     }
 
     /// <summary>
@@ -413,6 +410,7 @@ public class DraftService
     /// Updates both current and active pick states in the draft
     /// </summary>
     /// <remarks>
+    /// Remember to call this method after any other method that relies on pick state
     /// This method manages the two-tier pick tracking system:
     /// 1. Active Pick (UI Selection):
     ///    - Always updates to the target pick
@@ -447,11 +445,12 @@ public class DraftService
                 int? round = draft.Rounds
                     .FirstOrDefault(r => r.Picks.Contains(pick))?.RoundNumber;
 
-                if (_enableConsoleLogging)
-                {
-                    Console.WriteLine($"Current state - Current: {draft.CurrentOverallPick}, Active: {draft.ActiveOverallPick}");
-                    Console.WriteLine($"Updating pick state to target overall number: {targetPick}, Player drafted: {pickMade}");
-                }
+                _logger.LogInformation(
+                    "Current state - Current: {CurrentPick}, Active: {ActivePick}. Updating to target: {TargetPick}, Player drafted: {PickMade}", 
+                    draft.CurrentOverallPick, 
+                    draft.ActiveOverallPick,
+                    targetPick,
+                    pickMade);
 
                 FilterDefinition<Draft> filter = Builders<Draft>.Filter.Eq(d => d.Id, draft.Id);
                 UpdateDefinition<Draft> updateDefinition;
@@ -464,34 +463,15 @@ public class DraftService
 
                 if (pickMade)
                 {
-                    // Get the highest completed pick
-                    DraftPosition? highestCompletedPick = draft.Rounds
-                        .SelectMany(r => r.Picks)
-                        .Where(p => p.IsComplete)
-                        .OrderByDescending(p => p.OverallPickNumber)
-                        .FirstOrDefault();
-                    if (highestCompletedPick != null && highestCompletedPick.OverallPickNumber > draft.CurrentOverallPick)
+                    // If current pick is behind target pick, we need to update current pick
+                    if (draft.CurrentOverallPick < targetPick)
                     {
-                        // Update current pick to the pick after the highest completed pick
-                        var nextPickAfterHighest = highestCompletedPick.OverallPickNumber + 1;
-                        var nextPick = draft.Rounds
-                            .SelectMany(r => r.Picks)
-                            .FirstOrDefault(p => p.OverallPickNumber == nextPickAfterHighest);
-
-                        if (nextPick != null)
-                        {
-                            var nextPickRound = draft.Rounds
-                                .First(r => r.Picks.Contains(nextPick))
-                                .RoundNumber;
-
-                            updateDefinition = Builders<Draft>.Update.Combine(
-                                updateDefinition,
-                                Builders<Draft>.Update
-                                    .Set(d => d.CurrentRound, nextPickRound)
-                                    .Set(d => d.CurrentPick, nextPick.PickNumber)
-                                    .Set(d => d.CurrentOverallPick, nextPickAfterHighest)
-                            );
-                        }
+                        updateDefinition = Builders<Draft>.Update.Combine(
+                            updateDefinition,
+                            Builders<Draft>.Update.Set(d => d.CurrentRound, round),
+                            Builders<Draft>.Update.Set(d => d.CurrentPick, pick.PickNumber),
+                            Builders<Draft>.Update.Set(d => d.CurrentOverallPick, targetPick)
+                        );
                     }
                 }
             
@@ -501,15 +481,14 @@ public class DraftService
                     throw new Exception($"Failed to update pick state for draft {draft.Id}");
                 }
 
-                if (_enableConsoleLogging)
+                // Get fresh state after update
+                var updatedDraft = await GetByIdAsync(draft.Id!);
+                if (updatedDraft != null)
                 {
-                    // Get fresh state after update
-                    var updatedDraft = await GetByIdAsync(draft.Id!);
-                    if (updatedDraft != null)
-                    {
-                        Console.WriteLine($"Pick state updated successfully");
-                        Console.WriteLine($"New state - Current: {updatedDraft.CurrentOverallPick}, Active: {updatedDraft.ActiveOverallPick}");
-                    }
+                    _logger.LogInformation(
+                        "Pick state updated successfully. New state - Current: {CurrentPick}, Active: {ActivePick}",
+                        updatedDraft.CurrentOverallPick,
+                        updatedDraft.ActiveOverallPick);
                 }
 
                 return new PickResponse
@@ -519,8 +498,34 @@ public class DraftService
                     OverallPickNumber = pick.OverallPickNumber
                 };
             }
+            else
+            {
+                _logger.LogError("Target pick not found: {TargetPick}", targetPick);
+
+                // If pick is null the last pick of the draft may have just been made
+                // See if the target pick number is higher than the last pick
+                int totalPicks = draft.Rounds.Sum(r => r.Picks.Length);
+                if (targetPick == totalPicks + 1)
+                {
+                    FilterDefinition<Draft> lastPickFilter = Builders<Draft>.Filter.Eq(d => d.Id, draft.Id);
+                    UpdateDefinition<Draft> lastPickUpdate = Builders<Draft>.Update
+                        .Set(d => d.CurrentRound, null)
+                        .Set(d => d.CurrentPick, null)
+                        .Set(d => d.CurrentOverallPick, null);
+
+                    var lastPickResult = await _drafts.UpdateOneAsync(lastPickFilter, lastPickUpdate);
+                    if (!lastPickResult.IsAcknowledged)
+                    {
+                        throw new Exception($"Failed to update pick state for draft {draft.Id}");
+                    }
+
+                _logger.LogInformation("Draft complete. Current pick state set to null");
+                }
+            }
+
             return null;
         }
+
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating pick state");
@@ -531,7 +536,7 @@ public class DraftService
     /// <summary>
     /// Dynamically modifies the draft by adding or removing the last round
     /// </summary>
-    /// <param name="draftId">The unique identifier of the draft to modify</param>
+    /// <param name="id">The unique identifier of the draft to modify</param>
     /// <param name="addRound">Indicates whether to add (true) or remove (false) a round</param>
     /// <returns>The updated draft with the round modification</returns>
     /// <exception cref="InvalidOperationException">
@@ -682,6 +687,92 @@ public class DraftService
         }
     }
 
+    /// <summary>
+    /// Marks a pick as complete in the draft
+    /// </summary>
+    /// <param name="overallPickNumber">The overall pick number to mark as complete</param>
+    /// <returns>True if the pick was successfully marked as complete, false otherwise</returns>
+    public async Task<bool> MarkPickCompleteAsync(int overallPickNumber)
+    {
+        try
+        {
+            _logger.LogInformation("Starting MarkPickCompleteAsync for overall pick number: {OverallPickNumber}", overallPickNumber);
+
+            var draft = await GetActiveDraftAsync();
+            if (draft == null)
+            {
+                _logger.LogWarning("No active draft found when trying to mark pick {OverallPickNumber} complete", overallPickNumber);
+                return false;
+            }
+
+            _logger.LogInformation("Active draft found: {DraftId}, Year: {Year}, Type: {Type}", 
+                draft.Id, draft.Year, draft.Type);
+
+            // Find the pick to update
+            var pick = draft.Rounds
+                .SelectMany(r => r.Picks)
+                .FirstOrDefault(p => p.OverallPickNumber == overallPickNumber);
+
+            if (pick == null)
+            {
+                _logger.LogWarning("No pick found for overall pick number {OverallPickNumber} in draft {DraftId}", 
+                    overallPickNumber, draft.Id);
+                return false;
+            }
+
+            _logger.LogInformation("Pick found - Manager: {ManagerId}, IsComplete: {IsComplete}", 
+                pick.ManagerId, pick.IsComplete);
+
+            if (pick.IsComplete)
+            {
+                _logger.LogWarning("Pick {OverallPickNumber} is already marked as complete", overallPickNumber);
+                return false;
+            }
+
+            // Update the pick's IsComplete status
+            var filter = Builders<Draft>.Filter.And(
+                Builders<Draft>.Filter.Eq(d => d.Id, draft.Id),
+                Builders<Draft>.Filter.ElemMatch(d => d.Rounds, 
+                    r => r.Picks.Any(p => p.OverallPickNumber == overallPickNumber))
+            );
+
+            _logger.LogInformation("Preparing to update draft {DraftId} with filter: {Filter}", 
+                draft.Id, filter.ToString());
+
+            var update = Builders<Draft>.Update.Set(
+                "Rounds.$[roundIndex].Picks.$[pickIndex].IsComplete",
+                true
+            );
+
+            _logger.LogInformation("Update operation prepared");
+
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                    new BsonDocument("roundIndex.Picks",
+                        new BsonDocument("$elemMatch",
+                            new BsonDocument("OverallPickNumber", overallPickNumber)))),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                    new BsonDocument("pickIndex.OverallPickNumber", overallPickNumber))
+            };
+
+            var options = new UpdateOptions { ArrayFilters = arrayFilters };
+            
+            _logger.LogInformation("Executing update operation for draft {DraftId}", draft.Id);
+            var result = await _drafts.UpdateOneAsync(filter, update, options);
+
+            _logger.LogInformation("Update result - Acknowledged: {Acknowledged}, Modified Count: {ModifiedCount}", 
+                result.IsAcknowledged, result.ModifiedCount);
+
+            return result.IsAcknowledged && result.ModifiedCount > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking pick {OverallPickNumber} as complete", overallPickNumber);
+            throw;
+        }
+    }
+    
     /// <summary>
     /// Resets a draft to its initial state, clearing all pick completions and resetting draft tracking
     /// </summary>

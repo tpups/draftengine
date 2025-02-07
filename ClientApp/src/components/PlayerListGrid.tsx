@@ -45,7 +45,7 @@ interface PlayerListGridProps {
   onPlayerEdit: (player: Player) => void;
   onPlayerDelete: (id: string) => void;
   onPlayerHighlight: (id: string) => void;
-  onPlayerDraft: (id: string) => void;
+  onPlayerDraft: (id: string, managerId: string) => void;
   canDraft: (playerId: string) => boolean;
 }
 
@@ -75,12 +75,14 @@ export function PlayerListGrid({
 
   const handleManagerSelect = (managerId: string) => {
     if (selectedPlayerId) {
-      onPlayerDraft(selectedPlayerId);
+      onPlayerDraft(selectedPlayerId, managerId);
     }
     setSelectedPlayerId(null);
+    setFlyoutOpen(false);
+    setAnchorEl(null);
   };
   const gridData: GridPlayer[] = players.map(player => {
-    const draftStatus = player.draftStatuses?.find(ds => ds.isDrafted);
+    const draftStatus = player.draftStatuses?.find(ds => ds.draftId === activeDraft?.id);
     const draftingManager = draftStatus
       ? managers.find((m: Manager) => m.id === draftStatus.managerId)
       : null;
@@ -93,12 +95,12 @@ export function PlayerListGrid({
       rank: player.rank?.['steamer_2025'] || null,
       age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
       position: player.position?.join(', ') || '',
-      draftingManagerName: draftingManager?.name ?? (draftStatus?.managerId ? '[Manager Deleted]' : ''),
+      draftingManagerName: draftStatus?.isDrafted ? (draftingManager?.name ?? '[Manager Deleted]') : '',
       draftRound: draftStatus?.isDrafted ? draftStatus.round : null,
       draftPick: draftStatus?.isDrafted ? draftStatus.pick : null,
-      draftStatus: draftStatus?.isDrafted ? {
+      draftStatus: draftStatus && draftStatus.isDrafted ? {
         draftId: draftStatus.draftId,
-        isDrafted: draftStatus.isDrafted,
+        isDrafted: true,
         round: draftStatus.round,
         pick: draftStatus.pick,
         overallPick: draftStatus.overallPick,
@@ -120,7 +122,7 @@ export function PlayerListGrid({
       classes.push('highlighted');
     }
     
-    if (params.row.draftStatus?.managerId) {
+    if (params.row.draftStatus?.isDrafted && params.row.draftStatus?.managerId) {
       if (params.row.draftStatus.managerId === currentUser?.id) {
         classes.push('drafted-by-user');
       } else {
@@ -191,7 +193,7 @@ export function PlayerListGrid({
       width: 100,
       getActions: (params: GridRowParams<GridPlayer>) => {
         if (gridMode === 'draft') {
-          if (!params.row.draftStatus) {
+          if (!params.row.draftStatus?.isDrafted) {
             const canMakePick = canDraft(params.row.id!);
             return [
               <GridActionsCellItem
@@ -301,24 +303,6 @@ export function PlayerListGrid({
         '& .MuiDataGrid-main': {
           width: '100%'
         },
-        '& .highlighted': {
-          bgcolor: 'warning.light',
-          '&:hover': {
-            bgcolor: 'warning.light',
-          },
-          '&.drafted-by-user': {
-            bgcolor: 'success.main',
-            '&:hover': {
-              bgcolor: 'success.main',
-            }
-          },
-          '&.drafted-by-other': {
-            bgcolor: 'warning.main',
-            '&:hover': {
-              bgcolor: 'warning.main',
-            }
-          }
-        },
         '& .drafted-by-user': {
           bgcolor: 'success.light',
           '&:hover': {
@@ -329,6 +313,24 @@ export function PlayerListGrid({
           bgcolor: 'warning.light',
           '&:hover': {
             bgcolor: 'warning.light',
+          }
+        },
+        '& .highlighted': {
+          bgcolor: 'warning.light',
+          '&:hover': {
+            bgcolor: 'warning.light',
+          }
+        },
+        '& .highlighted.drafted-by-user': {
+          bgcolor: 'success.main',
+          '&:hover': {
+            bgcolor: 'success.main',
+          }
+        },
+        '& .highlighted.drafted-by-other': {
+          bgcolor: 'warning.main',
+          '&:hover': {
+            bgcolor: 'warning.main',
           }
         }
       }}
