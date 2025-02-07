@@ -8,6 +8,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import GavelIcon from '@mui/icons-material/Gavel';
+import UndoIcon from '@mui/icons-material/Undo';
 import { calculateBaseballAge, CURRENT_BASEBALL_SEASON } from '../utils/dateUtils';
 
 interface GridPlayer {
@@ -46,6 +47,7 @@ interface PlayerListGridProps {
   onPlayerDelete: (id: string) => void;
   onPlayerHighlight: (id: string) => void;
   onPlayerDraft: (id: string, managerId: string) => void;
+  onPlayerUndraft: (id: string) => void;
   canDraft: (playerId: string) => boolean;
 }
 
@@ -60,6 +62,7 @@ export function PlayerListGrid({
   onPlayerDelete,
   onPlayerHighlight,
   onPlayerDraft,
+  onPlayerUndraft,
   canDraft
 }: PlayerListGridProps) {
   const [flyoutOpen, setFlyoutOpen] = useState(false);
@@ -193,9 +196,11 @@ export function PlayerListGrid({
       width: 100,
       getActions: (params: GridRowParams<GridPlayer>) => {
         if (gridMode === 'draft') {
+          const actions = [];
+          
           if (!params.row.draftStatus?.isDrafted) {
             const canMakePick = canDraft(params.row.id!);
-            return [
+            actions.push(
               <GridActionsCellItem
                 icon={<GavelIcon sx={{ 
                   color: canMakePick ? 'primary.main' : 'text.disabled',
@@ -209,9 +214,25 @@ export function PlayerListGrid({
                 label="Draft"
                 title={canMakePick ? "Draft this player" : "No active draft or current pick"}
               />
-            ];
+            );
+          } else {
+            actions.push(
+              <GridActionsCellItem
+                icon={<UndoIcon sx={{ 
+                  color: 'error.main',
+                  '&:hover': {
+                    transform: 'scale(1.2)',
+                    transition: 'transform 0.2s'
+                  }
+                }} />}
+                onClick={() => onPlayerUndraft(params.row.id!.toString())}
+                label="Undraft"
+                title="Remove this player from the draft"
+              />
+            );
           }
-          return [];
+          
+          return actions;
         }
 
         return [

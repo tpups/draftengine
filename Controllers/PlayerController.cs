@@ -705,8 +705,8 @@ namespace DraftEngine.Controllers
         /// <response code="404">If the player was not found</response>
         /// <response code="409">If the player is not drafted in the active draft</response>
         [HttpPost("{id:length(24)}/undraft")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UndraftPlayer(string id)
         {
             try
@@ -744,7 +744,7 @@ namespace DraftEngine.Controllers
                 }
 
                 _logger.LogInformation("Successfully undrafted player {PlayerId}", id);
-                return NoContent();
+                return Ok(ApiResponse<bool>.Create(true));
             }
             catch (Exception ex)
             {

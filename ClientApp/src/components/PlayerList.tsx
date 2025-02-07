@@ -212,6 +212,27 @@ export function PlayerList() {
   // 2. Advances to next pick (handled by backend)
   // 3. Refreshes all relevant queries to sync UI state
   // Includes detailed logging in debug mode
+  const handleUndraftClick = async (playerId: string) => {
+    if (!activeDraft) return;
+
+    try {
+      // Invalidate and refetch all queries
+      await playerService.undraftPlayer(playerId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] }),
+        queryClient.invalidateQueries({ queryKey: ['currentPick'] }),
+        queryClient.invalidateQueries({ queryKey: ['players'] })
+      ]);
+      setSnackbar({ open: true, message: 'Player undrafted successfully', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: `Error undrafting player: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+        severity: 'error' 
+      });
+    }
+  };
+
   const handleDraftClick = async (playerId: string, managerId: string) => {
     if (!activeDraft?.activeRound || !activeDraft?.activePick || !activeDraft?.activeOverallPick) return;
 
@@ -443,6 +464,7 @@ export function PlayerList() {
         onPlayerDelete={handleDelete}
         onPlayerHighlight={handleToggleHighlight}
         onPlayerDraft={handleDraftClick}
+        onPlayerUndraft={handleUndraftClick}
         canDraft={canDraft}
         activeDraft={activeDraft}
       />

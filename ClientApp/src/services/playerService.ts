@@ -59,7 +59,8 @@ const playerService = {
     apiClient.post<void>(`${BASE_PATH}/${id}/draft`, request),
 
   undraftPlayer: (id: string) =>
-    apiClient.post<void>(`${BASE_PATH}/${id}/undraft`),
+    apiClient.post<ApiResponse<boolean>>(`${BASE_PATH}/${id}/undraft`)
+      .then(response => response.value),
 
   // Personal tracking
   toggleHighlight: (id: string) =>
