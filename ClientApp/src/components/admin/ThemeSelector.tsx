@@ -55,7 +55,7 @@ export const ThemeSelector: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LightModeIcon 
             sx={{ 
-              color: mode === 'light' ? theme.colors.primary.main : theme.colors.text.disabled.light,
+              color: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.text.disabled.light,
               transition: 'color 0.3s ease'
             }} 
           />
@@ -66,7 +66,7 @@ export const ThemeSelector: React.FC = () => {
           />
           <DarkModeIcon 
             sx={{ 
-              color: mode === 'dark' ? theme.colors.primary.main : theme.colors.text.disabled.light,
+              color: mode === 'dark' ? theme.colors.pickState.current.light : theme.colors.text.disabled.light,
               transition: 'color 0.3s ease'
             }} 
           />

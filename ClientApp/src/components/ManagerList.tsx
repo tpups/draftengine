@@ -246,6 +246,8 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
         autoHeight={false}
         hideFooter={true}
         disableVirtualization={false}
+        checkboxSelection={false}
+        disableRowSelectionOnClick={true}
         getRowClassName={(params) => params.row.isUser ? 'user-manager-row' : ''}
         sx={{
           width: '100%',

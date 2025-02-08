@@ -1,4 +1,5 @@
-import { Box, CircularProgress, Alert, Snackbar, Popover } from '@mui/material';
+import { Box, CircularProgress, Alert, Snackbar, Popover, Paper, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback, useMemo } from 'react';
 import { Player, Manager, ApiResponse, Draft } from '../types/models';
@@ -24,8 +25,11 @@ import { DraftPickSelector } from './DraftPickSelector';
 import { PlayerListToolbar } from './PlayerListToolbar';
 import { PlayerListGrid } from './PlayerListGrid';
 import { PlayerListDialogs } from './PlayerListDialogs';
+import { UserDraftedPlayers } from './UserDraftedPlayers';
 
 export function PlayerList() {
+  const muiTheme = useMuiTheme();
+  const { theme, mode } = useTheme();
   // State
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -444,13 +448,28 @@ export function PlayerList() {
 
   // Render data grid
   return (
-    <Box sx={{ 
-      width: '100%', 
-      height: 'calc(100vh - 200px)',
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: 2 
-    }}>
+      <Box sx={{ 
+        width: '100%', 
+        height: 'calc(100vh - 200px)',
+        display: 'flex', 
+        gap: 3
+      }}>
+        <Box sx={{ flex: 3 }}>
+          <Box sx={{ height: '100%', position: 'relative' }}>
+            <Paper
+              elevation={2}
+              sx={{ 
+                height: '100%',
+                p: 4,
+                borderRadius: '16px',
+                bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                position: 'absolute',
+                inset: 0
+              }}
+            >
       <PlayerListToolbar
         gridMode={gridMode}
         onGridModeChange={handleGridModeChange}
@@ -468,7 +487,7 @@ export function PlayerList() {
         players={players}
         managers={managers}
         currentUser={currentUser}
-        onPlayerClick={(player) => {
+            onPlayerClick={(player: Player) => {
           setSelectedPlayer(player);
           setDetailsModalOpen(true);
         }}
@@ -570,6 +589,33 @@ export function PlayerList() {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         message={snackbar.message}
       />
-    </Box>
+            </Paper>
+          </Box>
+        </Box>
+        <Box sx={{ flex: 1, position: 'relative' }}>
+          <Paper 
+            elevation={2}
+            sx={{ 
+              p: 4,
+              borderRadius: '16px',
+              bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'absolute',
+              inset: 0
+            }}
+          >
+          <UserDraftedPlayers
+            players={players}
+            activeDraft={activeDraft}
+            currentUser={currentUser}
+            onPlayerClick={(player) => {
+              setSelectedPlayer(player);
+              setDetailsModalOpen(true);
+            }}
+          />
+          </Paper>
+        </Box>
+      </Box>
   );
 }

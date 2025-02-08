@@ -17,7 +17,7 @@ export const THEMES = {
 
 export type ThemeName = keyof typeof THEMES;
 
-export const DEFAULT_THEME: ThemeName = 'classicBaseball';
+export const DEFAULT_THEME: ThemeName = 'wfbc';
 
 export const getTheme = (name: ThemeName): Theme => {
   return THEMES[name];

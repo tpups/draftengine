@@ -1,4 +1,4 @@
-import { Box, useTheme as useMuiTheme } from '@mui/material';
+import { Box, Paper, useTheme as useMuiTheme } from '@mui/material';
 import { useTheme } from '../contexts/ThemeContext';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import { Draft, Manager, Player } from '../types/models';
@@ -315,68 +315,141 @@ export function PlayerListGrid({
       {
         field: 'draftingManagerName',
         headerName: 'Drafted By',
-        width: 150
+        flex: 1,
+        minWidth: 150
       }
     ] : [])
   ];
 
   return (
     <>
-      <DataGrid
+      <Paper elevation={0} sx={{
+        width: '100%',
+        flex: 1,
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: '12px',
+        overflow: 'hidden'
+      }}>
+        <DataGrid
       getRowClassName={getRowClassName}
       rows={gridData}
       columns={columns}
       autoHeight={false}
+      checkboxSelection={false}
+      disableRowSelectionOnClick={true}
+      rowHeight={46}
+      getRowSpacing={() => ({
+        top: 0,
+        bottom: 0
+      })}
       sx={{
-        width: '100%',
-        flex: 1,
-        '& .MuiDataGrid-main': {
-          width: '100%'
+        border: 'none',
+        bgcolor: 'transparent',
+        position: 'relative',
+        borderRadius: 0,
+        '& .MuiDataGrid-root': {
+          borderRadius: '12px'
         },
-        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        '& ::-webkit-scrollbar': {
+          width: '24px',
+          height: '24px',
+          position: 'absolute',
+          right: 0
+        },
+        '& ::-webkit-scrollbar-track': {
+          background: mode === 'light' ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
+          borderRadius: '12px'
+        },
+        '& ::-webkit-scrollbar-thumb': {
+          backgroundColor: mode === 'light' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)',
+          borderRadius: '12px',
+          border: '2px solid transparent',
+          backgroundClip: 'padding-box'
+        },
+        '& ::-webkit-scrollbar-thumb:hover': {
+          backgroundColor: mode === 'light' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)'
+        },
+        '& .MuiDataGrid-main': {
+          width: '100%',
+          border: 'none',
+          backgroundColor: 'transparent',
+          borderRadius: '12px'
+        },
+        '& .MuiDataGrid-virtualScroller': {
+          border: 'none',
+          backgroundColor: 'transparent',
+          marginRight: '24px',
+          paddingBottom: '24px',
+          borderRadius: '12px',
+          '&:after': {
+            display: 'none'
+          }
+        },
         '& .MuiDataGrid-row': {
-          bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark,
+          bgcolor: mode === 'light' ? `${theme.colors.primary.main}15` : theme.colors.background.paper.dark,
           color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
+          margin: 0,
+          padding: 0,
           '&:hover': {
             backgroundColor: mode === 'light' ? theme.colors.action.hover.light : theme.colors.action.hover.dark
-          }
+          },
+          position: 'relative'
         },
         '& .MuiDataGrid-cell': {
           fontSize: '1rem',
+          borderBottom: 'none',
+          borderTop: 'none',
+          padding: '8px 16px',
+          height: '46px',
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          '&:focus': {
+            outline: 'none'
+          }
         },
         '& .MuiDataGrid-columnHeader': {
           fontSize: '1rem',
           fontWeight: 600,
           color: 'inherit',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          boxShadow: 'none',
+          borderBottom: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`
         },
-        '& .MuiDataGrid-columnHeaders': {
-          bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark,
+        '& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader': {
+          bgcolor: mode === 'light' ? `${theme.colors.primary.main}15` : theme.colors.background.paper.dark,
           color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
-          borderBottom: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          borderBottom: `2px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
+          '&:not(:last-child)': {
+            borderRight: `1px solid ${mode === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`
+          }
         },
         '& .MuiSvgIcon-root': {
           fontSize: '1.5rem'
         },
         '& .drafted-by-user': {
           bgcolor: mode === 'light' ? theme.colors.primary.light : theme.colors.pickState.current.dark,
-          '& .MuiDataGrid-cell': {
-            color: theme.colors.primary.contrastText
-          },
           '&:hover': {
             bgcolor: mode === 'light' ? theme.colors.primary.light : theme.colors.pickState.current.dark,
+          },
+          position: 'relative',
+          zIndex: 2,
+          transform: 'none',
+          margin: 0,
+          borderTop: `3px solid ${mode === 'light' ? theme.colors.pickState.active.dark : theme.colors.pickState.active.light}`,
+          borderBottom: `3px solid ${mode === 'light' ? theme.colors.pickState.active.dark : theme.colors.pickState.active.light}`,
+          '& .MuiDataGrid-cell': {
+            color: theme.colors.primary.contrastText
           }
         },
         '& .drafted-by-other': {
           bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.primary.dark,
-          '& .MuiDataGrid-cell': {
-            color: theme.colors.primary.contrastText
-          },
           '&:hover': {
             bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.primary.main,
+          },
+          '& .MuiDataGrid-cell': {
+            color: theme.colors.primary.contrastText
           }
         },
         '& .highlighted': {
@@ -407,14 +480,17 @@ export function PlayerListGrid({
           }
         },
         '& .MuiDataGrid-footerContainer': {
-          borderTop: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
           backgroundColor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
           color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
           fontWeight: 500,
-          fontSize: '0.875rem'
+          fontSize: '0.875rem',
+          borderBottom: 'none',
+          borderTop: 'none',
+          marginRight: '24px'
         }
       }}
-      />
+        />
+      </Paper>
       {activeDraft && (
         <DraftManagerFlyout
           open={flyoutOpen}

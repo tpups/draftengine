@@ -45,7 +45,7 @@ function AppContent() {
                 color: 'white',
                 backgroundColor: isHome ? theme.colors.action.selected.light : theme.colors.action.hover.light,
                 cursor: 'pointer',
-                boxShadow: isHome ? '0 0 10px rgba(255, 255, 255, 0.2)' : 'none',
+                border: isHome ? '2px solid white' : 'none',
                 '&:hover': {
                   backgroundColor: isHome ? theme.colors.action.selected.light : theme.colors.action.hover.light
                 }
@@ -61,7 +61,7 @@ function AppContent() {
                 color: 'white',
                 backgroundColor: isAdmin ? theme.colors.action.selected.light : theme.colors.action.hover.light,
                 cursor: 'pointer',
-                boxShadow: isAdmin ? '0 0 10px rgba(255, 255, 255, 0.2)' : 'none',
+                border: isAdmin ? '2px solid white' : 'none',
                 '&:hover': {
                   backgroundColor: isAdmin ? theme.colors.action.selected.light : theme.colors.action.hover.light
                 }
