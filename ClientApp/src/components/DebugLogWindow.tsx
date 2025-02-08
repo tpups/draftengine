@@ -1,4 +1,5 @@
-import { Box, Button, IconButton, Paper, Typography } from '@mui/material';
+import { Box, Button, IconButton, Paper, Typography, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import { useEffect, useState } from 'react';
 import { debugService, LogEntry, LogLevel } from '../services/debugService';
 import CloseIcon from '@mui/icons-material/Close';
@@ -12,6 +13,8 @@ interface DebugLogWindowProps {
 
 export function DebugLogWindow({ onClose }: DebugLogWindowProps) {
     const [logs, setLogs] = useState<LogEntry[]>([]);
+    const muiTheme = useMuiTheme();
+    const { theme } = useTheme();
 
     useEffect(() => {
         const updateLogs = (newLogs: LogEntry[]) => {
@@ -93,7 +96,7 @@ export function DebugLogWindow({ onClose }: DebugLogWindowProps) {
                 flex: 1, 
                 overflow: 'auto',
                 p: 1,
-                backgroundColor: 'grey.100'
+                backgroundColor: theme.colors.background.paper.light
             }}>
                 {logs.map((log, index) => (
                     <Box 
@@ -103,7 +106,7 @@ export function DebugLogWindow({ onClose }: DebugLogWindowProps) {
                             fontFamily: 'monospace',
                             fontSize: '0.875rem',
                             whiteSpace: 'pre-wrap',
-                            color: getLogColor(log.level)
+                            color: getLogColor(log.level, theme)
                         }}
                     >
                         {(() => {
@@ -112,19 +115,19 @@ export function DebugLogWindow({ onClose }: DebugLogWindowProps) {
                             const message = match ? match[2] : log.message;
                             return (
                                 <>
-                                    <Box component="span" sx={{ color: 'text.secondary' }}>
+                                    <Box component="span" sx={{ color: theme.colors.text.secondary.light }}>
                                         [{new Date(log.timestamp).toLocaleTimeString()}]
                                     </Box>
                                     {' '}
-                                    <Box component="span" sx={{ color: getLogColor(log.level) }}>
+                                    <Box component="span" sx={{ color: getLogColor(log.level, theme) }}>
                                         {log.level}
                                     </Box>
                                     {' '}
-                                    <Box component="span" sx={{ color: 'text.secondary' }}>
+                                    <Box component="span" sx={{ color: theme.colors.text.secondary.light }}>
                                         {category && `[${category}]`}
                                     </Box>
                                     {' '}
-                                    <Box component="span" sx={{ color: 'text.primary' }}>
+                                    <Box component="span" sx={{ color: theme.colors.text.primary.light }}>
                                         {message}
                                     </Box>
                                 </>
@@ -137,19 +140,19 @@ export function DebugLogWindow({ onClose }: DebugLogWindowProps) {
     );
 }
 
-function getLogColor(level: LogLevel): string {
+function getLogColor(level: LogLevel, theme: any): string {
     switch (level) {
         case LogLevel.Error:
         case LogLevel.Critical:
-            return 'error.main';
+            return theme.colors.pickState.selected;
         case LogLevel.Warning:
-            return 'warning.main';
+            return theme.colors.pickState.current;
         case LogLevel.Information:
-            return 'info.main';
+            return theme.colors.pickState.active;
         case LogLevel.Debug:
         case LogLevel.Trace:
-            return 'text.secondary';
+            return theme.colors.text.secondary.light;
         default:
-            return 'text.primary';
+            return theme.colors.text.primary.light;
     }
 }

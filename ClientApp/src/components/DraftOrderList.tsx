@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Typography, List, ListItem, Paper, IconButton, Stack } from '@mui/material';
+import { Box, Typography, List, ListItem, Paper, IconButton, Stack, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -20,6 +21,8 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
   onOrderChange,
   maxSlots = 5,
 }) => {
+  const muiTheme = useMuiTheme();
+  const { theme, mode } = useTheme();
   const [draggedId, setDraggedId] = React.useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = React.useState<number | null>(null);
 
@@ -176,7 +179,7 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
                     bgcolor: isDraggingOver === index ? 'action.hover' : 'inherit',
                     transition: 'all 0.2s ease',
                     border: isDraggingOver === index ? '2px dashed' : 'none',
-                    borderColor: isDraggingOver === index ? 'primary.main' : undefined,
+                    borderColor: isDraggingOver === index ? theme.colors.pickState.selected : undefined,
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
@@ -198,7 +201,7 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
                         </IconButton>
                       </Stack>
                     )}
-                    <Typography sx={{ minWidth: 60 }}>
+                    <Typography sx={{ minWidth: 60, color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark }}>
                       Pick {index + 1}:
                     </Typography>
                     {isOccupied ? (

@@ -7,6 +7,7 @@ import { DataManagement } from '../components/admin/DataManagement';
 import { DraftManagement } from '../components/admin/DraftManagement';
 import { DraftOrderDisplay } from '../components/admin/DraftOrderDisplay';
 import { ManagerSection } from '../components/admin/ManagerSection';
+import { ThemeSelector } from '../components/admin/ThemeSelector';
 
 export const AdminPanel: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ export const AdminPanel: React.FC = () => {
         </Box>
 
         <Box flex={2} display="flex" flexDirection="column" gap={4} sx={{ position: 'sticky', top: 24 }}>
+          <ThemeSelector />
           <DraftOrderDisplay />
         </Box>
       </Box>

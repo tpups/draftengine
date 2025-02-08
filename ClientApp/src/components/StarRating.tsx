@@ -1,4 +1,5 @@
-import { Rating } from '@mui/material';
+import { Rating, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import StarHalfIcon from '@mui/icons-material/StarHalf';
@@ -10,6 +11,9 @@ interface StarRatingProps {
 }
 
 export function StarRating({ value, onChange, readOnly = false }: StarRatingProps) {
+  const muiTheme = useMuiTheme();
+  const { theme } = useTheme();
+
   return (
     <Rating
       value={value}
@@ -24,10 +28,10 @@ export function StarRating({ value, onChange, readOnly = false }: StarRatingProp
       emptyIcon={<StarBorderIcon fontSize="inherit" />}
       sx={{
         '& .MuiRating-iconFilled': {
-          color: 'warning.main',
+          color: theme.colors.pickState.current,
         },
         '& .MuiRating-iconHover': {
-          color: 'warning.light',
+          color: theme.colors.pickState.active,
         }
       }}
     />

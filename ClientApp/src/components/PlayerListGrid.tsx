@@ -1,4 +1,5 @@
-import { Box } from '@mui/material';
+import { Box, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import { Draft, Manager, Player } from '../types/models';
 import { useState } from 'react';
@@ -69,6 +70,8 @@ export function PlayerListGrid({
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const muiTheme = useMuiTheme();
+  const { theme, mode } = useTheme();
 
   const handleDraftClick = (event: React.MouseEvent<HTMLElement>, playerId: string) => {
     event.stopPropagation();
@@ -154,9 +157,11 @@ export function PlayerListGrid({
           component="span"
           sx={{
             cursor: 'pointer',
-            color: 'primary.main',
+            color: 'inherit',
+            fontWeight: 500,
             '&:hover': {
-              textDecoration: 'underline'
+              textDecoration: 'underline',
+              opacity: 0.9
             }
           }}
           onClick={() => {
@@ -205,7 +210,8 @@ export function PlayerListGrid({
             actions.push(
               <GridActionsCellItem
                 icon={<GavelIcon sx={{ 
-                  color: canMakePick ? 'primary.main' : 'text.disabled',
+                  color: canMakePick ? theme.colors.primary.main : theme.colors.text.disabled.dark,
+                  fontSize: '1.5rem',
                   '&:hover': canMakePick ? {
                     transform: 'scale(1.2)',
                     transition: 'transform 0.2s'
@@ -221,7 +227,8 @@ export function PlayerListGrid({
             actions.push(
               <GridActionsCellItem
                 icon={<UndoIcon sx={{ 
-                  color: 'error.main',
+                  color: theme.colors.pickState.selected.light,
+                  fontSize: '1.5rem',
                   '&:hover': {
                     transform: 'scale(1.2)',
                     transition: 'transform 0.2s'
@@ -241,7 +248,7 @@ export function PlayerListGrid({
           <GridActionsCellItem
             icon={params.row.isHighlighted ? (
               <StarIcon sx={{ 
-                color: 'warning.main',
+                color: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
                 '&:hover': {
                   transform: 'scale(1.2)',
                   transition: 'transform 0.2s'
@@ -249,7 +256,7 @@ export function PlayerListGrid({
               }} />
             ) : (
               <StarBorderIcon sx={{ 
-                color: 'warning.main',
+                color: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
                 '&:hover': {
                   transform: 'scale(1.2)',
                   transition: 'transform 0.2s'
@@ -262,7 +269,7 @@ export function PlayerListGrid({
           />,
           <GridActionsCellItem
             icon={<EditIcon sx={{ 
-              color: 'primary.main',
+              color: theme.colors.primary.main,
               '&:hover': {
                 transform: 'scale(1.2)',
                 transition: 'transform 0.2s'
@@ -279,7 +286,7 @@ export function PlayerListGrid({
           />,
           <GridActionsCellItem
             icon={<DeleteIcon sx={{ 
-              color: 'error.main',
+              color: mode === 'light' ? theme.colors.pickState.selected.light : theme.colors.pickState.selected.dark,
               '&:hover': {
                 transform: 'scale(1.2)',
                 transition: 'transform 0.2s'
@@ -326,35 +333,85 @@ export function PlayerListGrid({
         '& .MuiDataGrid-main': {
           width: '100%'
         },
-        '& .drafted-by-user': {
-          bgcolor: 'success.light',
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        '& .MuiDataGrid-row': {
+          bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark,
+          color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
           '&:hover': {
-            bgcolor: 'success.light',
+            backgroundColor: mode === 'light' ? theme.colors.action.hover.light : theme.colors.action.hover.dark
+          }
+        },
+        '& .MuiDataGrid-cell': {
+          fontSize: '1rem',
+          display: 'flex',
+          alignItems: 'center'
+        },
+        '& .MuiDataGrid-columnHeader': {
+          fontSize: '1rem',
+          fontWeight: 600,
+          color: 'inherit',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        },
+        '& .MuiDataGrid-columnHeaders': {
+          bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark,
+          color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
+          borderBottom: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        },
+        '& .MuiSvgIcon-root': {
+          fontSize: '1.5rem'
+        },
+        '& .drafted-by-user': {
+          bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
+          '& .MuiDataGrid-cell': {
+            color: theme.colors.primary.contrastText
+          },
+          '&:hover': {
+            bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
           }
         },
         '& .drafted-by-other': {
-          bgcolor: 'warning.light',
+          bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
+          '& .MuiDataGrid-cell': {
+            color: theme.colors.primary.contrastText
+          },
           '&:hover': {
-            bgcolor: 'warning.light',
+            bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
           }
         },
         '& .highlighted': {
-          bgcolor: 'warning.light',
+          bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
+          '& .MuiDataGrid-cell': {
+            color: theme.colors.primary.contrastText
+          },
           '&:hover': {
-            bgcolor: 'warning.light',
+            bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
           }
         },
         '& .highlighted.drafted-by-user': {
-          bgcolor: 'success.main',
+          bgcolor: mode === 'light' ? theme.colors.primary.dark : theme.colors.primary.main,
+          '& .MuiDataGrid-cell': {
+            color: theme.colors.primary.contrastText
+          },
           '&:hover': {
-            bgcolor: 'success.main',
+            bgcolor: mode === 'light' ? theme.colors.primary.dark : theme.colors.primary.main,
           }
         },
         '& .highlighted.drafted-by-other': {
-          bgcolor: 'warning.main',
+          bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
+          '& .MuiDataGrid-cell': {
+            color: theme.colors.primary.contrastText
+          },
           '&:hover': {
-            bgcolor: 'warning.main',
+            bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
           }
+        },
+        '& .MuiDataGrid-footerContainer': {
+          borderTop: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
+          backgroundColor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+          color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
+          fontWeight: 500,
+          fontSize: '0.875rem'
         }
       }}
       />

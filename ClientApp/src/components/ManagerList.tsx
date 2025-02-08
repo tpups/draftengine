@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
-import { Box, CircularProgress, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Checkbox, FormControlLabel, Typography } from '@mui/material';
+import { Box, CircularProgress, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Checkbox, FormControlLabel, Typography, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { managerService } from '../services/managerService';
@@ -13,6 +14,8 @@ interface ManagerListProps {
 }
 
 export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
+  const muiTheme = useMuiTheme();
+  const { theme, mode } = useTheme();
   const initialManagerState: Omit<Manager, 'id'> = {
     name: '',
     teamName: '',
@@ -247,14 +250,45 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
         sx={{
           width: '100%',
           flex: 1,
+          bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
           '& .MuiDataGrid-main': {
             width: '100%'
           },
-          '& .user-manager-row': {
-            bgcolor: 'primary.light',
+          '& .MuiDataGrid-cell': {
+            fontSize: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark
+          },
+          '& .MuiDataGrid-columnHeader': {
+            fontSize: '1rem',
+            color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark
+          },
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark,
+            borderBottom: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`
+          },
+          '& .MuiDataGrid-row': {
+            color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
             '&:hover': {
-              bgcolor: 'primary.light',
+              backgroundColor: mode === 'light' ? theme.colors.action.hover.light : theme.colors.action.hover.dark
             }
+          },
+          '& .MuiSvgIcon-root': {
+            fontSize: '1.3rem'
+          },
+          '& .user-manager-row': {
+            bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
+            '& .MuiDataGrid-cell': {
+              color: theme.colors.primary.contrastText
+            },
+            '&:hover': {
+              bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
+            }
+          },
+          '& .MuiDataGrid-footerContainer': {
+            borderTop: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
+            backgroundColor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark
           }
         }}
         columns={[
@@ -281,7 +315,7 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
             getActions: (params) => [
               <GridActionsCellItem
                 icon={<EditIcon sx={{ 
-                  color: 'primary.main',
+                  color: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
                   '&:hover': {
                     transform: 'scale(1.2)',
                     transition: 'transform 0.2s'
@@ -297,7 +331,7 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
               />,
               <GridActionsCellItem
                 icon={<DeleteIcon sx={{ 
-                  color: 'error.main',
+                  color: mode === 'light' ? theme.colors.pickState.selected.light : theme.colors.pickState.selected.dark,
                   '&:hover': {
                     transform: 'scale(1.2)',
                     transition: 'transform 0.2s'

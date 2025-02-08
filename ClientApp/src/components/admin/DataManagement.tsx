@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 import { 
   Box, 
   Button, 
@@ -24,6 +25,7 @@ interface VerifyBirthDatesStatus {
 }
 
 export const DataManagement: React.FC = () => {
+  const { theme } = useTheme();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importStatus, setImportStatus] = useState<{
     success: boolean;
@@ -221,14 +223,24 @@ export const DataManagement: React.FC = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Button
               variant="contained"
-              color="error"
+              sx={{ 
+              bgcolor: theme.colors.pickState.selected.light,
+              '&:hover': {
+                bgcolor: theme.colors.pickState.selected.dark
+                }
+              }}
               onClick={handleOpenDeleteDialog}
             >
               Delete All Players
             </Button>
             <Button
               variant="contained"
-              color="primary"
+              sx={{ 
+                bgcolor: theme.colors.primary.main,
+                '&:hover': {
+                  bgcolor: theme.colors.primary.dark
+                }
+              }}
               onClick={() => setVerifyBirthDatesDialogOpen(true)}
             >
               Update Birthdates
@@ -255,7 +267,12 @@ export const DataManagement: React.FC = () => {
             </Button>
             <Button
               variant="contained"
-              color="error"
+              sx={{ 
+                bgcolor: theme.colors.pickState.selected,
+                '&:hover': {
+                  bgcolor: theme.colors.pickState.current
+                }
+              }}
               onClick={async () => {
                 try {
                   setDeleteLoading(true);

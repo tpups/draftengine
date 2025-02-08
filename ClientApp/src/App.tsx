@@ -1,8 +1,6 @@
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { Box, AppBar, Toolbar, Typography, Button, IconButton } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button, IconButton, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from './contexts/ThemeContext';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { theme } from './utils/theme';
 import { Home } from './pages/Home';
 import { AdminPanel } from './pages/AdminPanel';
 import { DebugLogWindow } from './components/DebugLogWindow';
@@ -10,15 +8,18 @@ import BugReportIcon from '@mui/icons-material/BugReport';
 import { useState } from 'react';
 import { debugService } from './services/debugService';
 
+import { ThemeProvider } from './contexts/ThemeContext';
+
 function AppContent() {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const isAdmin = location.pathname === '/admin';
   const [showDebugLogs, setShowDebugLogs] = useState(false);
+  const muiTheme = useMuiTheme();
+  const { theme } = useTheme();
   
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeProvider>
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
         <AppBar position="static" sx={{ width: '100%', cursor: 'default' }}>
           <Toolbar sx={{ minHeight: '72px', cursor: 'default' }}>
@@ -43,11 +44,11 @@ function AppContent() {
                 variant="contained"
                 sx={{ 
                   color: 'white',
-                  backgroundColor: isHome ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: isHome ? theme.colors.action.selected.light : theme.colors.action.hover.light,
                   cursor: 'pointer',
                   boxShadow: isHome ? '0 0 10px rgba(255, 255, 255, 0.2)' : 'none',
                   '&:hover': {
-                    backgroundColor: isHome ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.2)'
+                    backgroundColor: isHome ? theme.colors.action.selected.light : theme.colors.action.hover.light
                   }
                 }}
               >
@@ -59,11 +60,11 @@ function AppContent() {
                 variant="contained"
                 sx={{ 
                   color: 'white',
-                  backgroundColor: isAdmin ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: isAdmin ? theme.colors.action.selected.light : theme.colors.action.hover.light,
                   cursor: 'pointer',
                   boxShadow: isAdmin ? '0 0 10px rgba(255, 255, 255, 0.2)' : 'none',
                   '&:hover': {
-                    backgroundColor: isAdmin ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.2)'
+                    backgroundColor: isAdmin ? theme.colors.action.selected.light : theme.colors.action.hover.light
                   }
                 }}
               >
@@ -81,9 +82,9 @@ function AppContent() {
                 }
               }}
               sx={{ 
-                color: showDebugLogs ? 'warning.main' : 'white',
+                color: showDebugLogs ? theme.colors.pickState.current : 'white',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  backgroundColor: theme.colors.action.hover.light
                 }
               }}
               title={showDebugLogs ? 'Hide Debug Logs' : 'Show Debug Logs'}

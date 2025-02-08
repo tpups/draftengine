@@ -147,6 +147,35 @@ The DraftEngine follows a modern web API architecture with clear separation of c
    - Proper error handling
    - Loading state management
 
+4. Color System and Theme Management
+   - Centralized Color Management:
+     * src/styles/colors.ts as single source of truth
+     * Semantic color tokens for consistent naming
+     * Base color palette with Material Design scales
+     * Light/dark mode variants for all colors
+   - Theme Context:
+     * ThemeContext for managing color mode
+     * localStorage persistence for user preferences
+     * Material-UI theme integration
+     * CssBaseline for consistent defaults
+   - Color Organization:
+     * Primary colors (blue-based)
+     * Secondary colors (purple-based)
+     * Background colors (light/dark variants)
+     * Text colors (primary/secondary/disabled)
+     * Action colors (active/hover/selected/disabled)
+     * Pick state colors (selected/current/active/available)
+   - Theme Integration:
+     * Proper contrast ratios for accessibility
+     * Consistent component styling
+     * Smooth color transitions
+     * Proper dark mode support
+   - Usage Patterns:
+     * Direct color imports for static values
+     * Theme hooks for dynamic theming
+     * Consistent sx prop usage
+     * Proper contrast handling
+
 ### API Design
 - RESTful API architecture
 - Controller-Service pattern

@@ -1,4 +1,5 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tabs, Tab, Divider } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tabs, Tab, Divider, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import { Player, ScoutingGrades } from '../types/models';
 import { useState } from 'react';
 import { formatAgeDisplay } from '../utils/dateUtils';
@@ -78,6 +79,8 @@ const formatGrades = (grades: ScoutingGrades | undefined) => {
 
 export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModalProps) {
   const [tabValue, setTabValue] = useState(0);
+  const muiTheme = useMuiTheme();
+  const { theme } = useTheme();
 
   if (!player) return null;
 
@@ -101,7 +104,7 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
               <Typography 
                 component="span" 
                 sx={{ 
-                  color: 'warning.main',
+                  color: theme.colors.pickState.current,
                   fontSize: '0.8em'
                 }}
               >

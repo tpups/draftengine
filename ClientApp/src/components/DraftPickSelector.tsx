@@ -1,4 +1,5 @@
-import { Box, Paper, Tooltip, Typography } from '@mui/material';
+import { Box, Paper, Tooltip, Typography, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import { Draft, Manager, DraftPosition } from '../types/models';
 import { useQuery } from '@tanstack/react-query';
 import { managerService } from '../services/managerService';
@@ -19,6 +20,7 @@ interface DraftPickSelectorProps {
   currentPick: number;
   selectedRound: number;
   selectedPick: number;
+  currentUser?: Manager;
   onPickSelect: (round: number, pick: number) => void;
 }
 
@@ -28,6 +30,7 @@ export function DraftPickSelector({
   currentPick,
   selectedRound,
   selectedPick,
+  currentUser,
   onPickSelect
 }: DraftPickSelectorProps) {
   const { data: managersResponse } = useQuery({
@@ -35,6 +38,8 @@ export function DraftPickSelector({
     queryFn: () => managerService.getAll(),
     staleTime: 0
   });
+  const muiTheme = useMuiTheme();
+  const { theme, mode } = useTheme();
 
   const managers = managersResponse?.value ?? [];
 
@@ -139,18 +144,24 @@ export function DraftPickSelector({
       alignItems: 'center',
       justifyContent: 'center',
       cursor: isAvailable ? 'pointer' : 'default',
-      bgcolor: isSelected ? 'primary.main' : 
-               isCurrent ? 'warning.light' :
-               isActive ? 'info.light' :
-               isAvailable ? (isSnakeRound ? 'grey.100' : 'background.paper') : 'grey.200',
-      color: isSelected ? 'common.white' : 
-             isAvailable ? 'text.primary' : 'text.disabled',
+      bgcolor: isSelected ? theme.colors.primary.main : 
+               isCurrent ? (pick.managerId === currentUser?.id ? theme.colors.primary.light : theme.colors.primary.dark) :
+               isActive ? theme.colors.primary.light :
+               isAvailable ? (mode === 'light' ? 
+                 (isSnakeRound ? theme.colors.background.elevated.light : theme.colors.background.paper.light) :
+                 (isSnakeRound ? theme.colors.background.paper.dark : theme.colors.background.elevated.dark)
+               ) : theme.colors.background.elevated.dark,
+      color: isSelected || isCurrent || isActive ? theme.colors.primary.contrastText : 
+             isAvailable ? (mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark) : 
+             theme.colors.text.disabled.dark,
       ...(!isAvailable ? {} : {
         '&:hover': {
-          bgcolor: isSelected ? 'primary.dark' : 
-                  isCurrent ? 'warning.main' : 
-                  isActive ? 'info.main' :
-                  isSnakeRound ? 'grey.200' : 'action.hover',
+          bgcolor: isSelected ? theme.colors.primary.dark : 
+                  isCurrent ? (pick.managerId === currentUser?.id ? theme.colors.primary.main : theme.colors.primary.dark) : 
+                  isActive ? theme.colors.primary.main :
+                  mode === 'light' ? 
+                    (isSnakeRound ? theme.colors.background.elevated.dark : theme.colors.action.hover.light) :
+                    (isSnakeRound ? theme.colors.background.elevated.dark : theme.colors.action.hover.dark),
           transform: 'translateY(-1px)',
           transition: 'all 0.2s'
         }
@@ -159,7 +170,7 @@ export function DraftPickSelector({
       borderRight: isSnakeRound ? 1 : 0,
       borderColor: 'divider',
       outline: pick.isComplete ? '2px solid' : 'none',
-      outlineColor: 'success.main',
+      outlineColor: theme.colors.primary.main,
       outlineOffset: '-2px'
     };
   };
@@ -212,12 +223,12 @@ export function DraftPickSelector({
                   justifyContent: 'center',
                   alignItems: 'center',
                   height: '24px',
-                  bgcolor: 'primary.light',
+                  bgcolor: theme.colors.background.elevated.dark,
                   borderRadius: '4px 4px 0 0',
-                  color: 'primary.contrastText'
+                  borderBottom: `2px solid ${theme.colors.primary.main}`
                 }}
               >
-                <Typography variant="caption" sx={{ color: 'primary.contrastText', fontWeight: 500 }}>
+                <Typography variant="caption" sx={{ color: theme.colors.text.primary.dark, fontWeight: 500 }}>
                   {pick.pickNumber}
                 </Typography>
               </Box>
@@ -227,7 +238,7 @@ export function DraftPickSelector({
           {/* Separator */}
           <Box sx={{ 
             height: '2px', 
-            bgcolor: 'primary.light', 
+            bgcolor: theme.colors.primary.main, 
             mb: 1 
           }} />
 

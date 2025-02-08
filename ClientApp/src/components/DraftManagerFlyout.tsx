@@ -1,4 +1,5 @@
-import { Box, Popover, List, ListItem, ListItemButton, ListItemText, styled } from '@mui/material';
+import { Box, Popover, List, ListItem, ListItemButton, ListItemText, styled, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import { Draft, DraftPosition, Manager } from '../types/models';
 
 interface DraftManagerFlyoutProps {
@@ -11,17 +12,21 @@ interface DraftManagerFlyoutProps {
   managers: Manager[];
 }
 
-const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
+interface StyledListItemButtonProps {
+  customTheme: any;
+}
+
+const StyledListItemButton = styled(ListItemButton)<StyledListItemButtonProps>(({ customTheme }) => ({
   '&.current-user': {
-    backgroundColor: theme.palette.info.light,
+    backgroundColor: customTheme.colors.pickState.active,
     '&:hover': {
-      backgroundColor: theme.palette.info.main,
+      backgroundColor: customTheme.colors.pickState.selected,
     }
   },
   '&.active-pick': {
-    backgroundColor: theme.palette.success.light,
+    backgroundColor: customTheme.colors.pickState.current,
     '&:hover': {
-      backgroundColor: theme.palette.success.main,
+      backgroundColor: customTheme.colors.pickState.selected,
     }
   }
 }));
@@ -35,6 +40,9 @@ export function DraftManagerFlyout({
   onManagerSelect,
   managers
 }: DraftManagerFlyoutProps) {
+  const muiTheme = useMuiTheme();
+  const { theme } = useTheme();
+
   // Get managers in draft order
   const draftPositions = activeDraft.draftOrder.sort((a, b) => a.pickNumber - b.pickNumber);
 
@@ -68,6 +76,7 @@ export function DraftManagerFlyout({
             return (
             <ListItem key={draftPosition.managerId} disablePadding>
               <StyledListItemButton
+                customTheme={theme}
                 onClick={() => {
                   onManagerSelect(draftPosition.managerId);
                   onClose();

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 import { 
   Box, 
   Paper, 
@@ -15,6 +16,7 @@ import { managerService } from '../../services/managerService';
 import { draftService } from '../../services/draftService';
 
 export const DraftOrderDisplay: React.FC = () => {
+  const { theme, mode } = useTheme();
   const { data: managersResponse } = useQuery({
     queryKey: ['managers'],
     queryFn: () => managerService.getAll(),
@@ -56,10 +58,14 @@ export const DraftOrderDisplay: React.FC = () => {
                 }
               }}
             >
-              <Typography sx={{ minWidth: 60 }} color="text.secondary">
+              <Typography sx={{ 
+                minWidth: 60, 
+                color: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
+                fontWeight: 600
+              }}>
                 Pick {position.pickNumber}:
               </Typography>
-              <Typography>
+              <Typography sx={{ color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark }}>
                 {managerName}
               </Typography>
             </ListItem>

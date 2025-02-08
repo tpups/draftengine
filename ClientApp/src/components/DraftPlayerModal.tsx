@@ -1,4 +1,5 @@
-import { Dialog, DialogTitle, DialogContent, Box, Typography, Paper, IconButton, Popover } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, Box, Typography, Paper, IconButton, Popover, useTheme as useMuiTheme } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import { Manager, Draft, Player } from '../types/models';
 import { useQuery } from '@tanstack/react-query';
 import { managerService } from '../services/managerService';
@@ -23,6 +24,8 @@ interface ManagerWithPick extends Manager {
 
 export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayerModalProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const muiTheme = useMuiTheme();
+  const { theme } = useTheme();
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [selectedPick, setSelectedPick] = useState<number | null>(null);
 
@@ -168,24 +171,24 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
                 flexDirection: 'column',
                 justifyContent: 'center',
                 transition: 'all 0.2s',
-                bgcolor: 'grey.100',
+                bgcolor: theme.colors.background.paper.light,
                 '&:hover': manager.isComplete ? {} : {
-                  bgcolor: 'grey.200',
+                  bgcolor: theme.colors.action.hover.light,
                   transform: 'translateY(-1px)',
                   boxShadow: 1
                 },
                 ...(manager.isUser && {
-                  bgcolor: 'grey.300',
+                  bgcolor: theme.colors.action.selected.light,
                   '&:hover': manager.isComplete ? {} : {
-                    bgcolor: 'grey.400',
+                    bgcolor: theme.colors.action.active.light,
                     transform: 'translateY(-1px)',
                     boxShadow: 1
                   }
                 }),
                 ...(manager.isCurrentPick && {
-                  bgcolor: 'warning.light',
+                  bgcolor: theme.colors.pickState.current,
                   '&:hover': manager.isComplete ? {} : {
-                    bgcolor: 'warning.main',
+                    bgcolor: theme.colors.pickState.selected,
                     transform: 'translateY(-1px)',
                     boxShadow: 1
                   }
@@ -197,7 +200,7 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
                 <Typography
                   variant="caption"
                   sx={{
-                    color: 'text.secondary',
+                    color: theme.colors.text.secondary.light,
                     fontWeight: 500,
                     minWidth: '24px'
                   }}
@@ -207,7 +210,7 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
                 <Typography
                   variant="subtitle2"
                   sx={{
-                    color: 'primary.main',
+                    color: theme.colors.primary.main,
                     fontWeight: 500,
                     lineHeight: 1.2
                   }}
@@ -219,7 +222,7 @@ export function DraftPlayerModal({ open, onClose, onManagerSelect }: DraftPlayer
                 <Typography
                   variant="caption"
                   sx={{
-                    color: 'success.main',
+                    color: theme.colors.pickState.selected,
                     fontWeight: 500,
                     ml: 4
                   }}

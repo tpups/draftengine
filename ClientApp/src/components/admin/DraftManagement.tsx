@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 import { 
   Box, 
   Button, 
@@ -27,6 +28,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export const DraftManagement: React.FC = () => {
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
 
   // State
   const [draftStatus, setDraftStatus] = useState<{
@@ -258,7 +260,12 @@ export const DraftManagement: React.FC = () => {
       <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Button
           variant="contained"
-          color="primary"
+          sx={{ 
+            bgcolor: theme.colors.pickState.current.light,
+            '&:hover': {
+              bgcolor: theme.colors.pickState.current.dark
+            }
+          }}
           onClick={() => {
             setSelectedManagers([]);
             setDraftStatus(null);
@@ -271,7 +278,12 @@ export const DraftManagement: React.FC = () => {
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="contained"
-            color="primary"
+            sx={{ 
+              bgcolor: theme.colors.pickState.current.light,
+              '&:hover': {
+                bgcolor: theme.colors.pickState.current.dark
+              }
+            }}
             onClick={() => {
               if (!currentDraft?.id) return;
               addRoundMutation.mutate(currentDraft.id);
@@ -282,7 +294,12 @@ export const DraftManagement: React.FC = () => {
           </Button>
           <Button
             variant="contained"
-            color="primary"
+            sx={{ 
+              bgcolor: theme.colors.pickState.selected.light,
+              '&:hover': {
+                bgcolor: theme.colors.pickState.selected.dark
+              }
+            }}
             onClick={() => setRemoveRoundDialogOpen(true)}
             disabled={!currentDraft?.id || currentDraft?.rounds.length <= 1 || isLoading}
           >
@@ -291,7 +308,12 @@ export const DraftManagement: React.FC = () => {
         </Box>
         <Button
           variant="contained"
-          color="error"
+          sx={{ 
+            bgcolor: theme.colors.pickState.selected.light,
+            '&:hover': {
+              bgcolor: theme.colors.pickState.selected.dark
+            }
+          }}
           onClick={() => setResetDialogOpen(true)}
           disabled={!currentDraft?.id || isLoading}
         >
@@ -331,7 +353,12 @@ export const DraftManagement: React.FC = () => {
                               }}
                               disabled={isLoading}
                             >
-                              <DeleteIcon />
+                              <DeleteIcon sx={{ 
+                                color: theme.colors.pickState.selected.light,
+                                '&:hover': {
+                                  color: theme.colors.pickState.selected.dark
+                                }
+                              }} />
                             </IconButton>
                           </span>
                         </Tooltip>
@@ -490,7 +517,12 @@ export const DraftManagement: React.FC = () => {
           </Button>
           <Button
             variant="contained"
-            color="error"
+            sx={{ 
+              bgcolor: theme.colors.primary.light,
+              '&:hover': {
+                bgcolor: theme.colors.primary.main
+              }
+            }}
             onClick={handleResetDraft}
             disabled={isLoading}
           >
@@ -585,7 +617,12 @@ export const DraftManagement: React.FC = () => {
           </Button>
           <Button
             variant="contained"
-            color="error"
+            sx={{ 
+              bgcolor: theme.colors.pickState.selected,
+              '&:hover': {
+                bgcolor: theme.colors.pickState.current
+              }
+            }}
             onClick={handleDeleteDraft}
             disabled={isLoading}
           >
