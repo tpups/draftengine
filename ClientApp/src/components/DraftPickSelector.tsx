@@ -98,7 +98,9 @@ export function DraftPickSelector({
     });
 
     if (config.debug.enableConsoleLogging) {
-      console.log('Pick Availability:', availability);
+      //console.log('Pick Availability:', availability);
+      console.log('Active Overall Pick:', activeDraft.activeOverallPick);
+      console.log('Current Overall Pick:', activeDraft.currentOverallPick);
     }
 
     return availability;
@@ -144,21 +146,22 @@ export function DraftPickSelector({
       alignItems: 'center',
       justifyContent: 'center',
       cursor: isAvailable ? 'pointer' : 'default',
-      bgcolor: isSelected ? theme.colors.primary.main : 
-               isCurrent ? (pick.managerId === currentUser?.id ? theme.colors.primary.light : theme.colors.primary.dark) :
-               isActive ? theme.colors.primary.light :
+      bgcolor: isActive ? theme.colors.pickState.active.light :
+               isSelected ? theme.colors.primary.main :
+               isCurrent ? (pick.managerId === currentUser?.id ? theme.colors.primary.dark : theme.colors.primary.dark) :
                isAvailable ? (mode === 'light' ? 
                  (isSnakeRound ? theme.colors.background.elevated.light : theme.colors.background.paper.light) :
                  (isSnakeRound ? theme.colors.background.paper.dark : theme.colors.background.elevated.dark)
                ) : theme.colors.background.elevated.dark,
-      color: isSelected || isCurrent || isActive ? theme.colors.primary.contrastText : 
+      color: isActive ? theme.colors.text.primary.light :
+             isSelected || isCurrent ? theme.colors.primary.contrastText :
              isAvailable ? (mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark) : 
              theme.colors.text.disabled.dark,
       ...(!isAvailable ? {} : {
         '&:hover': {
-          bgcolor: isSelected ? theme.colors.primary.dark : 
-                  isCurrent ? (pick.managerId === currentUser?.id ? theme.colors.primary.main : theme.colors.primary.dark) : 
-                  isActive ? theme.colors.primary.main :
+          bgcolor: isActive ? theme.colors.pickState.active.light :
+                  isSelected ? theme.colors.primary.dark :
+                  isCurrent ? theme.colors.primary.dark : 
                   mode === 'light' ? 
                     (isSnakeRound ? theme.colors.background.elevated.dark : theme.colors.action.hover.light) :
                     (isSnakeRound ? theme.colors.background.elevated.dark : theme.colors.action.hover.dark),

@@ -280,7 +280,7 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
           '& .user-manager-row': {
             bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
             '& .MuiDataGrid-cell': {
-              color: theme.colors.primary.contrastText
+              color: theme.colors.text.primary.light
             },
             '&:hover': {
               bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,

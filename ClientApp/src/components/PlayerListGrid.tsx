@@ -362,21 +362,21 @@ export function PlayerListGrid({
           fontSize: '1.5rem'
         },
         '& .drafted-by-user': {
-          bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
+          bgcolor: mode === 'light' ? theme.colors.primary.light : theme.colors.pickState.current.dark,
           '& .MuiDataGrid-cell': {
             color: theme.colors.primary.contrastText
           },
           '&:hover': {
-            bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
+            bgcolor: mode === 'light' ? theme.colors.primary.light : theme.colors.pickState.current.dark,
           }
         },
         '& .drafted-by-other': {
-          bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
+          bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.primary.dark,
           '& .MuiDataGrid-cell': {
             color: theme.colors.primary.contrastText
           },
           '&:hover': {
-            bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
+            bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.primary.main,
           }
         },
         '& .highlighted': {

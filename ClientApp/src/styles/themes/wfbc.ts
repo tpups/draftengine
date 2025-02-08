@@ -134,11 +134,11 @@ const wfbc: Theme = {
       },
       current: {
         light: palette.blue[600], // Maritime blue for current states
-        dark: palette.blue[400], // Light blue for better contrast in dark mode
+        dark: palette.blue[300], // Medium-light blue for better contrast in dark mode
       },
       active: {
-        light: palette.blue[400], // Lighter blue for highlighted states
-        dark: palette.blue[600],
+        light: palette.yellow[500], // Bright yellow for active pick
+        dark: palette.yellow[700], // More muted yellow for dark mode
       },
       available: {
         light: '#ffffff',
