@@ -692,16 +692,16 @@ public class DraftService
     /// </summary>
     /// <param name="overallPickNumber">The overall pick number to mark as complete</param>
     /// <returns>True if the pick was successfully marked as complete, false otherwise</returns>
-    public async Task<bool> MarkPickCompleteAsync(int overallPickNumber)
+    public async Task<bool> TogglePickCompleteAsync(int overallPickNumber)
     {
         try
         {
-            _logger.LogInformation("Starting MarkPickCompleteAsync for overall pick number: {OverallPickNumber}", overallPickNumber);
+            _logger.LogInformation("Starting TogglePickCompleteAsync for overall pick number: {OverallPickNumber}", overallPickNumber);
 
             var draft = await GetActiveDraftAsync();
             if (draft == null)
             {
-                _logger.LogWarning("No active draft found when trying to mark pick {OverallPickNumber} complete", overallPickNumber);
+                _logger.LogWarning("No active draft found when trying to toggle pick {OverallPickNumber} complete", overallPickNumber);
                 return false;
             }
 
@@ -723,11 +723,10 @@ public class DraftService
             _logger.LogInformation("Pick found - Manager: {ManagerId}, IsComplete: {IsComplete}", 
                 pick.ManagerId, pick.IsComplete);
 
-            if (pick.IsComplete)
-            {
-                _logger.LogWarning("Pick {OverallPickNumber} is already marked as complete", overallPickNumber);
-                return false;
-            }
+            bool isComplete = pick.IsComplete;
+
+            if (pick.IsComplete) _logger.LogWarning("Pick {OverallPickNumber} is already marked as complete. Toggling to not complete.", overallPickNumber);
+            else _logger.LogInformation("Marking pick {OverallPickNumber} as complete", overallPickNumber);
 
             // Update the pick's IsComplete status
             var filter = Builders<Draft>.Filter.And(
@@ -741,7 +740,7 @@ public class DraftService
 
             var update = Builders<Draft>.Update.Set(
                 "Rounds.$[roundIndex].Picks.$[pickIndex].IsComplete",
-                true
+                !isComplete
             );
 
             _logger.LogInformation("Update operation prepared");
@@ -768,7 +767,7 @@ public class DraftService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error marking pick {OverallPickNumber} as complete", overallPickNumber);
+            _logger.LogError(ex, "Error toggling complete status for pick {OverallPickNumber}", overallPickNumber);
             throw;
         }
     }

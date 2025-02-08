@@ -97,7 +97,7 @@ export const draftService = {
    * @param params.playerId - ID of the player being drafted
    * @returns Promise containing the updated draft
    */
-  markPickComplete: (draftId: string, params: { managerId: string; playerId: string; overallPickNumber: number }) => 
+  togglePickComplete: (draftId: string, params: { managerId: string; playerId: string; overallPickNumber: number }) => 
     apiClient.post<ApiResponse<Draft>>(`/draft/pick`, { 
       overallPickNumber: params.overallPickNumber,
       managerId: params.managerId,

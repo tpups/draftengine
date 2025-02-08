@@ -10,6 +10,7 @@ import StarBorderIcon from '@mui/icons-material/StarBorder';
 import GavelIcon from '@mui/icons-material/Gavel';
 import UndoIcon from '@mui/icons-material/Undo';
 import { calculateBaseballAge, CURRENT_BASEBALL_SEASON } from '../utils/dateUtils';
+import { getDisplayPickNumber } from '../utils/draftUtils';
 
 interface GridPlayer {
   id?: string;
@@ -100,7 +101,8 @@ export function PlayerListGrid({
       position: player.position?.join(', ') || '',
       draftingManagerName: draftStatus?.isDrafted ? (draftingManager?.name ?? '[Manager Deleted]') : '',
       draftRound: draftStatus?.isDrafted ? draftStatus.round : null,
-      draftPick: draftStatus?.isDrafted ? draftStatus.pick : null,
+      draftPick: draftStatus?.isDrafted && activeDraft ? 
+        getDisplayPickNumber(activeDraft, draftStatus.pick, draftStatus.round) : null,
       draftStatus: draftStatus && draftStatus.isDrafted ? {
         draftId: draftStatus.draftId,
         isDrafted: true,
@@ -227,7 +229,7 @@ export function PlayerListGrid({
                 }} />}
                 onClick={() => onPlayerUndraft(params.row.id!.toString())}
                 label="Undraft"
-                title="Remove this player from the draft"
+                title="Undo pick"
               />
             );
           }

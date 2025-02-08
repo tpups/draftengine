@@ -334,6 +334,8 @@ namespace DraftEngine.Controllers
         /// Returns an empty list if no players are found at the specified level.
         /// </remarks>
         /// <param name="level">The competition level to filter by</param>
+        /// <param name="pageNumber">The page number to retrieve (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
         /// <returns>List of players at the specified level</returns>
         /// <response code="200">Successfully retrieved the list of players</response>
         /// <response code="400">If the level parameter is invalid</response>
@@ -383,6 +385,8 @@ namespace DraftEngine.Controllers
         /// Team abbreviations are case-insensitive.
         /// </remarks>
         /// <param name="team">The three-letter MLB team abbreviation</param>
+        /// <param name="pageNumber">The page number to retrieve (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
         /// <returns>List of players on the specified team</returns>
         /// <response code="200">Successfully retrieved the list of players</response>
         /// <response code="400">If the team abbreviation is invalid</response>
@@ -445,6 +449,8 @@ namespace DraftEngine.Controllers
         /// Results are sorted by primary position first.
         /// </remarks>
         /// <param name="position">The position code to filter by</param>
+        /// <param name="pageNumber">The page number to retrieve (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
         /// <returns>List of players at the specified position</returns>
         /// <response code="200">Successfully retrieved the list of players</response>
         /// <response code="400">If the position code is invalid</response>
@@ -659,7 +665,7 @@ namespace DraftEngine.Controllers
                     return Conflict(ApiResponse<string>.Create("Player is already drafted in this draft"));
                 }
 
-                var success = await _playerService.MarkAsDrafted(id, request);
+                var success = await _playerService.MarkAsDraftedAsync(id, request);
                 if (!success)
                 {
                     _logger.LogError("Failed to mark player {PlayerId} as drafted", id);

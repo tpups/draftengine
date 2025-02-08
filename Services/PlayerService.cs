@@ -115,7 +115,7 @@ namespace DraftEngine.Services
             await _players.Find(player => player.MLBTeam == team).ToListAsync();
 
         public async Task<List<Player>> GetByPositionAsync(string position) =>
-            await _players.Find(player => player.Position.Contains(position)).ToListAsync();
+            await _players.Find(player => player.Position != null && player.Position.Contains(position)).ToListAsync();
 
         public async Task<List<Player>> GetUndraftedPlayersAsync()
         {
@@ -270,13 +270,28 @@ namespace DraftEngine.Services
         /// <param name="id">The ID of the player being drafted</param>
         /// <param name="request">Draft pick details including manager, round, and pick numbers</param>
         /// <returns>True if the player was successfully marked as drafted, false otherwise</returns>
-        public async Task<bool> MarkAsDrafted(string id, DraftPickRequest request)
+        public async Task<bool> MarkAsDraftedAsync(string id, DraftPickRequest request)
         {
             // Get the active draft
             var draft = await _draftService.GetActiveDraftAsync();
             if (draft == null)
             {
                 _logger.LogWarning("No active draft found when marking player {PlayerId} as drafted", id);
+                return false;
+            }
+
+            // Get the player to check their draft status
+            var player = await GetAsync(id);
+            if (player == null)
+            {
+                _logger.LogWarning("Player {PlayerId} not found when marking as drafted", id);
+                return false;
+            }
+
+            // Check if player is already drafted in this draft
+            if (player.DraftStatuses?.Any(ds => ds.DraftId == draft.Id) == true)
+            {
+                _logger.LogWarning("Player {PlayerId} is already drafted in draft {DraftId}", id, draft.Id);
                 return false;
             }
 

@@ -287,11 +287,12 @@ public class DraftController : ControllerBase
     }
 
     /// <summary>
-    /// Marks a pick as complete in the active draft
+    /// Updates a pick's complete state in the active draft
     /// </summary>
     /// <remarks>
-    /// Completes a pick by assigning a player to a manager and advancing the draft state.
+    /// Completes a pick by assigning a player to a manager and advancing the draft state if necessary.
     /// Updates both the draft state and player's draft status.
+    /// Uncompletes a pick by removing the draft status from the player.
     /// 
     /// Draft Status Updates:
     /// - Adds a new draft status to the player's draftStatuses array
@@ -309,7 +310,7 @@ public class DraftController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<string>), 400)]
     [ProducesResponseType(typeof(ApiResponse<string>), 404)]
     [ProducesResponseType(typeof(ApiResponse<string>), 500)]
-    public async Task<IActionResult> MarkPickComplete([FromBody] MarkPickRequest request)
+    public async Task<IActionResult> TogglePickComplete([FromBody] MarkPickRequest request)
     {
         try
         {
@@ -333,35 +334,45 @@ public class DraftController : ControllerBase
                 return NotFound(new { message = "Pick not found in active draft" });
             }
             DraftPosition? pick = round?.Picks.FirstOrDefault(p => p.OverallPickNumber == request.OverallPickNumber) ?? null;
-            string pickNumber = pick?.PickNumber.ToString() ?? "N/A";
             if (pick == null)
             {
                 _logger.LogWarning("Pick {OverallPick} not found", request.OverallPickNumber);
                 return NotFound(new { message = "Pick not found in draft" });
             }
-            if (pick.IsComplete)
+            string pickNumber = pick?.PickNumber.ToString() ?? "N/A";
+            // Get the pick complete state BEFORE we toggle it
+            bool IsComplete = pick?.IsComplete ?? false;
+            // If it's a previously completed pick, we're toggling it to not complete
+            if (IsComplete)
             {
-                _logger.LogWarning("Round {RoundNumber} pick {PickNumber} is already complete", roundNumber, pickNumber);
-                return BadRequest(new { message = "Pick is already complete" });
+                var playerSuccess = await _playerService.UndraftPlayerAsync(request.PlayerId);
+                if (!playerSuccess)
+                {
+                    _logger.LogWarning("Failed to undraft player {PlayerId}", request.PlayerId);
+                    return StatusCode(500, new { message = "Failed to undraft player" });
+                }
+                _logger.LogWarning("Round {RoundNumber} pick {PickNumber} is already complete. Removed draft status from player.", roundNumber, pickNumber);
             }
-
-            // Mark the player as drafted
-            int roundNumberInt = round?.RoundNumber ?? 0;
-            int pickNumberInt = pick?.PickNumber ?? 0;
-            var playerSuccess = await _playerService.MarkAsDrafted(request.PlayerId, new DraftPickRequest
+            else
             {
-                DraftedBy = request.ManagerId,
-                Round = roundNumberInt,
-                Pick = pickNumberInt,
-                OverallPick = request.OverallPickNumber
-            });
+                // Mark the player as drafted
+                int roundNumberInt = round?.RoundNumber ?? 0;
+                int pickNumberInt = pick?.PickNumber ?? 0;
+                var playerSuccess = await _playerService.MarkAsDraftedAsync(request.PlayerId, new DraftPickRequest
+                {
+                    DraftedBy = request.ManagerId,
+                    Round = roundNumberInt,
+                    Pick = pickNumberInt,
+                    OverallPick = request.OverallPickNumber
+                });
 
-            if (!playerSuccess)
-            {
-                _logger.LogWarning("Failed to mark player {PlayerId} as drafted", request.PlayerId);
-                return StatusCode(500, new { message = "Failed to mark player as drafted" });
+                if (!playerSuccess)
+                {
+                    _logger.LogWarning("Failed to mark player {PlayerId} as drafted", request.PlayerId);
+                    return StatusCode(500, new { message = "Failed to mark player as drafted" });
+                }
+                _logger.LogInformation("Marked player {PlayerId} as drafted by manager {ManagerId} in round {RoundNumber} pick {PickNumber} ({OverallPick} overall)", request.PlayerId, request.ManagerId, roundNumber, pickNumber, request.OverallPickNumber);
             }
-            _logger.LogInformation("Marked player {PlayerId} as drafted by manager {ManagerId} in round {RoundNumber} pick {PickNumber} ({OverallPick} overall)", request.PlayerId, request.ManagerId, roundNumber, pickNumber, request.OverallPickNumber);
 
             // Get the current pick so we can determine if completed pick is also current pick
             PickResponse? currentPick = await _draftService.GetCurrentPickAsync();
@@ -371,30 +382,34 @@ public class DraftController : ControllerBase
                 return NotFound(new { message = "No current pick found" });
             }
 
-            // If not current pick, we don't change state, but we still mark the pick as complete
-            _logger.LogInformation("Marking pick [round {RoundNumber} pick {PickNumber} ({OverallPick} overall)] complete in active draft", roundNumber, pickNumber, request.OverallPickNumber);
+            // If not current pick, we don't change state, but we still toggle the pick complete state
+            _logger.LogInformation("Marking pick [round {RoundNumber} pick {PickNumber} ({OverallPick} overall)] {Complete} in active draft", roundNumber, pickNumber, request.OverallPickNumber, IsComplete ? "complete" : "incomplete");
 
             // Mark the pick as complete in the draft
-            var success = await _draftService.MarkPickCompleteAsync(request.OverallPickNumber);
+            var success = await _draftService.TogglePickCompleteAsync(request.OverallPickNumber);
             if (!success)
             {
                 _logger.LogWarning("Failed to mark pick {OverallPickNumber} as complete", request.OverallPickNumber);
                 return StatusCode(500, new { message = "Failed to mark pick as complete" });
             }
 
-            // If the completed pick is the current pick or ahead of current pick, advance to the next pick
+            // If the pick is the current pick or ahead of current pick and we're toggling to complete, advance to the next pick
             // We can use overall pick number to determine the next pick
-            if (pick?.OverallPickNumber >= currentPick.OverallPickNumber)
+            if (pick?.OverallPickNumber >= currentPick.OverallPickNumber && !IsComplete)
             {
                 _logger.LogInformation("Completed pick is current pick. Updating active and current pick.");
                 // Update active and current picks
-                await _draftService.UpdatePickStateAsync(pick.OverallPickNumber + 1, true);
+                var stateSuccess = await _draftService.UpdatePickStateAsync(pick.OverallPickNumber + 1, true);
+                if (stateSuccess == null)
+                {
+                    _logger.LogWarning("Failed to update pick state");
+                    return StatusCode(500, new { message = "Failed to update pick state" });
+                }
             }
            
-            _logger.LogInformation("Completed pick {PickNumber} in round {RoundNumber} of {DraftType} draft", pickNumber, roundNumber, isSnakeDraft);
+            _logger.LogInformation("Updated pick {PickNumber} in round {RoundNumber} of {DraftType} draft", pickNumber, roundNumber, isSnakeDraft);
 
             // Get updated draft
-            _logger.LogInformation("Testing log filtering");
             var draft = await _draftService.GetActiveDraftAsync();
             _logger.LogInformation("Retrieved active draft: {DraftId}", draft?.Id ?? "none");
             return Ok(new { value = draft });

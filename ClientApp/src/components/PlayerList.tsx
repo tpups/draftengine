@@ -216,8 +216,19 @@ export function PlayerList() {
     if (!activeDraft) return;
 
     try {
+      // Get the player's draft status to find the pick details
+      const player = players.find(p => p.id === playerId);
+      const draftStatus = player?.draftStatuses?.find(ds => ds.draftId === activeDraft.id);
+      if (!draftStatus) return;
+
+      // Toggle the pick status (backend handles both pick and player status)
+      const result = await draftService.togglePickComplete(activeDraft.id!, {
+        managerId: draftStatus.managerId,
+        playerId: playerId,
+        overallPickNumber: draftStatus.overallPick
+      });
+
       // Invalidate and refetch all queries
-      await playerService.undraftPlayer(playerId);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['activeDraft'] }),
         queryClient.invalidateQueries({ queryKey: ['currentPick'] }),
@@ -237,11 +248,11 @@ export function PlayerList() {
     if (!activeDraft?.activeRound || !activeDraft?.activePick || !activeDraft?.activeOverallPick) return;
 
     if (config.debug.enableConsoleLogging) {
-      console.log('Starting draft for:', {
+      console.log('Starting draft pick for:', {
         playerId,
         managerId,
-        round: activeDraft.currentRound,
-        pick: activeDraft.currentPick
+        round: activeDraft.activeRound,
+        pick: activeDraft.activePick
       });
     }
 
@@ -250,11 +261,15 @@ export function PlayerList() {
       const { activeOverallPick } = activeDraft;
       
       // Mark the pick as complete in the draft (backend will handle marking player as drafted)
-      await draftService.markPickComplete(activeDraft.id!, {
+      const result = await draftService.togglePickComplete(activeDraft.id!, {
         managerId,
         playerId,
         overallPickNumber: activeOverallPick
       });
+
+      if (!result.value) {
+        throw new Error('Failed to draft player. The player may already be drafted.');
+      }
 
       if (config.debug.enableConsoleLogging) console.log('Refetching queries');
       // Invalidate and refetch all queries
@@ -495,7 +510,7 @@ export function PlayerList() {
               if (!draftRound) return;
 
               const draftPick = draftRound.picks.find(p => p.pickNumber === pick);
-              if (!draftPick || draftPick.isComplete) return;
+              if (!draftPick) return;
 
               if (config.debug.enableConsoleLogging) {
                 console.log('Pick selector: Setting active pick to:', { round, pick });

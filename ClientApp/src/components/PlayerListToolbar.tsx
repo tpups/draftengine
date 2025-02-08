@@ -20,6 +20,8 @@ const logPickState = (activeDraft: Draft | undefined, context: string) => {
   });
 };
 
+import { getDisplayPickNumber } from '../utils/draftUtils';
+
 interface PlayerListToolbarProps {
   gridMode: 'prep' | 'draft';
   onGridModeChange: (mode: 'prep' | 'draft') => void;
@@ -104,7 +106,7 @@ export function PlayerListToolbar({
                 </IconButton>
               </Box>
               <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap' }}>
-                Round {activeDraft.activeRound}, Pick {activeDraft.activePick} (Overall #{activeDraft.activeOverallPick})
+                Round {activeDraft.activeRound}, Pick {getDisplayPickNumber(activeDraft, activeDraft.activePick ?? 0)} (Overall #{activeDraft.activeOverallPick})
                 {getActivePickManager()?.name && ` - ${getActivePickManager()?.name}'s Pick`}
               </Typography>
             </Box>

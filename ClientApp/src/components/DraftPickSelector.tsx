@@ -60,9 +60,7 @@ export function DraftPickSelector({
   /**
    * Builds a dictionary of pick availability for the draft board
    * A pick is available if:
-   * 1. It is not already complete
-   * 2. It is not beyond the current overall pick
-   * 3. It is in a past round or the current round
+   * - It is not beyond the higher of current and active overall pick
    * 
    * For snake drafts:
    * - Even rounds have reversed pick order but maintain sequential overall numbers
@@ -85,14 +83,9 @@ export function DraftPickSelector({
 
       round.picks.forEach(pick => {
         const isAvailable = (() => {
-          // Can't select completed picks
-          if (pick.isComplete) return false;
-
-          // Can't select picks beyond current overall pick
-          if (pick.overallPickNumber > activeDraft.currentOverallPick) return false;
-
-          // Past picks are available
-          return true;
+          // Can select picks as long as they are not beyond the higher of current and active overall pick
+          const maxAllowedPick = Math.max(activeDraft.currentOverallPick, activeDraft.activeOverallPick);
+          return pick.overallPickNumber <= maxAllowedPick;
         })();
 
         availability[roundNum][pick.pickNumber] = isAvailable;
@@ -120,6 +113,7 @@ export function DraftPickSelector({
    * - Active Pick: Light blue background (info.light)
    * - Available Pick: White or light grey based on round type
    * - Unavailable Pick: Grey background (grey.200)
+   * - Completed Pick: Green outline (success.main)
    * 
    * Hover Effects:
    * - Only available picks show hover effects
@@ -163,7 +157,10 @@ export function DraftPickSelector({
       }),
       borderLeft: round === 1 || !isSnakeRound ? 1 : 0,
       borderRight: isSnakeRound ? 1 : 0,
-      borderColor: 'divider'
+      borderColor: 'divider',
+      outline: pick.isComplete ? '2px solid' : 'none',
+      outlineColor: 'success.main',
+      outlineOffset: '-2px'
     };
   };
 
