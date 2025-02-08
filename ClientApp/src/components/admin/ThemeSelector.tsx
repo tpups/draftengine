@@ -1,65 +1,31 @@
 import React from 'react';
 import { 
   Box, 
-  Typography, 
   Switch, 
-  IconButton, 
   Paper,
-  Grid,
-  Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useTheme } from '../../contexts/ThemeContext';
-
-const ThemePreview: React.FC = () => {
-  const { theme } = useTheme();
-  
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-      <Typography variant="subtitle2">
-        {theme.name}
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 1 }}>
-        <Box
-          sx={{
-            width: 20,
-            height: 20,
-            borderRadius: 1,
-            backgroundColor: theme.preview.primary,
-          }}
-        />
-        <Box
-          sx={{
-            width: 20,
-            height: 20,
-            borderRadius: 1,
-            backgroundColor: theme.preview.secondary,
-          }}
-        />
-        <Box
-          sx={{
-            width: 20,
-            height: 20,
-            borderRadius: 1,
-            backgroundColor: theme.preview.accent,
-          }}
-        />
-      </Box>
-    </Box>
-  );
-};
+import { THEMES, getThemeNames, ThemeName } from '../../styles/themes';
+import { SelectChangeEvent } from '@mui/material/Select';
 
 export const ThemeSelector: React.FC = () => {
   const { 
     mode, 
-    toggleColorMode, 
-    previousTheme, 
-    nextTheme,
+    toggleColorMode,
     theme,
+    currentTheme,
+    setTheme,
   } = useTheme();
+
+  const handleThemeChange = (event: SelectChangeEvent<string>) => {
+    setTheme(event.target.value as ThemeName);
+  };
 
   return (
     <Paper 
@@ -71,21 +37,20 @@ export const ThemeSelector: React.FC = () => {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Tooltip title="Previous Theme">
-            <IconButton onClick={previousTheme} size="small">
-              <ChevronLeftIcon />
-            </IconButton>
-          </Tooltip>
-          
-          <ThemePreview />
-
-          <Tooltip title="Next Theme">
-            <IconButton onClick={nextTheme} size="small">
-              <ChevronRightIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Theme</InputLabel>
+          <Select
+            value={currentTheme}
+            onChange={handleThemeChange}
+            label="Theme"
+          >
+            {getThemeNames().map((themeName) => (
+              <MenuItem key={themeName} value={themeName}>
+                {themeName.replace(/([A-Z])/g, ' $1').trim()}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LightModeIcon 
