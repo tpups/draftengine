@@ -88,6 +88,10 @@ export interface ThemeColors {
       light: string;
       dark: string;
     };
+    traded: {
+      light: string;
+      dark: string;
+    };
   };
 }
 

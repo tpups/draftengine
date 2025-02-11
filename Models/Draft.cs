@@ -47,9 +47,8 @@ public class DraftRound
 public class DraftPosition
 {
     public string ManagerId { get; set; } = string.Empty;
+    public List<string> TradedTo { get; set; } = new();
     public int PickNumber { get; set; }
     public bool IsComplete { get; set; }
-    
-    [BsonElement("OverallPickNumber")]
     public int OverallPickNumber { get; set; }
 }

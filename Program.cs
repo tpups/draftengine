@@ -34,6 +34,11 @@ builder.Services.AddSingleton<ManagerService>(sp => new ManagerService(
     sp.GetRequiredService<MongoDbContext>(),
     sp.GetRequiredService<ILogger<ManagerService>>()
 ));
+builder.Services.AddSingleton<TradeService>(sp => new TradeService(
+    sp.GetRequiredService<MongoDbContext>(),
+    sp.GetRequiredService<DraftService>(),
+    sp.GetRequiredService<ILogger<TradeService>>()
+));
 builder.Services.AddHttpClient();
 builder.Services.Configure<MlbApiOptions>(builder.Configuration.GetSection("MlbApi"));
 builder.Services.Configure<DebugOptions>(builder.Configuration.GetSection("Debug"));

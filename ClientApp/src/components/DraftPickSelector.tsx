@@ -43,9 +43,23 @@ export function DraftPickSelector({
 
   const managers = managersResponse?.value ?? [];
 
-  const getManagerName = (managerId: string) => {
-    const manager = managers.find(m => m.id === managerId);
+  const getManagerName = (pick: DraftPosition) => {
+    // If the pick has been traded, use the most recent manager in the TradedTo array
+    const currentManagerId = pick.tradedTo?.length ? pick.tradedTo[pick.tradedTo.length - 1] : pick.managerId;
+    const manager = managers.find(m => m.id === currentManagerId);
     return manager?.name ?? '';
+  };
+
+  const getTradeHistory = (pick: DraftPosition) => {
+    if (!pick.tradedTo?.length) return '';
+
+    const history = pick.tradedTo.map(managerId => {
+      const manager = managers.find(m => m.id === managerId);
+      return manager?.name ?? 'Unknown Manager';
+    });
+
+    const originalManager = managers.find(m => m.id === pick.managerId);
+    return `Original: ${originalManager?.name ?? 'Unknown'}\nTrade History:\n${history.join('\n')}`;
   };
 
   /**
@@ -138,6 +152,7 @@ export function DraftPickSelector({
     const isActive = pick.overallPickNumber === activeDraft.activeOverallPick;
     const isAvailable = isPickAvailable(round, pickNumber);
     const isSnakeRound = round % 2 === 0 && activeDraft.isSnakeDraft;
+    const isTraded = pick.tradedTo?.length > 0;
 
     return {
       width: '80px',
@@ -174,7 +189,9 @@ export function DraftPickSelector({
       borderColor: 'divider',
       outline: pick.isComplete ? '2px solid' : 'none',
       outlineColor: theme.colors.primary.main,
-      outlineOffset: '-2px'
+      outlineOffset: '-2px',
+      // Add italic style for traded picks
+      fontStyle: isTraded ? 'italic' : 'normal'
     };
   };
 
@@ -256,11 +273,13 @@ export function DraftPickSelector({
                 {round.picks.map((pick) => {
                   const isAvailable = isPickAvailable(round.roundNumber, pick.pickNumber);
                   const displayNumber = getDisplayPickNumber(round.roundNumber, pick.pickNumber);
-                  const managerName = getManagerName(pick.managerId);
+                  const managerName = getManagerName(pick);
+                  const tradeHistory = getTradeHistory(pick);
+                  const tooltipTitle = `Round ${round.roundNumber}, Pick ${displayNumber} (Overall #${pick.overallPickNumber})${tradeHistory ? `\n\n${tradeHistory}` : ''}`;
                   return (
                     <Tooltip
                       key={`${round.roundNumber}-${pick.pickNumber}`}
-                      title={`Round ${round.roundNumber}, Pick ${displayNumber} (Overall #${pick.overallPickNumber}) - ${managerName}`}
+                      title={tooltipTitle}
                       arrow
                     >
                       <Paper

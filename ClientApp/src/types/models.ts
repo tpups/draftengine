@@ -108,6 +108,7 @@ export interface DraftPosition {
     pickNumber: number;
     isComplete: boolean;
     overallPickNumber: number;  // Non-nullable, set during draft creation
+    tradedTo: string[];  // List of manager IDs, most recent is current owner
 }
 
 export interface CreateDraftRequest {
@@ -152,4 +153,42 @@ export interface BirthDateUpdateResult {
     oldBirthDate: string | null;
     newBirthDate: string | null;
     wasUpdated: boolean;
+}
+
+export interface Trade {
+    id?: string;
+    timestamp: string;
+    notes?: string;
+    status: TradeStatus;
+    parties: TradeParty[];
+}
+
+export interface TradeParty {
+    managerId: string;
+    proposed: boolean;
+    accepted: boolean;
+    assets: TradeAsset[];
+}
+
+export interface TradeAsset {
+    type: TradeAssetType;
+    draftId?: string;
+    playerId?: string;
+    overallPickNumber?: number;
+    pickNumber?: number;
+    roundNumber?: number;
+}
+
+export enum TradeAssetType {
+    DraftPick = 'DraftPick',
+    Player = 'Player'
+}
+
+export enum TradeStatus {
+    Proposed = 'Proposed',
+    Accepted = 'Accepted',
+    Approved = 'Approved',
+    Completed = 'Completed',
+    Reversed = 'Reversed',
+    Cancelled = 'Cancelled'
 }

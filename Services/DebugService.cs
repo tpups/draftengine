@@ -36,6 +36,25 @@ public class DebugService
         }
     }
 
+    public void AddLog(LogEntry entry)
+    {
+        if (!_enabled) return;
+
+        // Ensure timestamp is set
+        if (entry.Timestamp == default)
+        {
+            entry.Timestamp = DateTime.UtcNow;
+        }
+
+        _recentLogs.Enqueue(entry);
+
+        // Maintain buffer size
+        while (_recentLogs.Count > _bufferSize)
+        {
+            _recentLogs.TryDequeue(out _);
+        }
+    }
+
     public IEnumerable<LogEntry> GetRecentLogs()
     {
         return _recentLogs.ToArray();

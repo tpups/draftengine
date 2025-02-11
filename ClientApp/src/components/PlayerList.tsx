@@ -127,6 +127,7 @@ export function PlayerList() {
   });
 
   // Callbacks
+  // Gets the current owner of the active pick and determines if they are the original owner
   const getActivePickManager = useCallback(() => {
     if (!activeDraft) return null;
 
@@ -134,8 +135,26 @@ export function PlayerList() {
     if (!round) return null;
 
     const pick = round.picks.find(p => p.pickNumber === activeDraft.activePick);
-    const manager = pick ? managers.find(m => m.id === pick.managerId) : null;
-    return manager ? { name: manager.name } : null;
+    if (!pick) return null;
+
+    // If the pick has been traded, the current owner is the last manager in the tradedTo array
+    // Otherwise, it's the original owner (managerId)
+    const currentManagerId = pick.tradedTo?.length ? pick.tradedTo[pick.tradedTo.length - 1] : pick.managerId;
+    const manager = managers.find(m => m.id === currentManagerId);
+    
+    if (!manager) return null;
+
+    // Get the original owner's name
+    const originalManager = managers.find(m => m.id === pick.managerId);
+    
+    // A pick is with its original owner if:
+    // 1. It has never been traded (tradedTo is empty), or
+    // 2. It has been traded back to the original owner (last tradedTo entry matches original managerId)
+    return { 
+      name: manager.name,
+      isOriginalOwner: currentManagerId === pick.managerId,
+      originalOwnerName: originalManager?.name
+    };
   }, [activeDraft, managers]);
 
   // Determines if user can advance to the next pick

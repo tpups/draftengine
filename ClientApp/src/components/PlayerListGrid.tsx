@@ -146,7 +146,9 @@ export function PlayerListGrid({
       field: 'rank',
       headerName: 'Rank',
       width: 80,
-      type: 'number' as const
+      type: 'number' as const,
+      align: 'center' as const,
+      headerAlign: 'center' as const
     },
     {
       field: 'name',
@@ -178,23 +180,31 @@ export function PlayerListGrid({
     {
       field: 'position',
       headerName: 'Position',
-      width: 120
+      width: 120,
+      align: 'center' as const,
+      headerAlign: 'center' as const
     },
     {
       field: 'age',
       headerName: 'Age',
       width: 80,
-      type: 'number' as const
+      type: 'number' as const,
+      align: 'center' as const,
+      headerAlign: 'center' as const
     },
     {
       field: 'mlbTeam',
       headerName: 'Team',
-      width: 100
+      width: 100,
+      align: 'center' as const,
+      headerAlign: 'center' as const
     },
     {
       field: 'level',
       headerName: 'Level',
-      width: 100
+      width: 100,
+      align: 'center' as const,
+      headerAlign: 'center' as const
     },
     {
       field: 'actions',
@@ -304,13 +314,17 @@ export function PlayerListGrid({
         field: 'draftRound',
         headerName: 'Round',
         width: 80,
-        type: 'number' as const
+        type: 'number' as const,
+        align: 'center' as const,
+        headerAlign: 'center' as const
       },
       {
         field: 'draftPick',
         headerName: 'Pick',
         width: 80,
-        type: 'number' as const
+        type: 'number' as const,
+        align: 'center' as const,
+        headerAlign: 'center' as const
       },
       {
         field: 'draftingManagerName',
@@ -405,9 +419,12 @@ export function PlayerListGrid({
           height: '46px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-start',
+          justifyContent: 'center',
           '&:focus': {
             outline: 'none'
+          },
+          '&[data-field="name"], &[data-field="draftingManagerName"]': {
+            justifyContent: 'flex-start'
           }
         },
         '& .MuiDataGrid-columnHeader': {
@@ -415,7 +432,12 @@ export function PlayerListGrid({
           fontWeight: 600,
           color: 'inherit',
           boxShadow: 'none',
-          borderBottom: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`
+          borderBottom: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
+          display: 'flex',
+          justifyContent: 'center',
+          '&[data-field="name"], &[data-field="draftingManagerName"]': {
+            justifyContent: 'flex-start'
+          }
         },
         '& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader': {
           bgcolor: mode === 'light' ? `${theme.colors.primary.main}15` : theme.colors.background.paper.dark,

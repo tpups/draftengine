@@ -148,6 +148,10 @@ const wfbc: Theme = {
         light: '#e2e8f0',
         dark: '#061219',
       },
+      traded: {
+        light: palette.blue[200], // Light blue for traded picks
+        dark: palette.blue[800],
+      },
     },
   },
 };

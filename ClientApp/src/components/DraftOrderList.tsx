@@ -107,7 +107,8 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
     height: '72px',
     p: 2,
     borderBottom: '1px solid',
-    borderColor: 'divider',
+    borderColor: mode === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)',
+    bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
     '&:last-child': {
       borderBottom: 'none',
     },
@@ -120,7 +121,16 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
         <Typography variant="subtitle1" gutterBottom>
           Available Managers
         </Typography>
-        <Paper variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Paper 
+          variant="outlined" 
+          sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column',
+            bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+            borderColor: mode === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)'
+          }}
+        >
           <List sx={{ p: 0, flex: 1, overflow: 'auto' }}>
             {availableManagers.map(manager => (
               <ListItem
@@ -133,14 +143,16 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
                   cursor: 'move',
                   opacity: draggedId === manager.id ? 0.5 : 1,
                   '&:hover': {
-                    bgcolor: 'action.hover',
+                    bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark,
                   },
                   display: 'flex',
                   justifyContent: 'space-between',
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <DragIndicatorIcon sx={{ color: 'action.active' }} />
+                  <DragIndicatorIcon sx={{ 
+                    color: mode === 'light' ? theme.colors.text.secondary.light : theme.colors.text.secondary.dark 
+                  }} />
                   <Typography>{manager.name}</Typography>
                 </Box>
                 <IconButton
@@ -148,7 +160,9 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
                   onClick={() => handleAddManager(manager.id || '')}
                   disabled={selectedManagers.length >= maxSlots}
                 >
-                  <ArrowForwardIcon />
+                  <ArrowForwardIcon sx={{ 
+                    color: mode === 'light' ? theme.colors.text.secondary.light : theme.colors.text.secondary.dark 
+                  }} />
                 </IconButton>
               </ListItem>
             ))}
@@ -161,7 +175,16 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
         <Typography variant="subtitle1" gutterBottom>
           Draft Order
         </Typography>
-        <Paper variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Paper 
+          variant="outlined" 
+          sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column',
+            bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+            borderColor: mode === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)'
+          }}
+        >
           <List sx={{ p: 0, flex: 1, overflow: 'auto' }}>
             {Array.from({ length: maxSlots }, (_, index) => {
               const manager = managers.find(m => m.id === selectedManagers[index]);
@@ -176,7 +199,9 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
                   onDrop={(e) => handleDrop(e, index)}
                   sx={{
                     ...listItemSx,
-                    bgcolor: isDraggingOver === index ? 'action.hover' : 'inherit',
+                    bgcolor: isDraggingOver === index ? 
+                      (mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark) : 
+                      (mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark),
                     transition: 'all 0.2s ease',
                     border: isDraggingOver === index ? '2px dashed' : 'none',
                     borderColor: isDraggingOver === index ? theme.colors.pickState.selected : undefined,
@@ -190,14 +215,18 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
                           onClick={() => handleMoveManager(index, 'up')}
                           disabled={index === 0}
                         >
-                          <ArrowUpwardIcon fontSize="small" />
+                          <ArrowUpwardIcon fontSize="small" sx={{ 
+                            color: mode === 'light' ? theme.colors.text.secondary.light : theme.colors.text.secondary.dark 
+                          }} />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleMoveManager(index, 'down')}
                           disabled={index === selectedManagers.length - 1}
                         >
-                          <ArrowDownwardIcon fontSize="small" />
+                          <ArrowDownwardIcon fontSize="small" sx={{ 
+                            color: mode === 'light' ? theme.colors.text.secondary.light : theme.colors.text.secondary.dark 
+                          }} />
                         </IconButton>
                       </Stack>
                     )}
@@ -211,11 +240,15 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
                           size="small"
                           onClick={() => handleRemoveManager(index)}
                         >
-                          <CloseIcon />
+                          <CloseIcon sx={{ 
+                            color: mode === 'light' ? theme.colors.text.secondary.light : theme.colors.text.secondary.dark 
+                          }} />
                         </IconButton>
                       </>
                     ) : (
-                      <Typography color="text.secondary">Empty</Typography>
+                    <Typography sx={{ color: mode === 'light' ? theme.colors.text.secondary.light : theme.colors.text.secondary.dark }}>
+                      Empty
+                    </Typography>
                     )}
                   </Box>
                 </ListItem>

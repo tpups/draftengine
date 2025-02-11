@@ -64,6 +64,32 @@ namespace DraftEngine
                 return _managers;
             }
         }
+
+        private IMongoCollection<Draft>? _drafts;
+        public IMongoCollection<Draft> Drafts
+        {
+            get
+            {
+                if (_drafts == null)
+                {
+                    _drafts = _database.GetCollection<Draft>("Drafts");
+                }
+                return _drafts;
+            }
+        }
+
+        private IMongoCollection<Trade>? _trades;
+        public IMongoCollection<Trade> Trades
+        {
+            get
+            {
+                if (_trades == null)
+                {
+                    _trades = _database.GetCollection<Trade>("Trades");
+                }
+                return _trades;
+            }
+        }
     }
 
     public class MongoDbSettings

@@ -1,4 +1,5 @@
 import { Box, Button, IconButton, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { useTheme } from '../contexts/ThemeContext';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -32,7 +33,7 @@ interface PlayerListToolbarProps {
   onPickSelectorClick: (event: React.MouseEvent<HTMLElement>) => void;
   canAdvance: boolean;
   canSkipToIncomplete: boolean;
-  getActivePickManager: () => { name?: string } | null;
+  getActivePickManager: () => { name?: string, isOriginalOwner?: boolean, originalOwnerName?: string } | null;
 }
 
 export function PlayerListToolbar({
@@ -107,7 +108,18 @@ export function PlayerListToolbar({
               </Box>
               <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap' }}>
                 Round {activeDraft.activeRound}, Pick {getDisplayPickNumber(activeDraft, activeDraft.activePick ?? 0)} (Overall #{activeDraft.activeOverallPick})
-                {getActivePickManager()?.name && ` - ${getActivePickManager()?.name}'s Pick`}
+                {getActivePickManager()?.name && (
+                  <>
+                    {' - '}
+                    <Box component="span" sx={{ 
+                      fontStyle: !getActivePickManager()?.isOriginalOwner ? 'italic' : 'normal',
+                      color: 'inherit'
+                    }}>
+                      {getActivePickManager()?.name}'s Pick
+                      {!getActivePickManager()?.isOriginalOwner && ` (Original Owner: ${getActivePickManager()?.originalOwnerName})`}
+                    </Box>
+                  </>
+                )}
               </Typography>
             </Box>
           </>

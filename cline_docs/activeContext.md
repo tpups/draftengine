@@ -49,15 +49,100 @@
 
 ## Recent Changes
 
-1. Grid Styling Refinements (2/8/25):
+1. Trade Status System Enhancement (2/11/25):
+    - Enhanced trade status management:
+      * Added support for Cancelled and Reversed statuses
+      * Implemented proper status transition validation
+      * Added backend validation for status changes
+      * Ensured trades are cancelled before deletion
+    - Improved trade UI components:
+      * Updated TradeManagement with status indicators
+      * Changed cancel icon to Undo for better UX
+      * Added status display in trade details header
+      * Enhanced success messages for better clarity
+      * Modified delete functionality for all trades
+    - Enhanced trade visualization:
+      * Added strikethrough and italic text for cancelled trades
+      * Improved status display in trade history
+      * Added proper opacity handling for inactive trades
+      * Updated hover states for better feedback
+    - Improved trade documentation:
+      * Added debug logging for trade operations
+      * Enhanced status transition logging
+      * Added validation error messages
+      * Documented status flow and relationships
+
+2. Trade Management Implementation (2/10/25):
+    - Created comprehensive trade management system:
+      * Added Trade model with parties and assets
+      * Added TradeService for trade operations
+      * Added TradeController with RESTful endpoints
+      * Added tradeService.ts for frontend API integration
+    - Implemented trade UI components:
+      * Created TradeModal for trade creation
+      * Created DraftPickList for pick selection
+      * Added TradeManagement for trade history
+      * Added ManagerSelector for trade participants
+    - Added drag and drop functionality:
+      * Implemented DragContext for state tracking
+      * Added pick dragging between sections
+      * Added validation for same-manager trades
+      * Added proper drop zone indicators
+    - Enhanced trade UI and UX:
+      * Added dashed borders to indicate drop zones
+      * Added hover effects for better feedback
+      * Improved contrast in light mode
+      * Added proper spacing and padding
+      * Added shadows for better depth
+    - Added trade validation:
+      * Prevents dragging between different managers
+      * Shows proper drop indicators
+      * Validates each manager has assets
+      * Proper error handling and feedback
+    - Added backend support:
+      * MongoDB integration for trade persistence
+      * Trade status tracking
+      * Pick ownership updates
+      * Draft state management
+3. Board Page and Draft Grid Implementation (2/9/25):
+    - Added dedicated Board page:
+      * New route in App.tsx
+      * Clean, focused layout
+      * Draft board as main content
+      * Proper navigation integration
+    - Created comprehensive draft board component:
+      * Grid-based layout with round and pick headers
+      * Dynamic cell sizing and spacing
+      * Snake draft support with proper pick numbering
+      * Manager and player name display
+    - Added pick status visualization:
+      * Current pick shows with red outline
+      * Completed picks show with blue outline
+      * Player names appear in completed picks
+      * Manager names shown in all cells
+    - Enhanced grid organization:
+      * Round numbers (R1-R10) in left column
+      * Pick numbers (1-12) in header row
+      * Transparent top-left spacer cell
+      * Consistent spacing between sections
+    - Implemented responsive layout:
+      * Horizontal scrolling for wide grids
+      * Fixed round number column
+      * Proper cell alignment in all rows
+      * Maintained spacing on resize
+    - Added interactive features:
+      * Tooltips showing pick details
+      * Clear visual hierarchy
+      * Proper theme integration
+      * Accessibility considerations
+4. Grid Styling Refinements (2/8/25):
     - Enhanced grid visual consistency:
       * Added border radius to grid corners
       * Improved scrolling behavior with proper overflow handling
       * Cleaned up footer border styling
       * Better visual alignment with theme system
       * Consistent border radius across components
-
-2. Color System Refinements (2/8/25):
+5. Color System Refinements (2/8/25):
     - Enhanced draft pick selection UI:
       * Added two-tier pick tracking in DraftPickSelector
       * Current pick shows in primary.dark (darker blue)
@@ -79,7 +164,7 @@
       * Better dark mode contrast
       * Clear visual hierarchy
       * Maritime theme alignment
-3. Theme System Implementation (2/7/25):
+6. Theme System Implementation (2/7/25):
     - Created comprehensive theme system with four themes:
       * Classic Baseball theme with traditional colors
       * Modern Analytics theme with data-focused design
@@ -100,7 +185,7 @@
       * Implemented semantic color tokens
       * Enhanced component styling with theme awareness
       * Improved accessibility with proper contrast
-4. Color System and Theme Implementation (2/7/25):
+7. Color System and Theme Implementation (2/7/25):
     - Created centralized color management system:
       * Added src/styles/colors.ts with semantic color tokens
       * Implemented comprehensive color palette with light/dark variants
@@ -121,7 +206,7 @@
       * Added proper color variations for states
       * Enhanced accessibility with proper contrast
       * Documented color usage patterns
-5. Pick Number Display Enhancement (2/7/25):
+8. Pick Number Display Enhancement (2/7/25):
     - Created shared draftUtils.ts for pick number display:
       * Added getDisplayPickNumber function
       * Handles snake draft pick inversion
@@ -141,7 +226,7 @@
       * Round 2: Shows picks 1-12 (internally 12-1)
       * Round 3: Shows picks 1-12
       * Round 4: Shows picks 1-12 (internally 12-1)
-6. Draft Pick Selection System Fix (2/7/25):
+9. Draft Pick Selection System Fix (2/7/25):
     - Fixed pick completion and undraft workflow:
       * Backend now handles both pick and player status
       * DraftController toggles pick completion state
@@ -162,7 +247,7 @@
       * Uses single draftService endpoint
       * Proper query invalidation
       * Maintains UI consistency
-7. Memory Bank Script Enhancements (2/7/25):
+10. Memory Bank Script Enhancements (2/7/25):
     - Added entry deletion capability:
       * New delete command with section and entry number
       * Automatically renumbers remaining entries
@@ -178,7 +263,7 @@
       * Proper section content preservation
       * Consistent entry formatting
       * Reliable entry numbering
-8. Undraft Player Button Implementation (2/7/25):
+11. Undraft Player Button Implementation (2/7/25):
     - Added undraft button to player grid in draft mode:
       * Shows undo icon for drafted players
       * Uses error.main color for visual distinction
@@ -199,7 +284,7 @@
       * Consistent with other endpoints
       * Better error handling
       * Immediate UI feedback
-9. Memory Bank Script Implementation (2/7/25):
+12. Memory Bank Script Implementation (2/7/25):
     - Created updateActiveContext.js script:
       * Adds new entries as #1 to any section
       * Automatically increments existing entries
@@ -220,7 +305,7 @@
       * Error handling for missing sections
       * Clear console feedback
       * File path handling for scripts directory
-10. Draft Pick System and Debug Improvements (2/7/25):
+13. Draft Pick System and Debug Improvements (2/7/25):
     - Fixed pick advancement and selection:
       * Simplified canDraft logic to only check pick completion
       * Removed round/pick order restrictions
@@ -246,7 +331,7 @@
       * Removed unused imports
       * Updated XML documentation
       * Clarified state management patterns
-11. Manager Controller and Service Refactoring (2/5/25):
+14. Manager Controller and Service Refactoring (2/5/25):
     - Enhanced documentation and error handling:
       * Added comprehensive XML docs for all endpoints
       * Improved error messages and logging
@@ -266,7 +351,7 @@
       * Continue backend improvements
       * Review other controllers and services
       * Maintain consistent documentation standards
-12. Player Controller and Service Refactoring (2/5/25):
+15. Player Controller and Service Refactoring (2/5/25):
     - Added comprehensive pagination support:
       * Created PaginatedResult<T> class for consistent pagination
       * Added pagination to all player endpoints
@@ -287,7 +372,7 @@
       * Review ManagerController and ManagerService
       * Apply similar pagination patterns
       * Enhance documentation and error handling
-13. Draft Controller and Service Refactoring (2/5/25):
+16. Draft Controller and Service Refactoring (2/5/25):
     - Simplified pick state management:
       * Unified current pick tracking
       * Removed redundant state checks
@@ -313,7 +398,7 @@
       * End-to-end validation
       * Performance optimization
       * UI refinements
-14. Backend Refactoring (2/4/25):
+17. Backend Refactoring (2/4/25):
     - Major improvements to Draft Service:
       * Enhanced method documentation and error handling
       * Improved pick state management (current vs active)
@@ -331,7 +416,7 @@
       * Continue Draft Controller improvements
       * Further backend logic refinement
       * Documentation completeness
-15. Draft Manager Selection UI Improvement: (2/3/25)
+18. Draft Manager Selection UI Improvement: (2/3/25)
     - Replaced modal with popover for manager selection:
       * Smaller, more focused UI next to draft icon
       * Proper positioning relative to click location
@@ -346,14 +431,14 @@
       * Direct manager selection
       * Automatic close after selection
       * Better UX for drafting process
-16. Draft Grid Column Fixes: (2/3/25)
+19. Draft Grid Column Fixes: (2/3/25)
     - Fixed Round, Pick, and Drafted By columns in player grid:
       * Added draftRound and draftPick to GridPlayer interface
       * Fixed draftingManagerName mapping from draft status
       * Values now appear correctly when players are drafted
       * Fixed type safety with proper null handling
       * Improved manager name lookup for Drafted By column
-17. Grid Mode State Persistence: (2/3/25)
+20. Grid Mode State Persistence: (2/3/25)
     - Added localStorage persistence for grid mode:
       * Initializes from localStorage on component mount
       * Updates localStorage when mode changes
@@ -364,7 +449,7 @@
       * Consistent state across sessions
       * Seamless mode restoration
       * No unexpected mode resets
-18. PlayerListToolbar Layout Fix: (2/3/25)
+21. PlayerListToolbar Layout Fix: (2/3/25)
     - Fixed button position jumping in toolbar:
       * Moved pick control buttons to left of pick info
       * Added consistent spacing with gap property
@@ -375,7 +460,7 @@
       * Kept related elements grouped together
       * Improved visual hierarchy
       * Better user experience with stable controls
-19. Pick Advance Documentation Enhancement: (2/3/25)
+22. Pick Advance Documentation Enhancement: (2/3/25)
     - Added comprehensive documentation across pick advance system:
       * Added XML docs to all DraftController endpoints for Swagger
       * Documented two-tier pick tracking in DraftService
@@ -395,7 +480,7 @@
       * Documented pick state logging
       * Added context for state transitions
       * Documented debug mode features
-20. Skip to Incomplete Button Enhancement: (2/2/25)
+23. Skip to Incomplete Button Enhancement: (2/2/25)
     - Added proper button disabling when on current pick:
       * Frontend check in canSkipToIncomplete
       * Comparison of activeOverallPick vs currentOverallPick
@@ -408,7 +493,7 @@
       * Avoided unnecessary backend complexity
       * Better performance without extra API calls
       * Cleaner state management
-21. Active Pick State Management Fix: (2/2/25)
+24. Active Pick State Management Fix: (2/2/25)
     - Fixed state management for active vs current pick:
       * Changed invalidateQueries to refetchQueries
       * Added Promise.all to wait for refetches
@@ -421,7 +506,7 @@
       * Added detailed pick state logging
       * Clear before/after state comparisons
       * Better error messages
-22. Admin Panel Layout Optimization: (2/2/25)
+25. Admin Panel Layout Optimization: (2/2/25)
     - Enhanced layout for large displays:
       * Moved draft order to separate column
       * Removed container width constraint
@@ -435,7 +520,7 @@
       * Clear separation between sections
       * Consistent spacing between columns
       * Sticky positioning for side columns
-23. Admin Panel Draft Improvements: (2/2/25)
+26. Admin Panel Draft Improvements: (2/2/25)
     - Enhanced draft generation UI:
       * Added snake draft toggle with default on
       * Improved input layout with centered alignment
@@ -449,7 +534,7 @@
       * Clear indication of snake vs standard draft
       * Proper draft order tracking
       * Better UI organization
-24. Pick State Management Fix: (2/2/25)
+27. Pick State Management Fix: (2/2/25)
     - Fixed pick advancement behavior:
       * Clarified UI terminology ("Edit active pick")
       * Added updateActivePick endpoint for backend state
@@ -463,7 +548,7 @@
       * Backend validation
       * Frontend error messages
       * Detailed state logging
-25. Draft Pick System Enhancement: (2/2/25)
+28. Draft Pick System Enhancement: (2/2/25)
     - Added two-tier pick tracking:
       * Current Round/Pick: Tracks draft progress
       * Active Round/Pick: UI selection for editing
@@ -479,7 +564,7 @@
       * Active vs Current pick states
       * Before/after state changes
       * Pick availability by round
-26. Admin Panel UI Improvements: (2/2/25)
+29. Admin Panel UI Improvements: (2/2/25)
     - Enhanced Manager Section:
       * Added manager count display
       * Moved Add Manager button to header row
@@ -492,7 +577,7 @@
       * Added remove round capability
       * Improved validation and error handling
       * Consistent dialog styling
-27. Menu Bar Navigation Improvements: (2/1/25)
+30. Menu Bar Navigation Improvements: (2/1/25)
     - Refined navigation behavior in menu bar
     - Removed redundant home link from entire menu bar
     - Kept home navigation on logo and Home button only
@@ -504,7 +589,7 @@
       * Added subtle white glow effect
       * Maintained hover state on active button
     - Improved overall UX consistency
-28. Admin Panel Organization & Draft Management: (2/2/25)
+31. Admin Panel Organization & Draft Management: (2/2/25)
     - Split AdminPanel into focused components:
       * DataManagement for data operations
       * DraftManagement for draft functionality
@@ -530,7 +615,7 @@
       * DraftController with RESTful endpoints
       * Proper error handling and validation
       * Draft model with complete draft state
-29. Player Edit and Star Rating: (2/1/25)
+32. Player Edit and Star Rating: (2/1/25)
     - Added star rating (0-5 in 0.5 increments)
     - Created PlayerEditModal component:
       * Star rating input
@@ -548,7 +633,7 @@
       * Type-safe implementation
       * Proper data persistence
       * Success/error feedback
-30. Draft Mode Implementation: (2/1/25)
+33. Draft Mode Implementation: (2/1/25)
     - Added mode toggle between Prep and Draft modes
     - Added draft button and manager selection modal
     - Added row highlighting:
@@ -564,7 +649,7 @@
       * markAsDrafted endpoint
       * resetDraftStatus endpoint
       * Proper draft status tracking in database
-31. Manager Management Enhancements: (2/1/25)
+34. Manager Management Enhancements: (2/1/25)
     - Added optional email field to Manager model
     - Enhanced ManagerList component:
       * Added email field to grid and forms
@@ -578,7 +663,7 @@
       * Added hover effects for actions
       * Consistent styling with primary/error colors
     - Verified working in development environment
-32. Player Details Modal & Enhanced Age Display: (2/1/25)
+35. Player Details Modal & Enhanced Age Display: (2/1/25)
     - Created PlayerDetailsModal component with tabbed interface:
       * Rankings tab showing all ranking sources
       * Scouting tab with grades and risk assessment
@@ -592,7 +677,7 @@
       * Updated age display format with vertical bar separator
       * Simplified grid to show single baseball age column
     - Verified working in development environment
-33. Birthdate Verification Feature: (2/1/25)
+36. Birthdate Verification Feature: (2/1/25)
     - Added MLB Stats API integration for birthdate verification
     - Created MlbApiService for handling MLB API requests
     - Added proper rate limiting (240 requests/minute)
@@ -608,13 +693,13 @@
       * Added nested objects like Position
     - Added comprehensive logging throughout verification process
     - Verified working birthdate updates from MLB API
-34. CSV Import Fix: (2/1/25)
+37. CSV Import Fix: (2/1/25)
     - Added upload method to apiClient for handling file uploads
     - Updated AdminPanel to use apiClient.upload instead of direct fetch
     - Fixed incorrect API URL routing for CSV imports
     - Added proper TypeScript typing for response handling
     - Verified working CSV import functionality
-35. Swagger Documentation Improvements: (2/1/25)
+38. Swagger Documentation Improvements: (2/1/25)
     - Fixed Swagger documentation for file upload functionality
     - Created CsvImportRequest model for better request handling
     - Simplified schema naming using ASP.NET Core conventions
@@ -622,27 +707,27 @@
     - Improved XML documentation for API endpoints
     - Verified working file upload in Swagger UI
     - Added proper error handling and logging for Swagger configuration
-36. Branding Updates: (1/31/25)
+39. Branding Updates: (1/31/25)
     - Updated browser tab title to "Hampio's Draft Engine"
     - Updated AppBar title to match
     - Created custom retro V6 engine icon
     - Added engine icon to browser tab and AppBar
     - Used Material-UI blue colors for consistent branding
-37. Navigation Button Styling: (1/31/25)
+40. Navigation Button Styling: (1/31/25)
     - Enhanced AppBar button styling
     - Used contained variant with default Material-UI shadows
     - Added subtle white background (10% opacity)
     - Increased opacity on hover (20%)
     - Maintained consistent white text color
     - Improved visual feedback for user interactions
-38. Statistical Projections Support: (1/31/25)
+41. Statistical Projections Support: (1/31/25)
     - Added ProjectionData class to store statistical projections
     - Added Projections dictionary to Player model
     - Supports multiple projection sources (e.g., Steamer, ZiPS)
     - Includes UpdatedDate tracking for projection freshness
     - Flexible stat categories through dictionary structure
     - Verified model changes in development environment
-39. CSV Import Implementation: (1/31/25)
+42. CSV Import Implementation: (1/31/25)
     - Added CsvPlayerImport model for handling CSV file processing
     - Implemented flexible CSV parsing with CsvHelper library
     - Added support for both hitter and pitcher projections
@@ -653,7 +738,7 @@
       * Switched to docker-compose.dev.yml for proper port mappings
       * Resolved API connectivity issues
       * Verified both JSON and CSV import functionality
-40. Delete All Endpoint: (1/31/25)
+43. Delete All Endpoint: (1/31/25)
     - Added DeleteAll endpoint and DeleteAllAsync method
     - Initially encountered 404 error with /player/deleteall route
     - Investigated potential route casing and configuration issues
@@ -661,7 +746,7 @@
     - Resolution: Required full rebuild with `docker compose up -d --build api`
     - Endpoint now working and visible in Swagger
     - Delete all functionality confirmed working in admin panel
-41. Duplicate Player Detection: (1/31/25)
+44. Duplicate Player Detection: (1/31/25)
     - Added ExternalIds dictionary to Player model for various platform IDs
     - Created compound unique index on name + birthDate in MongoDB
     - Implemented smart merge logic in PlayerService
@@ -672,31 +757,31 @@
       * Properly updated lastUpdated timestamp
       * Verified data merging with multiple imports
     - Documented merge behavior for future reference
-42. JSON Import Fix:
+45. JSON Import Fix:
     - Updated BatchImport endpoint to handle both array and wrapped formats
     - Modified frontend to maintain consistent JSON structure
     - Fixed player import functionality in AdminPanel
     - Verified successful batch import of player data
-43. React Router Integration Fix:
+46. React Router Integration Fix:
     - Fixed routing issues in App.tsx
     - Updated Link component implementation
     - Properly integrated Material-UI with React Router
     - Resolved module resolution error for react-router-dom
     - Verified working in development environment
-44. Admin Panel Implementation:
+47. Admin Panel Implementation:
    - Created new AdminPanel component
    - Added basic layout with Material-UI components
    - Added JSON file upload button and selection interface
    - Implemented Material-UI Alert for status messages
    - Set up initial routing and navigation
    - Added to main navigation structure
-45. Delete Operation Fix:
+48. Delete Operation Fix:
    - Fixed apiClient to properly handle 204 No Content responses
    - Added proper handling for void type responses
    - Improved JSON parsing error handling
    - Fixed delete operation snackbar error
    - Verified working in development environment
-46. Player Creation Validation Fix:
+49. Player Creation Validation Fix:
    - Modified PlayerController to initialize optional fields
    - PersonalGrades initialized with new ScoutingGrades()
    - PersonalRiskAssessment initialized with string.Empty
@@ -704,24 +789,24 @@
    - Supports flexible data entry for both MLB and prospect players
    - Enables basic player list imports
    - Verified working in development environment
-47. React Hooks Optimization:
+50. React Hooks Optimization:
    - Fixed React hooks order in PlayerList component
    - Moved all hooks to component top level
    - Ensured consistent Dialog and Snackbar rendering
    - Resolved hook-related console errors
    - Verified proper component functionality
-48. API Response Standardization:
+51. API Response Standardization:
    - Created ApiResponse<T> wrapper class
    - Standardized API response format
    - Fixed frontend data display issue
    - Verified player list functionality
-49. Player Model and API:
+52. Player Model and API:
    - Fixed MongoDB Id handling in Player model
    - Made Id property nullable to work with MongoDB auto-generation
    - Successfully tested player creation and retrieval
    - Verified proper Id generation and persistence
    - Documented proper model validation behavior
-50. Docker Configuration:
+53. Docker Configuration:
    - Created docker-compose.dev.yml for development
    - Created docker-compose.yml for production
    - Added Dockerfile.dev and Dockerfile.prod for frontend
@@ -729,13 +814,13 @@
    - Set up volume mappings and port forwarding
    - Successfully tested development environment setup
    - Verified container communication and MongoDB persistence
-51. Environment Configuration:
+54. Environment Configuration:
    - Added .env.development and .env.production
    - Created .env.example for documentation
    - Updated .gitignore for environment files
    - Configured consistent port usage
    - Validated environment configurations
-52. API Configuration:
+55. API Configuration:
    - Updated CORS settings for both environments
    - Added API prefix handling for production
    - Improved error handling and logging

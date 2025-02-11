@@ -3,9 +3,10 @@ import { useTheme } from './contexts/ThemeContext';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { AdminPanel } from './pages/AdminPanel';
+import { Board } from './pages/Board';
 import { DebugLogWindow } from './components/DebugLogWindow';
 import BugReportIcon from '@mui/icons-material/BugReport';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { debugService } from './services/debugService';
 
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -14,7 +15,20 @@ function AppContent() {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const isAdmin = location.pathname === '/admin';
-  const [showDebugLogs, setShowDebugLogs] = useState(false);
+  const isBoard = location.pathname === '/board';
+  const [showDebugLogs, setShowDebugLogs] = useState(() => {
+    const saved = localStorage.getItem('showDebugLogs');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('showDebugLogs', showDebugLogs.toString());
+    if (showDebugLogs) {
+      debugService.enablePolling();
+    } else {
+      debugService.disablePolling();
+    }
+  }, [showDebugLogs]);
   const muiTheme = useMuiTheme();
   const { theme } = useTheme();
   
@@ -54,6 +68,22 @@ function AppContent() {
               Home
             </Button>
           </Link>
+          <Link to="/board" style={{ textDecoration: 'none', marginRight: '16px' }}>
+            <Button 
+              variant="contained"
+              sx={{ 
+                color: 'white',
+                backgroundColor: isBoard ? theme.colors.action.selected.light : theme.colors.action.hover.light,
+                cursor: 'pointer',
+                border: isBoard ? '2px solid white' : 'none',
+                '&:hover': {
+                  backgroundColor: isBoard ? theme.colors.action.selected.light : theme.colors.action.hover.light
+                }
+              }}
+            >
+              Board
+            </Button>
+          </Link>
           <Link to="/admin" style={{ textDecoration: 'none', marginRight: '16px' }}>
             <Button 
               variant="contained"
@@ -71,15 +101,7 @@ function AppContent() {
             </Button>
           </Link>
           <IconButton
-            onClick={() => {
-              const newState = !showDebugLogs;
-              setShowDebugLogs(newState);
-              if (newState) {
-                debugService.enablePolling();
-              } else {
-                debugService.disablePolling();
-              }
-            }}
+            onClick={() => setShowDebugLogs(!showDebugLogs)}
             sx={{ 
               color: showDebugLogs ? theme.colors.pickState.current : 'white',
               '&:hover': {
@@ -95,15 +117,13 @@ function AppContent() {
       
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/board" element={<Board />} />
         <Route path="/admin" element={<AdminPanel />} />
       </Routes>
 
       {showDebugLogs && (
         <DebugLogWindow 
-          onClose={() => {
-            setShowDebugLogs(false);
-            debugService.disablePolling();
-          }} 
+          onClose={() => setShowDebugLogs(false)} 
         />
       )}
     </Box>

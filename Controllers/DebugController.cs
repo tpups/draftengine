@@ -68,4 +68,29 @@ public class DebugController : ControllerBase
             return StatusCode(500, new { message = "Error clearing debug logs" });
         }
     }
+
+    /// <summary>
+    /// Logs a new debug message
+    /// </summary>
+    /// <remarks>
+    /// Adds a new log entry to the debug service's buffer
+    /// </remarks>
+    /// <response code="200">Returns success status</response>
+    /// <response code="500">Internal server error logging message</response>
+    [HttpPost("log")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
+    public IActionResult LogMessage([FromBody] LogEntry entry)
+    {
+        try
+        {
+            _debugService.AddLog(entry);
+            return Ok(new { value = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging debug message");
+            return StatusCode(500, new { message = "Error logging debug message" });
+        }
+    }
 }

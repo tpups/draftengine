@@ -10,13 +10,106 @@ namespace DraftEngine.Services;
 public class DraftService
 {
     private readonly IMongoCollection<Draft> _drafts;
+    private readonly IMongoCollection<Trade> _trades;
     private readonly ILogger<DraftService> _logger;
     public DraftService(
         MongoDbContext dbContext, 
         ILogger<DraftService> logger)
     {
         _drafts = dbContext.Database.GetCollection<Draft>("drafts");
+        _trades = dbContext.Database.GetCollection<Trade>("trades");
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Updates a draft pick's ownership by modifying its tradedTo array
+    /// </summary>
+    /// <param name="draftId">The unique identifier of the draft</param>
+    /// <param name="overallPickNumber">The overall pick number to update</param>
+    /// <param name="newManagerId">The ID of the manager receiving the pick</param>
+    /// <param name="isRevert">Whether this is a revert operation (removing last trade)</param>
+    /// <returns>True if the update was successful, false otherwise</returns>
+    public async Task<bool> UpdatePickOwnershipAsync(string draftId, int overallPickNumber, string? newManagerId = null, bool isRevert = false)
+    {
+        try
+        {
+            var draft = await GetByIdAsync(draftId);
+            if (draft == null)
+            {
+                _logger.LogError("Draft not found: {DraftId}", draftId);
+                throw new InvalidOperationException($"Draft {draftId} not found");
+            }
+
+            var pick = draft.Rounds
+                .SelectMany(r => r.Picks)
+                .FirstOrDefault(p => p.OverallPickNumber == overallPickNumber);
+
+            if (pick == null)
+            {
+                _logger.LogError("Pick {OverallPickNumber} not found in draft {DraftId}", overallPickNumber, draftId);
+                throw new InvalidOperationException($"Pick {overallPickNumber} not found in draft {draftId}");
+            }
+
+            var filter = Builders<Draft>.Filter.And(
+                Builders<Draft>.Filter.Eq(d => d.Id, draftId),
+                Builders<Draft>.Filter.ElemMatch(d => d.Rounds, 
+                    r => r.Picks.Any(p => p.OverallPickNumber == overallPickNumber))
+            );
+
+            UpdateDefinition<Draft> update;
+            if (isRevert)
+            {
+                // Check if there are any trades to revert
+                if (pick.TradedTo?.Count == 0)
+                {
+                    _logger.LogWarning("No trades to revert for pick {OverallPickNumber}", overallPickNumber);
+                    return true;
+                }
+
+                // Remove the last manager from tradedTo array
+                update = Builders<Draft>.Update.PopLast(
+                    "Rounds.$[roundIndex].Picks.$[pickIndex].TradedTo"
+                );
+            }
+            else if (newManagerId != null)
+            {
+            // Add new manager to tradedTo array if it doesn't exist
+            update = Builders<Draft>.Update.AddToSet(
+                "Rounds.$[roundIndex].Picks.$[pickIndex].TradedTo",
+                newManagerId
+            );
+            }
+            else
+            {
+                throw new ArgumentNullException(nameof(newManagerId), "Manager ID required for non-revert operations");
+            }
+
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                    new BsonDocument("roundIndex.Picks",
+                        new BsonDocument("$elemMatch",
+                            new BsonDocument("OverallPickNumber", overallPickNumber)))),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                    new BsonDocument("pickIndex.OverallPickNumber", overallPickNumber))
+            };
+
+            var options = new UpdateOptions { ArrayFilters = arrayFilters };
+            var result = await _drafts.UpdateOneAsync(filter, update, options);
+
+            if (!result.IsAcknowledged || result.ModifiedCount == 0)
+            {
+                _logger.LogError("Failed to update pick ownership in draft {DraftId}", draftId);
+                throw new InvalidOperationException($"Failed to update pick ownership in draft {draftId}");
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating pick ownership");
+            throw;
+        }
     }
 
     /// <summary>
@@ -388,7 +481,8 @@ public class DraftService
             ManagerId = originalPosition.ManagerId,
             PickNumber = originalPosition.PickNumber,
             IsComplete = false,
-            OverallPickNumber = CalculateOverallPickNumber(isSnakeDraft, roundNumber, totalManagers, managerIndex)
+            OverallPickNumber = CalculateOverallPickNumber(isSnakeDraft, roundNumber, totalManagers, managerIndex),
+            TradedTo = new List<string>()
         };
     }
 
@@ -615,7 +709,8 @@ public class DraftService
             {
                 ManagerId = originalPosition.ManagerId,
                 PickNumber = originalPosition.PickNumber,
-                IsComplete = false
+                IsComplete = false,
+                TradedTo = new List<string>()
             };
 
             newPosition.OverallPickNumber = draft.IsSnakeDraft && newRoundNumber % 2 == 0
@@ -806,8 +901,9 @@ public class DraftService
                 .Set(d => d.ActiveRound, 1)
                 .Set(d => d.ActivePick, 1)
                 .Set(d => d.ActiveOverallPick, 1)
-                // Reset all picks to incomplete
-                .Set("Rounds.$[].Picks.$[].IsComplete", false);
+                // Reset all picks to incomplete and clear trades
+                .Set("Rounds.$[].Picks.$[].IsComplete", false)
+                .Set("Rounds.$[].Picks.$[].TradedTo", new List<string>());
 
             var result = await _drafts.UpdateOneAsync(filter, update);
 
@@ -845,6 +941,30 @@ public async Task DeleteAsync(string id)
 {
     try
     {
+        // Get all trades for this draft
+        var trades = await _trades.Find(t => 
+            t.Parties.Any(p => 
+                p.Assets.Any(a => 
+                    a.Type == TradeAssetType.DraftPick && 
+                    a.DraftId == id
+                )
+            )
+        ).ToListAsync();
+
+        // Delete all trades for this draft
+        if (trades.Any())
+        {
+            await _trades.DeleteManyAsync(t => 
+                t.Parties.Any(p => 
+                    p.Assets.Any(a => 
+                        a.Type == TradeAssetType.DraftPick && 
+                        a.DraftId == id
+                    )
+                )
+            );
+        }
+
+        // Delete the draft
         var result = await _drafts.DeleteOneAsync(d => d.Id == id);
         
         if (!result.IsAcknowledged)

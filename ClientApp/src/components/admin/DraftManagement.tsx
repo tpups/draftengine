@@ -28,7 +28,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export const DraftManagement: React.FC = () => {
   const queryClient = useQueryClient();
-  const { theme } = useTheme();
+  const { theme, mode } = useTheme();
 
   // State
   const [draftStatus, setDraftStatus] = useState<{
@@ -251,6 +251,9 @@ export const DraftManagement: React.FC = () => {
     createDraftMutation.isPending || 
     toggleActiveMutation.isPending;
 
+  const dialogBgColor = mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark;
+  const dialogContentBgColor = mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark;
+
   return (
     <Paper sx={{ p: 4 }}>
       <Typography variant="h5" gutterBottom>
@@ -385,9 +388,12 @@ export const DraftManagement: React.FC = () => {
         open={draftOrderDialogOpen}
         onClose={() => !isLoading && setDraftOrderDialogOpen(false)}
         maxWidth={false}
+        PaperProps={{
+          sx: { bgcolor: dialogBgColor }
+        }}
       >
-        <DialogTitle sx={{ bgcolor: 'grey.100' }}>Set Draft Order</DialogTitle>
-        <DialogContent sx={{ width: 1200, maxWidth: '90vw', overflow: 'hidden', bgcolor: 'grey.100' }}>
+        <DialogTitle>Set Draft Order</DialogTitle>
+        <DialogContent sx={{ width: 1200, maxWidth: '90vw', overflow: 'hidden' }}>
           <Typography gutterBottom>
             Set the draft order by dragging managers or clicking to select and add them. All managers must be included in the draft order.
           </Typography>
@@ -423,7 +429,7 @@ export const DraftManagement: React.FC = () => {
                 margin="normal"
                 sx={{ 
                   '& .MuiInputBase-root': {
-                    bgcolor: 'background.paper'
+                    bgcolor: dialogContentBgColor
                   }
                 }}
               />
@@ -441,7 +447,7 @@ export const DraftManagement: React.FC = () => {
             />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', alignItems: 'center', px: 3, bgcolor: 'grey.100' }}>
+        <DialogActions sx={{ display: 'flex', alignItems: 'center', px: 3 }}>
           <Box sx={{ flex: 1 }}>
             {selectedManagers.length < managers.length && (
               <Typography color="error">
@@ -477,9 +483,12 @@ export const DraftManagement: React.FC = () => {
       <Dialog
         open={resetDialogOpen}
         onClose={() => !isLoading && setResetDialogOpen(false)}
+        PaperProps={{
+          sx: { bgcolor: dialogBgColor }
+        }}
       >
-        <DialogTitle sx={{ bgcolor: 'grey.100' }}>Reset Draft</DialogTitle>
-        <DialogContent sx={{ bgcolor: 'grey.100' }}>
+        <DialogTitle>Reset Draft</DialogTitle>
+        <DialogContent>
           <Typography sx={{ mb: 2 }}>
             Are you sure you want to reset the current draft? This will:
           </Typography>
@@ -492,7 +501,7 @@ export const DraftManagement: React.FC = () => {
             This action cannot be undone.
           </Typography>
           {currentDraft && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+            <Box sx={{ mt: 2, p: 2, bgcolor: dialogContentBgColor, borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
                 Current Draft Details:
               </Typography>
@@ -508,7 +517,7 @@ export const DraftManagement: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ bgcolor: 'grey.100', px: 3 }}>
+        <DialogActions sx={{ px: 3 }}>
           <Button 
             onClick={() => setResetDialogOpen(false)}
             disabled={isLoading}
@@ -534,14 +543,17 @@ export const DraftManagement: React.FC = () => {
       <Dialog
         open={removeRoundDialogOpen}
         onClose={() => !isLoading && setRemoveRoundDialogOpen(false)}
+        PaperProps={{
+          sx: { bgcolor: dialogBgColor }
+        }}
       >
-        <DialogTitle sx={{ bgcolor: 'grey.100' }}>Remove Round</DialogTitle>
-        <DialogContent sx={{ bgcolor: 'grey.100' }}>
+        <DialogTitle>Remove Round</DialogTitle>
+        <DialogContent>
           <Typography sx={{ mb: 2 }}>
             Are you sure you want to remove the last round from the current draft?
           </Typography>
           {currentDraft && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+            <Box sx={{ mt: 2, p: 2, bgcolor: dialogContentBgColor, borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
                 Current Draft Details:
               </Typography>
@@ -557,7 +569,7 @@ export const DraftManagement: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ bgcolor: 'grey.100', px: 3 }}>
+        <DialogActions sx={{ px: 3 }}>
           <Button 
             onClick={() => setRemoveRoundDialogOpen(false)}
             disabled={isLoading}
@@ -578,9 +590,12 @@ export const DraftManagement: React.FC = () => {
       <Dialog
         open={deleteDialogOpen}
         onClose={() => !isLoading && setDeleteDialogOpen(false)}
+        PaperProps={{
+          sx: { bgcolor: dialogBgColor }
+        }}
       >
-        <DialogTitle sx={{ bgcolor: 'grey.100' }}>Delete Draft</DialogTitle>
-        <DialogContent sx={{ bgcolor: 'grey.100' }}>
+        <DialogTitle>Delete Draft</DialogTitle>
+        <DialogContent>
           <Typography sx={{ mb: 2 }}>
             Are you sure you want to delete this draft? This will:
           </Typography>
@@ -589,7 +604,7 @@ export const DraftManagement: React.FC = () => {
             <Typography component="li">Cannot be undone</Typography>
           </Box>
           {draftToDelete && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+            <Box sx={{ mt: 2, p: 2, bgcolor: dialogContentBgColor, borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
                 Draft Details:
               </Typography>
@@ -605,7 +620,7 @@ export const DraftManagement: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ bgcolor: 'grey.100', px: 3 }}>
+        <DialogActions sx={{ px: 3 }}>
           <Button 
             onClick={() => {
               setDeleteDialogOpen(false);
@@ -618,9 +633,9 @@ export const DraftManagement: React.FC = () => {
           <Button
             variant="contained"
             sx={{ 
-              bgcolor: theme.colors.pickState.selected,
+              bgcolor: theme.colors.pickState.selected.light,
               '&:hover': {
-                bgcolor: theme.colors.pickState.current
+                bgcolor: theme.colors.pickState.selected.dark
               }
             }}
             onClick={handleDeleteDraft}
