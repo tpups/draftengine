@@ -323,7 +323,7 @@ public class DraftController : ControllerBase
             }
 
             // Determine if snake draft
-            string isSnakeDraft = existingDraft.IsSnakeDraft ? "snake" : "standard";
+            string isSnakeDraft = existingDraft?.IsSnakeDraft == true ? "snake" : "standard";
 
             // Find the round and pick in the draft
             DraftRound? round = existingDraft?.Rounds.FirstOrDefault(r => r.Picks.Any(p => p.OverallPickNumber == request.OverallPickNumber)) ?? null;

@@ -118,8 +118,18 @@ export const draftService = {
    * @param draftId - ID of the draft to delete
    * @returns Promise containing success status
    */
-  deleteDraft: (draftId: string) =>
-    apiClient.delete<ApiResponse<boolean>>(`/draft/${draftId}`),
+  deleteDraft: async (draftId: string) => {
+    try {
+      const response = await apiClient.delete<ApiResponse<boolean>>(`/draft/${draftId}`);
+      return response;
+    } catch (error: any) {
+      // If it's an API error response, throw with the message
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  },
 
   /**
    * Updates the active pick in the draft

@@ -93,8 +93,33 @@ public class TradeService
         // Update draft picks
         await UpdateDraftPickOwnership(trade);
 
+        // Log trade before saving
+        _logger.LogInformation("Saving trade to database: {Trade}", System.Text.Json.JsonSerializer.Serialize(trade));
+        _logger.LogInformation("Trade details:");
+        _logger.LogInformation("  Status: {Status} (raw: {RawStatus})", trade.Status, (int)trade.Status);
+        foreach (var party in trade.Parties)
+        {
+            foreach (var asset in party.Assets)
+            {
+                _logger.LogInformation("  Asset - Type: {Type} (raw: {RawType}), DraftId: {DraftId}", 
+                    asset.Type, (int)asset.Type, asset.DraftId);
+            }
+        }
+
         // Save trade to database
         await _trades.InsertOneAsync(trade);
+        _logger.LogInformation("Trade saved successfully with ID: {TradeId}", trade.Id);
+
+        // Verify trade was saved
+        var savedTrade = await _trades.Find(t => t.Id == trade.Id).FirstOrDefaultAsync();
+        if (savedTrade != null)
+        {
+            _logger.LogInformation("Retrieved saved trade: {Trade}", System.Text.Json.JsonSerializer.Serialize(savedTrade));
+        }
+        else
+        {
+            _logger.LogWarning("Could not retrieve saved trade with ID: {TradeId}", trade.Id);
+        }
 
         return trade;
     }

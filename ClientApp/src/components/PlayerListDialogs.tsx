@@ -2,6 +2,7 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
 import { Draft, Player } from '../types/models';
 import { PlayerDetailsModal } from './PlayerDetailsModal';
 import { PlayerEditModal } from './PlayerEditModal';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface PlayerListDialogsProps {
   addDialogOpen: boolean;
@@ -19,7 +20,7 @@ interface PlayerListDialogsProps {
   activeDraft?: Draft;
 }
 
-export function PlayerListDialogs({
+export function PlayerListDialogs({ 
   addDialogOpen,
   onAddDialogClose,
   onPlayerCreate,
@@ -34,6 +35,8 @@ export function PlayerListDialogs({
   onPlayerSave,
   activeDraft
 }: PlayerListDialogsProps) {
+  const { theme, mode } = useTheme();
+  
   const initialPlayerState: Omit<Player, 'id'> = {
     name: '',
     position: [],
@@ -69,8 +72,14 @@ export function PlayerListDialogs({
 
   const renderAddPlayerDialog = () => (
     <Dialog open={addDialogOpen} onClose={onAddDialogClose}>
-      <DialogTitle>Add New Player</DialogTitle>
-      <DialogContent>
+      <DialogTitle sx={{
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark
+      }}>Add New Player</DialogTitle>
+      <DialogContent sx={{
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark
+      }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <TextField
             label="Name"
@@ -112,7 +121,11 @@ export function PlayerListDialogs({
           />
         </Box>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ 
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        borderTop: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.action.border?.dark}`,
+        px: 3
+      }}>
         <Button onClick={onAddDialogClose}>Cancel</Button>
         <Button 
           onClick={() => onPlayerCreate(initialPlayerState)}
@@ -130,21 +143,36 @@ export function PlayerListDialogs({
       open={resetDialogOpen}
       onClose={onResetDialogClose}
     >
-      <DialogTitle sx={{ bgcolor: 'grey.100' }}>Reset Draft</DialogTitle>
-      <DialogContent sx={{ bgcolor: 'grey.100' }}>
+      <DialogTitle sx={{
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark
+      }}>Reset Draft</DialogTitle>
+      <DialogContent sx={{
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark
+      }}>
         <Typography sx={{ mb: 2 }}>
           Are you sure you want to reset the current draft? This will:
         </Typography>
         <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-          <Typography component="li">Delete all draft picks</Typography>
-          <Typography component="li">Clear the draft order</Typography>
-          <Typography component="li">Remove all draft progress</Typography>
+          <Typography component="li" sx={{ color: 'inherit' }}>Delete all draft picks</Typography>
+          <Typography component="li" sx={{ color: 'inherit' }}>Clear the draft order</Typography>
+          <Typography component="li" sx={{ color: 'inherit' }}>Remove all draft progress</Typography>
         </Box>
-        <Typography color="error" sx={{ mb: 2 }}>
+        <Typography sx={{ 
+          mb: 2,
+          color: mode === 'light' ? theme.colors.pickState.selected.light : theme.colors.pickState.selected.dark
+        }}>
           This action cannot be undone.
         </Typography>
         {activeDraft && (
-          <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+          <Box sx={{ 
+            mt: 2, 
+            p: 2, 
+            bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+            borderRadius: 1,
+            border: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.action.border?.dark}`
+          }}>
             <Typography variant="subtitle2" gutterBottom>
               Current Draft Details:
             </Typography>
@@ -160,7 +188,11 @@ export function PlayerListDialogs({
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ bgcolor: 'grey.100', px: 3 }}>
+      <DialogActions sx={{ 
+        px: 3,
+        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        borderTop: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.action.border?.dark}`
+      }}>
         <Button 
           onClick={onResetDialogClose}
         >

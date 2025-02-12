@@ -125,6 +125,7 @@ builder.Services.AddControllers()
     options.SerializerSettings.ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
     options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include;
     options.SerializerSettings.DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Include;
+    options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
 });
 
 builder.Services.AddEndpointsApiExplorer();

@@ -40,6 +40,7 @@ export const DraftManagement: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [removeRoundDialogOpen, setRemoveRoundDialogOpen] = useState(false);
   const [draftToDelete, setDraftToDelete] = useState<Draft | null>(null);
+  const [hasTradesError, setHasTradesError] = useState(false);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [initialRounds, setInitialRounds] = useState<string>('5');
   const [isSnakeDraft, setIsSnakeDraft] = useState<boolean>(true);
@@ -95,9 +96,7 @@ export const DraftManagement: React.FC = () => {
   });
 
   const deleteDraftMutation = useMutation({
-    mutationFn: async (draftId: string) => {
-      await draftService.deleteDraft(draftId);
-    },
+    mutationFn: (draftId: string) => draftService.deleteDraft(draftId),
     onSuccess: () => {
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: ['drafts'] }),
@@ -109,13 +108,20 @@ export const DraftManagement: React.FC = () => {
         });
         setDeleteDialogOpen(false);
         setDraftToDelete(null);
+        setHasTradesError(false);
       });
     },
     onError: (error) => {
-      setDraftStatus({
-        success: false,
-        message: `Error deleting draft: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('has associated trades')) {
+        setHasTradesError(true);
+        setDraftStatus(null); // Clear any previous error status
+      } else {
+        setDraftStatus({
+          success: false,
+          message: `Error deleting draft: ${errorMessage}`
+        });
+      }
     }
   });
 
@@ -174,12 +180,13 @@ export const DraftManagement: React.FC = () => {
         type: 'standard',
         isSnakeDraft,
         initialRounds: rounds,
-        draftOrder: selectedManagers.map((managerId, index) => ({
-          managerId,
-          pickNumber: index + 1,
-          isComplete: false,
-          overallPickNumber: 0
-        }))
+          draftOrder: selectedManagers.map((managerId, index) => ({
+            managerId,
+            pickNumber: index + 1,
+            isComplete: false,
+            overallPickNumber: 0,
+            tradedTo: []
+          }))
       });
     },
     onSuccess: () => {
@@ -353,6 +360,7 @@ export const DraftManagement: React.FC = () => {
                               onClick={() => {
                                 setDraftToDelete(draft);
                                 setDeleteDialogOpen(true);
+                                setHasTradesError(false);
                               }}
                               disabled={isLoading}
                             >
@@ -596,13 +604,26 @@ export const DraftManagement: React.FC = () => {
       >
         <DialogTitle>Delete Draft</DialogTitle>
         <DialogContent>
-          <Typography sx={{ mb: 2 }}>
-            Are you sure you want to delete this draft? This will:
-          </Typography>
-          <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-            <Typography component="li">Permanently remove all draft data</Typography>
-            <Typography component="li">Cannot be undone</Typography>
-          </Box>
+          {hasTradesError ? (
+            <>
+              <Typography sx={{ mb: 2, color: theme.colors.pickState.selected.light }}>
+                Cannot delete draft because it has associated trades.
+              </Typography>
+              <Typography sx={{ mb: 2 }}>
+                Please delete all trades involving picks from this draft before deleting it.
+              </Typography>
+            </>
+          ) : (
+            <>
+              <Typography sx={{ mb: 2 }}>
+                Are you sure you want to delete this draft? This will:
+              </Typography>
+              <Box component="ul" sx={{ pl: 2, mb: 2 }}>
+                <Typography component="li">Permanently remove all draft data</Typography>
+                <Typography component="li">Cannot be undone</Typography>
+              </Box>
+            </>
+          )}
           {draftToDelete && (
             <Box sx={{ mt: 2, p: 2, bgcolor: dialogContentBgColor, borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
@@ -625,24 +646,27 @@ export const DraftManagement: React.FC = () => {
             onClick={() => {
               setDeleteDialogOpen(false);
               setDraftToDelete(null);
+              setHasTradesError(false);
             }}
             disabled={isLoading}
           >
-            Cancel
+            {hasTradesError ? 'OK' : 'Cancel'}
           </Button>
-          <Button
-            variant="contained"
-            sx={{ 
-              bgcolor: theme.colors.pickState.selected.light,
-              '&:hover': {
-                bgcolor: theme.colors.pickState.selected.dark
-              }
-            }}
-            onClick={handleDeleteDraft}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Deleting...' : 'Delete Draft'}
-          </Button>
+          {!hasTradesError && (
+            <Button
+              variant="contained"
+              sx={{ 
+                bgcolor: theme.colors.pickState.selected.light,
+                '&:hover': {
+                  bgcolor: theme.colors.pickState.selected.dark
+                }
+              }}
+              onClick={handleDeleteDraft}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Deleting...' : 'Delete Draft'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 

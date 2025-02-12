@@ -11,6 +11,7 @@ public class Trade
 
     public DateTime Timestamp { get; set; }
     public string? Notes { get; set; }
+    [BsonRepresentation(BsonType.String)]
     public TradeStatus Status { get; set; }
     public List<TradeParty> Parties { get; set; } = new();
 }
@@ -26,6 +27,7 @@ public class TradeParty
 
 public class TradeAsset
 {
+    [BsonRepresentation(BsonType.String)]
     public TradeAssetType Type { get; set; }
     
     [BsonRepresentation(BsonType.ObjectId)]
@@ -41,13 +43,13 @@ public class TradeAsset
 
 public enum TradeAssetType
 {
-    DraftPick,
+    DraftPick,    // Will be serialized as "DraftPick" to match TypeScript
     Player
 }
 
 public enum TradeStatus
 {
-    Proposed,
+    Proposed,    // Matches TypeScript enum values
     Accepted,
     Approved,
     Completed,

@@ -16,8 +16,8 @@ public class DraftService
         MongoDbContext dbContext, 
         ILogger<DraftService> logger)
     {
-        _drafts = dbContext.Database.GetCollection<Draft>("drafts");
-        _trades = dbContext.Database.GetCollection<Trade>("trades");
+        _drafts = dbContext.Drafts;
+        _trades = dbContext.Trades;
         _logger = logger;
     }
 
@@ -901,9 +901,8 @@ public class DraftService
                 .Set(d => d.ActiveRound, 1)
                 .Set(d => d.ActivePick, 1)
                 .Set(d => d.ActiveOverallPick, 1)
-                // Reset all picks to incomplete and clear trades
-                .Set("Rounds.$[].Picks.$[].IsComplete", false)
-                .Set("Rounds.$[].Picks.$[].TradedTo", new List<string>());
+                // Reset all picks to incomplete but preserve trade history
+                .Set("Rounds.$[].Picks.$[].IsComplete", false);
 
             var result = await _drafts.UpdateOneAsync(filter, update);
 
@@ -926,61 +925,116 @@ public class DraftService
     }
 
 /// <summary>
-/// Permanently deletes a draft from the system
+/// Checks if a draft has any associated trades
 /// </summary>
-/// <param name="id">The unique identifier of the draft to be deleted</param>
-/// <returns>A task representing the asynchronous delete operation</returns>
-/// <exception cref="Exception">Thrown when the draft deletion fails or is not acknowledged by the database</exception>
-/// <remarks>
-/// This method removes the draft document from the database.
-/// - Logs any errors encountered during the deletion process
-/// - Throws an exception if the deletion is not acknowledged
-/// Note: This operation is irreversible and will remove all associated draft data
-/// </remarks>
-public async Task DeleteAsync(string id)
-{
-    try
+/// <param name="id">The unique identifier of the draft to check</param>
+/// <returns>True if the draft has trades, false otherwise</returns>
+    public async Task<bool> HasTradesAsync(string id)
     {
-        // Get all trades for this draft
-        var trades = await _trades.Find(t => 
-            t.Parties.Any(p => 
-                p.Assets.Any(a => 
-                    a.Type == TradeAssetType.DraftPick && 
-                    a.DraftId == id
-                )
-            )
-        ).ToListAsync();
-
-        // Delete all trades for this draft
-        if (trades.Any())
+        try
         {
-            await _trades.DeleteManyAsync(t => 
+            _logger.LogInformation("Checking for trades associated with draft {DraftId}", id);
+            
+            _logger.LogInformation("Starting trade search for draft {DraftId}", id);
+
+            // First get all trades
+            var allTrades = await _trades.Find(_ => true).ToListAsync();
+            _logger.LogInformation("Found {TradeCount} total trades in database", allTrades.Count);
+
+            foreach (var trade in allTrades)
+            {
+                _logger.LogInformation("Trade {TradeId}:", trade.Id);
+                _logger.LogInformation("  Status: {Status}", trade.Status);
+                _logger.LogInformation("  Raw trade: {Trade}", System.Text.Json.JsonSerializer.Serialize(trade));
+                
+                foreach (var party in trade.Parties)
+                {
+                    foreach (var asset in party.Assets)
+                    {
+                        _logger.LogInformation("  Asset - Type: {Type}, DraftId: {DraftId}", 
+                            asset.Type, asset.DraftId);
+                        
+                        if (asset.DraftId == id)
+                        {
+                            _logger.LogInformation("  Found matching draft ID!");
+                        }
+                    }
+                }
+            }
+
+            // Filter for trades with this draft's picks
+            var draftTrades = allTrades.Where(t => 
                 t.Parties.Any(p => 
-                    p.Assets.Any(a => 
-                        a.Type == TradeAssetType.DraftPick && 
-                        a.DraftId == id
-                    )
-                )
-            );
-        }
+                    p.Assets.Any(a => a.DraftId == id))).ToList();
 
-        // Delete the draft
-        var result = await _drafts.DeleteOneAsync(d => d.Id == id);
-        
-        if (!result.IsAcknowledged)
-        {
-            throw new Exception($"Failed to delete draft {id}");
+            _logger.LogInformation("Found {TradeCount} trades for draft {DraftId}", draftTrades.Count, id);
+
+            // Then filter for completed trades
+            var completedTrades = draftTrades.Where(t => t.Status == TradeStatus.Completed).ToList();
+            _logger.LogInformation("Of which {CompletedCount} are completed", completedTrades.Count);
+
+            return completedTrades.Any();
         }
-        
-        if (result.DeletedCount == 0)
+        catch (Exception ex)
         {
-            throw new Exception($"No draft found with ID {id}");
+            _logger.LogError(ex, "Error checking trades for draft: {DraftId}", id);
+            throw;
         }
     }
-    catch (Exception ex)
+
+    /// <summary>
+    /// Permanently deletes a draft if it has no associated trades
+    /// </summary>
+    /// <param name="id">The unique identifier of the draft to be deleted</param>
+    /// <returns>A task representing the asynchronous delete operation</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the draft has associated trades</exception>
+    /// <exception cref="Exception">Thrown when the draft deletion fails or is not acknowledged by the database</exception>
+    /// <remarks>
+    /// This method removes the draft document from the database.
+    /// - Logs any errors encountered during the deletion process
+    /// - Throws an exception if the deletion is not acknowledged
+    /// Note: This operation is irreversible and will remove all associated draft data
+    /// </remarks>
+    public async Task DeleteAsync(string id)
     {
-        _logger.LogError(ex, "Error deleting draft: {DraftId}", id);
-        throw;
+        try
+        {
+            _logger.LogInformation("Starting deletion process for draft {DraftId}", id);
+            
+            // Check for trades first
+            var hasTrades = await HasTradesAsync(id);
+            _logger.LogInformation("Draft {DraftId} has trades: {HasTrades}", id, hasTrades);
+            
+            if (hasTrades)
+            {
+                var errorMessage = $"Cannot delete draft {id} because it has associated trades. Please delete the trades first.";
+                _logger.LogWarning(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            // Delete the draft
+            var result = await _drafts.DeleteOneAsync(d => d.Id == id);
+            
+            if (!result.IsAcknowledged)
+            {
+                var error = $"Failed to delete draft {id}";
+                _logger.LogError(error);
+                throw new Exception(error);
+            }
+            
+            if (result.DeletedCount == 0)
+            {
+                var error = $"No draft found with ID {id}";
+                _logger.LogError(error);
+                throw new Exception(error);
+            }
+
+            _logger.LogInformation("Successfully deleted draft {DraftId}", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting draft: {DraftId}", id);
+            throw;
+        }
     }
-}
 }

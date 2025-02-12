@@ -48,13 +48,18 @@ export function DraftBoard({
   const getTradeHistory = (pick: DraftPosition) => {
     if (!pick.tradedTo?.length) return '';
 
-    const history = pick.tradedTo.map(managerId => {
+    const originalManager = managers.find(m => m.id === pick.managerId);
+    const currentManager = managers.find(m => m.id === pick.tradedTo[pick.tradedTo.length - 1]);
+    
+    const history = pick.tradedTo.map((managerId, index) => {
       const manager = managers.find(m => m.id === managerId);
-      return manager?.name ?? 'Unknown Manager';
+      return `Trade ${index + 1}: ${manager?.name ?? 'Unknown'}`;
     });
 
-    const originalManager = managers.find(m => m.id === pick.managerId);
-    return `Original: ${originalManager?.name ?? 'Unknown'}\nTrade History:\n${history.join('\n')}`;
+    return [
+      `Original: ${originalManager?.name ?? 'Unknown'} | Current: ${currentManager?.name ?? 'Unknown'}`,
+      ...history
+    ].join('\n');
   };
 
   const getPlayerName = (pick: DraftPosition, roundNumber: number) => {
@@ -99,14 +104,10 @@ export function DraftBoard({
     const isCurrent = pick.overallPickNumber === activeDraft.currentOverallPick;
     const isSnakeRound = round % 2 === 0 && activeDraft.isSnakeDraft;
     const playerName = getPlayerName(pick, round);
-    const isUserPick = managers.find(m => m.id === pick.managerId)?.isUser;
+    const currentManagerId = pick.tradedTo?.length ? pick.tradedTo[pick.tradedTo.length - 1] : pick.managerId;
+    const isUserPick = managers.find(m => m.isUser && m.id === currentManagerId);
     const isTraded = pick.tradedTo?.length > 0;
-    
-    // Check if the pick is currently owned by its original owner
-    const currentOwner = pick.tradedTo?.length ? pick.tradedTo[pick.tradedTo.length - 1] : pick.managerId;
-    const isWithOriginalOwner = currentOwner === pick.managerId;
-    
-    // Only consider it traded if it's not with its original owner
+    const isWithOriginalOwner = currentManagerId === pick.managerId;
     const isCurrentlyTraded = isTraded && !isWithOriginalOwner;
 
     return {
@@ -117,18 +118,24 @@ export function DraftBoard({
       alignItems: 'center',
       justifyContent: 'center',
       gap: '4px',
+      // Base background color
       bgcolor: isCurrentlyTraded ? 
-        (mode === 'light' ? theme.colors.pickState.traded.light : theme.colors.pickState.traded.dark) :
-        (mode === 'light' ? 
-          (isSnakeRound ? theme.colors.background.elevated.light : theme.colors.background.paper.light) :
-          (isSnakeRound ? theme.colors.background.paper.dark : theme.colors.background.elevated.dark)),
+        (mode === 'light' ? `${theme.colors.pickState.active.light}40` : `${theme.colors.pickState.active.dark}40`) :
+        pick.isComplete ? 
+          (mode === 'light' ? 
+            `${theme.colors.background.paper.light}40` : 
+            `${theme.colors.background.paper.dark}40`) :
+          (mode === 'light' ? 
+            (isSnakeRound ? theme.colors.background.elevated.light : theme.colors.background.paper.light) :
+            (isSnakeRound ? theme.colors.background.paper.dark : theme.colors.background.elevated.dark)),
       color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
-      borderLeft: round === 1 || !isSnakeRound ? 1 : 0,
-      borderRight: isSnakeRound ? 1 : 0,
-      borderColor: 'divider',
-      outline: isCurrent ? '2px solid' : pick.isComplete ? '2px solid' : 'none',
-      outlineColor: isCurrent ? theme.colors.pickState.selected.light : theme.colors.primary.main,
-      outlineOffset: '-2px',
+      border: isCurrent ? 
+        `2px solid ${theme.colors.pickState.selected.light}` : 
+        isUserPick ? 
+          `2px solid ${theme.colors.primary.main}` : 
+          `${round === 1 || !isSnakeRound ? '0 0 0 1px' : '0 1px 0 0'} solid ${theme.colors.text.secondary.light}`,
+      zIndex: isCurrent || pick.isComplete ? 1 : 'auto',
+      position: 'relative',
       p: 1,
       // Add italic style for traded picks
       fontStyle: isTraded ? 'italic' : 'normal'
@@ -232,12 +239,23 @@ export function DraftBoard({
                   const managerName = getManagerName(pick);
                   const playerName = getPlayerName(pick, round.roundNumber);
                   const tradeHistory = getTradeHistory(pick);
-                  const tooltipTitle = `Round ${round.roundNumber}, Pick ${displayNumber} (Overall #${pick.overallPickNumber})${tradeHistory ? `\n\n${tradeHistory}` : ''}`;
+                  const isTraded = pick.tradedTo?.length > 0;
+                  const tooltipTitle = `Round ${round.roundNumber}, Pick ${displayNumber} (Overall #${pick.overallPickNumber})${
+                    isTraded ? '\n' + getTradeHistory(pick) : ''
+                  }`;
                   return (
                     <Tooltip
                       key={`${round.roundNumber}-${pick.pickNumber}`}
                       title={tooltipTitle}
                       arrow
+                      componentsProps={{
+                        tooltip: {
+                          sx: {
+                            whiteSpace: 'pre-line',
+                            textAlign: 'center'
+                          }
+                        }
+                      }}
                     >
                       <Paper
                         elevation={0}

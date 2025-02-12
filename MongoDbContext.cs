@@ -34,7 +34,7 @@ namespace DraftEngine
             {
                 if (_players == null)
                 {
-                    _players = _database.GetCollection<Player>("Players");
+                    _players = _database.GetCollection<Player>("players");
                     // Create compound index on name and birthDate
                     var indexKeysDefinition = Builders<Player>.IndexKeys
                         .Ascending(p => p.Name)
@@ -54,7 +54,7 @@ namespace DraftEngine
             {
                 if (_managers == null)
                 {
-                    _managers = _database.GetCollection<Manager>("Managers");
+                    _managers = _database.GetCollection<Manager>("managers");
                     // Create unique index on name
                     var indexKeysDefinition = Builders<Manager>.IndexKeys.Ascending(m => m.Name);
                     var indexOptions = new CreateIndexOptions { Unique = true };
@@ -72,7 +72,11 @@ namespace DraftEngine
             {
                 if (_drafts == null)
                 {
-                    _drafts = _database.GetCollection<Draft>("Drafts");
+                    _drafts = _database.GetCollection<Draft>("drafts");
+                    // Create index on createdAt for sorting
+                    var indexKeysDefinition = Builders<Draft>.IndexKeys.Descending(d => d.CreatedAt);
+                    var indexModel = new CreateIndexModel<Draft>(indexKeysDefinition);
+                    _drafts.Indexes.CreateOne(indexModel);
                 }
                 return _drafts;
             }
@@ -85,7 +89,11 @@ namespace DraftEngine
             {
                 if (_trades == null)
                 {
-                    _trades = _database.GetCollection<Trade>("Trades");
+                    _trades = _database.GetCollection<Trade>("trades");
+                    // Create index on timestamp for sorting
+                    var indexKeysDefinition = Builders<Trade>.IndexKeys.Descending(t => t.Timestamp);
+                    var indexModel = new CreateIndexModel<Trade>(indexKeysDefinition);
+                    _trades.Indexes.CreateOne(indexModel);
                 }
                 return _trades;
             }

@@ -45,6 +45,17 @@ public class TradeController : ControllerBase
             // Log the raw request for debugging
             _logger.LogInformation("Raw trade request: {Request}", System.Text.Json.JsonSerializer.Serialize(request));
 
+            // Log the parties and assets
+            foreach (var party in request.Parties)
+            {
+                _logger.LogInformation("Party {ManagerId} details:", party.ManagerId);
+                foreach (var asset in party.Assets)
+                {
+                    _logger.LogInformation("  Asset - Type: {Type} (raw: {RawType}), DraftId: {DraftId}", 
+                        asset.Type, (int)asset.Type, asset.DraftId);
+                }
+            }
+
             // Verify active draft exists
             var activeDraft = await _draftService.GetActiveDraftAsync();
             if (activeDraft == null)

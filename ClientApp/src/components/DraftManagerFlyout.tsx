@@ -43,14 +43,19 @@ export function DraftManagerFlyout({
   const muiTheme = useMuiTheme();
   const { theme } = useTheme();
 
-  // Get managers in draft order
-  const draftPositions = activeDraft.draftOrder.sort((a, b) => a.pickNumber - b.pickNumber);
+  // Get current pick from active draft
+  const currentPick = activeDraft.rounds
+    .find(r => r.roundNumber === activeDraft.activeRound)
+    ?.picks.find(p => p.pickNumber === activeDraft.activePick);
 
-  // Get active pick manager
-  const activePickManager = draftPositions.find(m => 
-    m.pickNumber === activeDraft.activePick && 
-    activeDraft.activeRound === activeDraft.activeRound
-  );
+  if (!currentPick) return null;
+
+  // Get current owner (either original owner or most recent trade recipient)
+  const currentOwnerId = currentPick.tradedTo?.length 
+    ? currentPick.tradedTo[currentPick.tradedTo.length - 1] 
+    : currentPick.managerId;
+
+  const currentOwner = managers.find(m => m.id === currentOwnerId);
 
   return (
     <Popover
@@ -71,25 +76,18 @@ export function DraftManagerFlyout({
     >
       <Box sx={{ p: 2 }}>
         <List>
-          {draftPositions.map((draftPosition: DraftPosition) => {
-            const manager = managers.find(m => m.id === draftPosition.managerId);
-            return (
-            <ListItem key={draftPosition.managerId} disablePadding>
-              <StyledListItemButton
-                customTheme={theme}
-                onClick={() => {
-                  onManagerSelect(draftPosition.managerId);
-                  onClose();
-                }}
-                className={`
-                  ${draftPosition.managerId === currentUser?.id ? 'current-user' : ''}
-                  ${draftPosition.managerId === activePickManager?.managerId ? 'active-pick' : ''}
-                `.trim()}
-              >
-              <ListItemText primary={manager?.name ?? '[Manager Deleted]'} />
-              </StyledListItemButton>
-            </ListItem>
-          )})}
+          <ListItem disablePadding>
+            <StyledListItemButton
+              customTheme={theme}
+              onClick={() => {
+                onManagerSelect(currentOwnerId);
+                onClose();
+              }}
+              className="active-pick"
+            >
+              <ListItemText primary={currentOwner?.name ?? '[Manager Deleted]'} />
+            </StyledListItemButton>
+          </ListItem>
         </List>
       </Box>
     </Popover>

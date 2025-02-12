@@ -70,14 +70,16 @@ export function PlayerListGrid({
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const muiTheme = useMuiTheme();
   const { theme, mode } = useTheme();
 
-  const handleDraftClick = (event: React.MouseEvent<HTMLElement>, playerId: string) => {
+  const handleDraftClick = (event: React.MouseEvent<HTMLElement>, playerId: string, rowId: string) => {
     event.stopPropagation();
     setSelectedPlayerId(playerId);
     setAnchorEl(event.currentTarget);
     setFlyoutOpen(true);
+    setHoveredRowId(rowId);
   };
 
   const handleManagerSelect = (managerId: string) => {
@@ -87,6 +89,7 @@ export function PlayerListGrid({
     setSelectedPlayerId(null);
     setFlyoutOpen(false);
     setAnchorEl(null);
+    setHoveredRowId(null);
   };
   const gridData: GridPlayer[] = players.map(player => {
     const draftStatus = player.draftStatuses?.find(ds => ds.draftId === activeDraft?.id);
@@ -125,6 +128,10 @@ export function PlayerListGrid({
     if (!params?.row) return '';
     
     const classes: string[] = [];
+    
+    if (params.row.id === hoveredRowId) {
+      classes.push('force-hover');
+    }
     
     if (params.row.isHighlighted) {
       classes.push('highlighted');
@@ -228,7 +235,7 @@ export function PlayerListGrid({
                   } : {}
                 }} />}
                 disabled={!canMakePick}
-                onClick={(event) => handleDraftClick(event, params.row.id!.toString())}
+                onClick={(event) => handleDraftClick(event, params.row.id!.toString(), params.row.id!.toString())}
                 label="Draft"
                 title={canMakePick ? "Draft this player" : "No active draft or current pick"}
               />
@@ -406,8 +413,8 @@ export function PlayerListGrid({
           color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
           margin: 0,
           padding: 0,
-          '&:hover': {
-            backgroundColor: mode === 'light' ? theme.colors.action.hover.light : theme.colors.action.hover.dark
+          '&:hover, &.MuiDataGrid-row:hover, &.force-hover': {
+            backgroundColor: `${mode === 'light' ? theme.colors.action.hover.light : theme.colors.action.hover.dark} !important`
           },
           position: 'relative'
         },
@@ -452,8 +459,8 @@ export function PlayerListGrid({
         },
         '& .drafted-by-user': {
           bgcolor: mode === 'light' ? theme.colors.primary.light : theme.colors.pickState.current.dark,
-          '&:hover': {
-            bgcolor: mode === 'light' ? theme.colors.primary.light : theme.colors.pickState.current.dark,
+          '&:hover, &.MuiDataGrid-row:hover, &.force-hover': {
+            bgcolor: `${mode === 'light' ? theme.colors.primary.light : theme.colors.pickState.current.dark} !important`,
           },
           position: 'relative',
           zIndex: 2,
@@ -467,8 +474,8 @@ export function PlayerListGrid({
         },
         '& .drafted-by-other': {
           bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.primary.dark,
-          '&:hover': {
-            bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.primary.main,
+          '&:hover, &.MuiDataGrid-row:hover, &.force-hover': {
+            bgcolor: `${mode === 'light' ? theme.colors.pickState.current.light : theme.colors.primary.main} !important`,
           },
           '& .MuiDataGrid-cell': {
             color: theme.colors.primary.contrastText
@@ -479,8 +486,8 @@ export function PlayerListGrid({
           '& .MuiDataGrid-cell': {
             color: theme.colors.primary.contrastText
           },
-          '&:hover': {
-            bgcolor: mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark,
+          '&:hover, &.MuiDataGrid-row:hover, &.force-hover': {
+            bgcolor: `${mode === 'light' ? theme.colors.pickState.active.light : theme.colors.pickState.active.dark} !important`,
           }
         },
         '& .highlighted.drafted-by-user': {
@@ -488,8 +495,8 @@ export function PlayerListGrid({
           '& .MuiDataGrid-cell': {
             color: theme.colors.primary.contrastText
           },
-          '&:hover': {
-            bgcolor: mode === 'light' ? theme.colors.primary.dark : theme.colors.primary.main,
+          '&:hover, &.MuiDataGrid-row:hover, &.force-hover': {
+            bgcolor: `${mode === 'light' ? theme.colors.primary.dark : theme.colors.primary.main} !important`,
           }
         },
         '& .highlighted.drafted-by-other': {
@@ -497,8 +504,8 @@ export function PlayerListGrid({
           '& .MuiDataGrid-cell': {
             color: theme.colors.primary.contrastText
           },
-          '&:hover': {
-            bgcolor: mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark,
+          '&:hover, &.MuiDataGrid-row:hover, &.force-hover': {
+            bgcolor: `${mode === 'light' ? theme.colors.pickState.current.light : theme.colors.pickState.current.dark} !important`,
           }
         },
         '& .MuiDataGrid-footerContainer': {
@@ -519,6 +526,7 @@ export function PlayerListGrid({
           onClose={() => {
             setFlyoutOpen(false);
             setAnchorEl(null);
+            setHoveredRowId(null);
           }}
           anchorEl={anchorEl}
           activeDraft={activeDraft}

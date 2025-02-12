@@ -106,14 +106,19 @@ export function PlayerListToolbar({
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
-              <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap' }}>
-                Round {activeDraft.activeRound}, Pick {getDisplayPickNumber(activeDraft, activeDraft.activePick ?? 0)} (Overall #{activeDraft.activeOverallPick})
+              <Typography variant="h6" sx={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                Round <Box component="span" sx={{ fontWeight: 600 }}>{activeDraft.activeRound}</Box>, 
+                Pick <Box component="span" sx={{ fontWeight: 600 }}>{getDisplayPickNumber(activeDraft, activeDraft.activePick ?? 0)}</Box>
+                <Box component="span" sx={{ opacity: 0.8 }}>(Overall #{activeDraft.activeOverallPick})</Box>
                 {getActivePickManager()?.name && (
                   <>
-                    {' - '}
+                    <Box component="span" sx={{ ml: 1 }}>
+                      -
+                    </Box>
                     <Box component="span" sx={{ 
                       fontStyle: !getActivePickManager()?.isOriginalOwner ? 'italic' : 'normal',
-                      color: 'inherit'
+                      color: 'inherit',
+                      ml: 1
                     }}>
                       {getActivePickManager()?.name}'s Pick
                       {!getActivePickManager()?.isOriginalOwner && ` (Original Owner: ${getActivePickManager()?.originalOwnerName})`}
