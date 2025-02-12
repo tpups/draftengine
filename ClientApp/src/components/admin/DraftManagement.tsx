@@ -130,7 +130,10 @@ export const DraftManagement: React.FC = () => {
       return draftService.removeRound(draftId);
     },
     onSuccess: (response) => {
-      return queryClient.invalidateQueries({ queryKey: ['activeDraft'] }).then(() => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] }),
+        queryClient.invalidateQueries({ queryKey: ['drafts'] })
+      ]).then(() => {
         setDraftStatus({
           success: true,
           message: 'Successfully removed round'
@@ -151,7 +154,10 @@ export const DraftManagement: React.FC = () => {
       return draftService.addRound(draftId);
     },
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['activeDraft'] }).then(() => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] }),
+        queryClient.invalidateQueries({ queryKey: ['drafts'] })
+      ]).then(() => {
         setDraftStatus({
           success: true,
           message: 'Successfully added new round'
@@ -610,7 +616,7 @@ export const DraftManagement: React.FC = () => {
                 Cannot delete draft because it has associated trades.
               </Typography>
               <Typography sx={{ mb: 2 }}>
-                Please delete all trades involving picks from this draft before deleting it.
+                Please undo all trades involving picks from this draft before deleting it.
               </Typography>
             </>
           ) : (
@@ -677,26 +683,6 @@ export const DraftManagement: React.FC = () => {
         >
           {draftStatus.message}
         </Alert>
-      )}
-
-      {currentDraft && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Current Draft Status
-          </Typography>
-          <Typography>
-            Year: {currentDraft.year}
-          </Typography>
-          <Typography>
-            Type: {currentDraft.type}
-          </Typography>
-          <Typography>
-            Snake Draft: {currentDraft.isSnakeDraft ? 'Yes' : 'No'}
-          </Typography>
-          <Typography>
-            Total Rounds: {currentDraft.rounds.length}
-          </Typography>
-        </Box>
       )}
     </Paper>
   );

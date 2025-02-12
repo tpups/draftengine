@@ -50,35 +50,7 @@ export function TradeManagement() {
   const managers = managersResponse?.value ?? [];
   const activeDraft = activeDraftResponse?.value;
   
-  // Helper function to convert numeric status to enum
-  const getTradeStatus = (status: any): TradeStatus => {
-    const statusMap: Record<number, TradeStatus> = {
-      0: TradeStatus.Proposed,
-      1: TradeStatus.Accepted,
-      2: TradeStatus.Approved,
-      3: TradeStatus.Completed,
-      4: TradeStatus.Reversed,
-      5: TradeStatus.Cancelled
-    };
-    return statusMap[status as number] || TradeStatus.Completed;
-  };
-
-  const trades = (tradesResponse ?? []).map(trade => ({
-    ...trade,
-    status: getTradeStatus(trade.status)
-  }));
-  
-  // Debug logging
-  console.log('Trades response:', trades);
-  trades.forEach(trade => {
-    console.log('Trade status:', {
-      id: trade.id,
-      status: trade.status,
-      isCancelled: trade.status === TradeStatus.Cancelled,
-      isReversed: trade.status === TradeStatus.Reversed,
-      rawStatus: JSON.stringify(trade.status)
-    });
-  });
+  const trades = tradesResponse ?? [];
 
   const queryClient = useQueryClient();
 
@@ -96,15 +68,17 @@ export function TradeManagement() {
       isCancelled: trade.status === TradeStatus.Cancelled,
       isReversed: trade.status === TradeStatus.Reversed
     });
-    const status = trade.status === TradeStatus.Cancelled ? ' (Cancelled)' : 
-                  trade.status === TradeStatus.Reversed ? ' (Reversed)' : '';
-    return `${managerNames.join(' ⟷ ')}${status}`;
+    return managerNames.join(' ⟷ ');
   };
 
   const handleCancelTrade = async (tradeId: string) => {
     try {
       await tradeService.cancelTrade(tradeId);
-      await queryClient.invalidateQueries({ queryKey: ['trades'] });
+      // Invalidate both trades and activeDraft queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['trades'] }),
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] })
+      ]);
       setSnackbar({
         open: true,
         message: 'Trade cancelled and picks returned to original owners',
@@ -149,7 +123,12 @@ export function TradeManagement() {
       setIsModalOpen(false);
     } catch (error: any) {
       console.error('Error creating trade:', error);
-      const errorMessage = error.response?.data?.message || 'Unable to create trade';
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      const errorMessage = error.message || 'Unable to create trade';
       setSnackbar({
         open: true,
         message: errorMessage,

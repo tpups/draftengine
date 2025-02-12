@@ -33,7 +33,10 @@ export function TradeDetailsPopover({
   const handleDeleteTrade = async () => {
     try {
       await tradeService.deleteTrade(trade.id!);
-      await queryClient.invalidateQueries({ queryKey: ['trades'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['trades'] }),
+        queryClient.invalidateQueries({ queryKey: ['activeDraft'] })
+      ]);
       setSnackbar({
         open: true,
         message: 'Trade permanently deleted',
@@ -90,14 +93,12 @@ export function TradeDetailsPopover({
           }}>
             Trade Details
           </Typography>
-          {(trade.status === TradeStatus.Cancelled || trade.status === TradeStatus.Reversed) && (
-            <Typography variant="body2" sx={{
-              color: mode === 'light' ? theme.colors.pickState.selected.light : theme.colors.pickState.selected.dark,
-              fontStyle: 'italic'
-            }}>
-              ({trade.status})
-            </Typography>
-          )}
+          <Typography variant="body2" sx={{
+            color: mode === 'light' ? theme.colors.pickState.selected.light : theme.colors.pickState.selected.dark,
+            fontStyle: 'italic'
+          }}>
+            Status: {trade.status}
+          </Typography>
         </Box>
 
         <Typography variant="body2" gutterBottom sx={{ 

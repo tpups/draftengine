@@ -77,6 +77,15 @@ public class TradeService
                         asset.OverallPickNumber, asset.DraftId);
                     throw new InvalidOperationException($"Pick {asset.OverallPickNumber} not found in draft {asset.DraftId}");
                 }
+
+                // Check if pick is already completed
+                if (pick.IsComplete)
+                {
+                    _logger.LogError("Pick {OverallPickNumber} in draft {DraftId} is already completed", 
+                        asset.OverallPickNumber, asset.DraftId);
+                    throw new InvalidOperationException($"Pick {asset.OverallPickNumber} has already been used");
+                }
+
                 _logger.LogInformation("Found pick: Overall {OverallPickNumber}, Round Pick {PickNumber}", 
                     pick.OverallPickNumber, pick.PickNumber);
             }
@@ -107,18 +116,29 @@ public class TradeService
         }
 
         // Save trade to database
-        await _trades.InsertOneAsync(trade);
-        _logger.LogInformation("Trade saved successfully with ID: {TradeId}", trade.Id);
+        try 
+        {
+            await _trades.InsertOneAsync(trade);
+            _logger.LogInformation("Trade saved successfully with ID: {TradeId}", trade.Id);
 
-        // Verify trade was saved
-        var savedTrade = await _trades.Find(t => t.Id == trade.Id).FirstOrDefaultAsync();
-        if (savedTrade != null)
-        {
-            _logger.LogInformation("Retrieved saved trade: {Trade}", System.Text.Json.JsonSerializer.Serialize(savedTrade));
+            // Verify trade was saved
+            var savedTrade = await _trades.Find(t => t.Id == trade.Id).FirstOrDefaultAsync();
+            if (savedTrade != null)
+            {
+                _logger.LogInformation("Retrieved saved trade: {Trade}", System.Text.Json.JsonSerializer.Serialize(savedTrade));
+            }
+            else
+            {
+                var error = "Trade was not found after saving";
+                _logger.LogError(error);
+                throw new InvalidOperationException(error);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _logger.LogWarning("Could not retrieve saved trade with ID: {TradeId}", trade.Id);
+            var error = $"Failed to save trade: {ex.Message}";
+            _logger.LogError(ex, error);
+            throw new InvalidOperationException(error);
         }
 
         return trade;
@@ -163,7 +183,16 @@ public class TradeService
 
         // Update trade status to Cancelled
         trade.Status = TradeStatus.Cancelled;
-        await _trades.ReplaceOneAsync(t => t.Id == tradeId, trade);
+        var updateResult = await _trades.ReplaceOneAsync(t => t.Id == tradeId, trade);
+        
+        if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
+        {
+            var error = $"Failed to update trade {tradeId} status to Cancelled";
+            _logger.LogError(error);
+            throw new InvalidOperationException(error);
+        }
+        
+        _logger.LogInformation("Successfully updated trade {TradeId} status to Cancelled", tradeId);
     }
 
     public async Task DeleteTrade(string tradeId)
@@ -186,7 +215,16 @@ public class TradeService
         }
 
         _logger.LogInformation("Permanently deleting trade {TradeId}", tradeId);
-        await _trades.DeleteOneAsync(t => t.Id == tradeId);
+        var deleteResult = await _trades.DeleteOneAsync(t => t.Id == tradeId);
+        
+        if (!deleteResult.IsAcknowledged || deleteResult.DeletedCount == 0)
+        {
+            var error = $"Failed to delete trade {tradeId}";
+            _logger.LogError(error);
+            throw new InvalidOperationException(error);
+        }
+        
+        _logger.LogInformation("Successfully deleted trade {TradeId}", tradeId);
     }
 
     private void ValidateTrade(List<TradeParty> parties)

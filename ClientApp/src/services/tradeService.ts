@@ -44,8 +44,8 @@ const tradeService = {
       console.error('Error response:', error.response?.data);
       
       // Throw a more descriptive error
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
+      if (error instanceof Error) {
+        throw error;
       } else {
         throw new Error('Failed to create trade. Please try again.');
       }

@@ -75,15 +75,15 @@ const wfbc: Theme = {
     },
     background: {
       default: {
-        light: '#f8fafc', // Very light maritime blue background
+        light: '#f0f4f8', // More muted maritime blue background
         dark: '#0a1929',
       },
       paper: {
-        light: '#f3f6fa', // Base paper color
+        light: '#ffffff', // Pure white for better contrast with content
         dark: '#0d2339',
       },
       elevated: {
-        light: '#f0f7ff', // Very subtle blue for row backgrounds
+        light: '#e8f1f8', // Slightly darker blue for better row contrast
         dark: '#0d2339',
       },
     },

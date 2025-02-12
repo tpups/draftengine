@@ -25,7 +25,21 @@ export function DraftBoard({
 
   if (!activeDraft) {
     return (
-    <Box sx={{ p: 2, maxWidth: '100%', width: 'fit-content' }}>
+      <Box sx={{ 
+        position: 'relative',
+        p: 4,
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: -20,
+          left: -20,
+          right: -20,
+          bottom: -20,
+          border: `4px solid ${theme.colors.secondary.dark}`,
+          borderRadius: '8px',
+          pointerEvents: 'none'
+        }
+      }}>
         <Typography variant="h6">
           No active draft found
         </Typography>
@@ -74,12 +88,6 @@ export function DraftBoard({
     return player?.name ?? '';
   };
 
-  /**
-   * Calculates the display pick number based on draft type
-   * For snake drafts:
-   * - Even rounds reverse the pick order (e.g., pick 12 becomes pick 1)
-   * - Odd rounds maintain normal order
-   */
   const getDisplayPickNumber = (round: number, actualPickNumber: number) => {
     const totalManagers = activeDraft.draftOrder.length;
     if (round % 2 === 0 && activeDraft.isSnakeDraft) {
@@ -88,18 +96,6 @@ export function DraftBoard({
     return actualPickNumber;
   };
 
-  /**
-   * Determines the visual style for a pick cell
-   * Visual States:
-   * - Current Pick: Red outline
-   * - Completed Pick: Blue outline with player name
-   * - Normal Pick: Light background
-   * 
-   * Border Rules:
-   * - Left border for first round and normal rounds
-   * - Right border for snake rounds
-   * - Creates visual separation between normal and snake rounds
-   */
   const getPickStyle = (round: number, pickNumber: number, pick: DraftPosition) => {
     const isCurrent = pick.overallPickNumber === activeDraft.currentOverallPick;
     const isSnakeRound = round % 2 === 0 && activeDraft.isSnakeDraft;
@@ -118,7 +114,6 @@ export function DraftBoard({
       alignItems: 'center',
       justifyContent: 'center',
       gap: '4px',
-      // Base background color
       bgcolor: isCurrentlyTraded ? 
         (mode === 'light' ? `${theme.colors.pickState.active.light}40` : `${theme.colors.pickState.active.dark}40`) :
         pick.isComplete ? 
@@ -137,7 +132,6 @@ export function DraftBoard({
       zIndex: isCurrent || pick.isComplete ? 1 : 'auto',
       position: 'relative',
       p: 1,
-      // Add italic style for traded picks
       fontStyle: isTraded ? 'italic' : 'normal'
     };
   };
@@ -145,8 +139,29 @@ export function DraftBoard({
   const maxPicksPerRound = Math.max(...activeDraft.rounds.map(r => r.picks.length));
 
   return (
-    <Box sx={{ p: 2, maxWidth: '100%', width: 'fit-content' }}>
-      <Box sx={{ display: 'flex' }}>
+    <Box sx={{ 
+      position: 'relative',
+      margin: '20px',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        border: `5px solid ${theme.colors.secondary.dark}80`,
+        borderRadius: '12px',
+        pointerEvents: 'none',
+        background: `${theme.colors.secondary.dark}25`
+      }
+    }}>
+      <Box sx={{ 
+        display: 'flex', 
+        p: 4, 
+        overflow: 'hidden',
+        bgcolor: `${theme.colors.secondary.dark}25`,
+        borderRadius: '12px'
+      }}>
         {/* Round number column */}
         <Box sx={{ width: '60px', mr: 1 }}>
           {/* Empty cell between column headers and row headers */}
@@ -162,24 +177,24 @@ export function DraftBoard({
             gridTemplateRows: `repeat(${activeDraft.rounds.length}, 64px)`,
             mt: 0.5
           }}>
-          {activeDraft.rounds.map((round) => (
-            <Box 
-              key={`round-${round.roundNumber}`}
-              sx={{ 
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                pr: 1,
-                bgcolor: theme.colors.secondary.dark,
-                borderRadius: '4px',
-                minHeight: '64px'
-              }}
-            >
-              <Typography variant="h6" sx={{ color: theme.colors.text.primary.dark, fontWeight: 600 }}>
-                R{round.roundNumber}
-              </Typography>
-            </Box>
-          ))}
+            {activeDraft.rounds.map((round) => (
+              <Box 
+                key={`round-${round.roundNumber}`}
+                sx={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  pr: 1,
+                  bgcolor: theme.colors.secondary.dark,
+                  borderRadius: '4px',
+                  minHeight: '64px'
+                }}
+              >
+                <Typography variant="h6" sx={{ color: theme.colors.text.primary.dark, fontWeight: 600 }}>
+                  R{round.roundNumber}
+                </Typography>
+              </Box>
+            ))}
           </Box>
         </Box>
 
@@ -223,80 +238,79 @@ export function DraftBoard({
               ))}
             </Box>
 
-          </Box>
-
-          {/* Grid content */}
-          <Box sx={{ 
-            mt: 0.5,
-            display: 'grid',
-            gridTemplateColumns: `repeat(${maxPicksPerRound}, 160px)`,
-            gap: 0.5
-          }}>
-            {activeDraft.rounds.map((round) => (
-              <Box key={round.roundNumber} sx={{ display: 'contents' }}>
-                {round.picks.map((pick) => {
-                  const displayNumber = getDisplayPickNumber(round.roundNumber, pick.pickNumber);
-                  const managerName = getManagerName(pick);
-                  const playerName = getPlayerName(pick, round.roundNumber);
-                  const tradeHistory = getTradeHistory(pick);
-                  const isTraded = pick.tradedTo?.length > 0;
-                  const tooltipTitle = `Round ${round.roundNumber}, Pick ${displayNumber} (Overall #${pick.overallPickNumber})${
-                    isTraded ? '\n' + getTradeHistory(pick) : ''
-                  }`;
-                  return (
-                    <Tooltip
-                      key={`${round.roundNumber}-${pick.pickNumber}`}
-                      title={tooltipTitle}
-                      arrow
-                      componentsProps={{
-                        tooltip: {
-                          sx: {
-                            whiteSpace: 'pre-line',
-                            textAlign: 'center'
+            {/* Grid content */}
+            <Box sx={{ 
+              mt: 0.5,
+              display: 'grid',
+              gridTemplateColumns: `repeat(${maxPicksPerRound}, 160px)`,
+              gap: 0.5
+            }}>
+              {activeDraft.rounds.map((round) => (
+                <Box key={round.roundNumber} sx={{ display: 'contents' }}>
+                  {round.picks.map((pick) => {
+                    const displayNumber = getDisplayPickNumber(round.roundNumber, pick.pickNumber);
+                    const managerName = getManagerName(pick);
+                    const playerName = getPlayerName(pick, round.roundNumber);
+                    const tradeHistory = getTradeHistory(pick);
+                    const isTraded = pick.tradedTo?.length > 0;
+                    const tooltipTitle = `Round ${round.roundNumber}, Pick ${displayNumber} (Overall #${pick.overallPickNumber})${
+                      isTraded ? '\n' + getTradeHistory(pick) : ''
+                    }`;
+                    return (
+                      <Tooltip
+                        key={`${round.roundNumber}-${pick.pickNumber}`}
+                        title={tooltipTitle}
+                        arrow
+                        componentsProps={{
+                          tooltip: {
+                            sx: {
+                              whiteSpace: 'pre-line',
+                              textAlign: 'center'
+                            }
                           }
-                        }
-                      }}
-                    >
-                      <Paper
-                        elevation={0}
-                        sx={getPickStyle(round.roundNumber, pick.pickNumber, pick)}
+                        }}
                       >
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontSize: '0.75rem',
-                            maxWidth: '152px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            textAlign: 'center',
-                            fontWeight: 500,
-                            opacity: 0.8
-                          }}
+                        <Paper
+                          elevation={0}
+                          sx={getPickStyle(round.roundNumber, pick.pickNumber, pick)}
                         >
-                          {managerName}
-                        </Typography>
-                        {playerName && (
                           <Typography 
-                            variant="body2"
+                            variant="caption" 
                             sx={{ 
+                              fontSize: '0.75rem',
                               maxWidth: '152px',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                               textAlign: 'center',
-                              fontWeight: 600
+                              fontWeight: 500,
+                              opacity: 0.8
                             }}
                           >
-                            {playerName}
+                            {managerName}
                           </Typography>
-                        )}
-                      </Paper>
-                    </Tooltip>
-                  );
-                })}
-              </Box>
-            ))}
+                          {playerName && (
+                            <Typography 
+                              variant="body2"
+                              sx={{ 
+                                maxWidth: '152px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                textAlign: 'center',
+                                fontWeight: 600
+                              }}
+                            >
+                              {playerName}
+                            </Typography>
+                          )}
+                        </Paper>
+                      </Tooltip>
+                    );
+                  })}
+                </Box>
+              ))}
+            </Box>
           </Box>
         </Box>
       </Box>

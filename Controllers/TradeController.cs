@@ -74,7 +74,7 @@ public class TradeController : ControllerBase
         {
             _logger.LogWarning(ex, "Invalid operation creating trade");
             _debugService.LogToFrontend(LogLevel.Warning, $"Invalid operation creating trade: {ex.Message}");
-            return BadRequest(ApiResponse<Trade>.Create(null, ex.Message));
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {

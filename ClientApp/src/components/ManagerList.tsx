@@ -10,10 +10,10 @@ import { useState } from 'react';
 
 interface ManagerListProps {
   dialogOpen: boolean;
-  onDialogClose: () => void;
+  toggleDialog: () => void;
 }
 
-export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
+export function ManagerList({ dialogOpen, toggleDialog }: ManagerListProps) {
   const muiTheme = useMuiTheme();
   const { theme, mode } = useTheme();
   const initialManagerState: Omit<Manager, 'id'> = {
@@ -59,7 +59,7 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
     mutationFn: (manager: Manager) => managerService.update(manager.id!, manager),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managers'] });
-      onDialogClose();
+      toggleDialog();
       setEditManager(null);
       setSnackbar({ open: true, message: 'Manager updated successfully', severity: 'success' });
     },
@@ -82,7 +82,7 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
     mutationFn: (manager: Omit<Manager, 'id'>) => managerService.create(manager),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managers'] });
-      onDialogClose();
+      toggleDialog();
       setNewManager(initialManagerState);
       setSnackbar({ open: true, message: 'Manager created successfully', severity: 'success' });
     },
@@ -118,7 +118,7 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
   };
 
   const handleClose = () => {
-    onDialogClose();
+    toggleDialog();
     setNewManager(initialManagerState);
     setEditManager(null);
   };
@@ -267,11 +267,12 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
             color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark
           },
           '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark,
-            borderBottom: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`
+            backgroundColor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+            borderBottom: `2px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`
           },
           '& .MuiDataGrid-row': {
             color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
+            bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
             '&:hover': {
               backgroundColor: mode === 'light' ? theme.colors.action.hover.light : theme.colors.action.hover.dark
             }
@@ -289,8 +290,8 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
             }
           },
           '& .MuiDataGrid-footerContainer': {
-            borderTop: `1px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
-            backgroundColor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark
+            borderTop: `2px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
+            backgroundColor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark
           }
         }}
         columns={[
@@ -326,8 +327,9 @@ export function ManagerList({ dialogOpen, onDialogClose }: ManagerListProps) {
                 label="Edit"
                 onClick={() => {
                   setEditManager(params.row);
-                  onDialogClose(); // Close any existing dialog first
-                  setTimeout(() => onDialogClose(), 0); // Then open with edit mode
+                  if (!dialogOpen) {
+                    toggleDialog();
+                  }
                 }}
                 title="Edit this manager"
               />,

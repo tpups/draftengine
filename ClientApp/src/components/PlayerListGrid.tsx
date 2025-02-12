@@ -347,7 +347,7 @@ export function PlayerListGrid({
       <Paper elevation={0} sx={{
         width: '100%',
         flex: 1,
-        bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+        bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
         display: 'flex',
         flexDirection: 'column',
         borderRadius: '12px',
@@ -409,7 +409,7 @@ export function PlayerListGrid({
           }
         },
         '& .MuiDataGrid-row': {
-          bgcolor: mode === 'light' ? `${theme.colors.primary.main}15` : theme.colors.background.paper.dark,
+          bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
           color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
           margin: 0,
           padding: 0,
@@ -446,13 +446,16 @@ export function PlayerListGrid({
             justifyContent: 'flex-start'
           }
         },
-        '& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader': {
-          bgcolor: mode === 'light' ? `${theme.colors.primary.main}15` : theme.colors.background.paper.dark,
+        '& .MuiDataGrid-columnHeaders': {
+          bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
           color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
           borderBottom: `2px solid ${mode === 'light' ? theme.colors.action.border?.light : theme.colors.text.disabled.dark}`,
           '&:not(:last-child)': {
             borderRight: `1px solid ${mode === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`
           }
+        },
+        '& .MuiDataGrid-columnHeadersInner': {
+          bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
         },
         '& .MuiSvgIcon-root': {
           fontSize: '1.5rem'
@@ -509,7 +512,7 @@ export function PlayerListGrid({
           }
         },
         '& .MuiDataGrid-footerContainer': {
-          backgroundColor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
+          backgroundColor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
           color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
           fontWeight: 500,
           fontSize: '0.875rem',

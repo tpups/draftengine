@@ -53,7 +53,7 @@ export const ManagerSection: React.FC = () => {
       </Box>
       <ManagerList 
         dialogOpen={dialogOpen}
-        onDialogClose={() => setDialogOpen(false)}
+        toggleDialog={() => setDialogOpen(!dialogOpen)}
       />
     </Paper>
   );

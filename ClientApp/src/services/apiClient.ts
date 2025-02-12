@@ -32,7 +32,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     
     try {
       errorData = await response.json();
-      errorMessage = errorData.message || errorData.Message || errorMessage;
+      errorMessage = errorData.error || errorData.message || errorData.Message || errorMessage;
     } catch {
       // If response is not JSON, use statusText
     }
