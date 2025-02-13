@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
+    resolve: {
+      mainFields: ['module', 'main', 'browser', 'jsnext:main'],
+      extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+    },
     server: {
       port: parseInt(env.VITE_PORT || '5173'),
       strictPort: true, // Throw if port is already in use

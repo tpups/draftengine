@@ -117,7 +117,7 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
   return (
     <Box sx={{ display: 'flex', gap: 4, height: 500 }}>
       {/* Left Column - Available Managers */}
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 0.7 }}>
         <Typography variant="subtitle1" gutterBottom>
           Available Managers
         </Typography>
@@ -171,7 +171,7 @@ export const DraftOrderList: React.FC<DraftOrderListProps> = ({
       </Box>
 
       {/* Right Column - Draft Order */}
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 0.7 }}>
         <Typography variant="subtitle1" gutterBottom>
           Draft Order
         </Typography>

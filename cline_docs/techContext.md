@@ -8,10 +8,11 @@
   - Material-UI components
   - React Query for API integration
   - AG Grid for data tables
-- Node.js and npm
+- Node.js and Yarn
   - Required for frontend development
-  - Package management
+  - Package management with Yarn (preferred over npm)
   - Build tooling
+  - Dependency management with yarn.lock
 
 ### Backend
 - .NET Core 8.0

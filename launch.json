@@ -1,0 +1,33 @@
+{
+  "configurations": [
+    {
+      "type": "coreclr",
+      "request": "launch",
+      "name": "Launch DraftEngine",
+      "program": "${workspaceFolder}/${input:programPath}",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "preLaunchTask": "build"
+    }
+  ],
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "programPath",
+      "description": "Path to your program (e.g., bin/Debug/net8.0/DraftEngine.dll)"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/DraftEngine.csproj"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

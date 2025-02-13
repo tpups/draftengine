@@ -155,12 +155,24 @@ export interface BirthDateUpdateResult {
     wasUpdated: boolean;
 }
 
+export interface TradeAssetDistribution {
+    fromManagerId: string;
+    asset: TradeAsset;
+}
+
+export interface AssetDistribution {
+    [managerId: string]: {
+        [fromManagerId: string]: TradeAsset[];
+    };
+}
+
 export interface Trade {
     id?: string;
     timestamp: string;
     notes?: string;
     status: TradeStatus;
     parties: TradeParty[];
+    assetDistribution?: AssetDistribution;
 }
 
 export interface TradeParty {

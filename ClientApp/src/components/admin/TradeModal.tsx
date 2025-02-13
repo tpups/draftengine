@@ -2,19 +2,20 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconBut
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useEffect, useState } from 'react';
-import { Manager, Trade, TradeParty, TradeAsset, TradeAssetType, TradeStatus, Draft, DraftPosition } from '../../types/models';
+import { useEffect, useState, useCallback } from 'react';
+import { TradeAssetType, TradeStatus, TradeAsset, Trade, Manager, DraftPosition, Draft } from '../../types/models';
 import { ManagerSelector } from '../admin/ManagerSelector';
 import { useQuery } from '@tanstack/react-query';
 import { draftService } from '../../services/draftService';
 import { getDisplayPickNumber } from '../../utils/draftUtils';
 import { AvailablePicksPopover } from './AvailablePicksPopover';
+import { AssetDistributionPopover } from './AssetDistributionPopover';
 import { apiClient } from '../../services/apiClient';
 
-interface DragContext {
-  type: 'availablePicks' | 'tradeAssets';
-  managerId: string;
-  asset: TradeAsset;
+interface AssetDistribution {
+  [managerId: string]: {
+    [fromManagerId: string]: TradeAsset[];
+  };
 }
 
 interface TradeModalProps {
@@ -25,28 +26,148 @@ interface TradeModalProps {
   activeDraftId: string;
 }
 
+interface AssetProps { 
+  asset: TradeAsset; 
+  activeDraft: Draft; 
+  mode: string; 
+  theme: any; 
+  dialogBgColor: string; 
+  onRemove?: () => void;
+  isDistributed?: boolean;
+  managerId: string;
+  showAssetDistribution?: boolean;
+  onClick?: () => void;
+}
+
+function Asset({ asset, activeDraft, mode, theme, dialogBgColor, onRemove, isDistributed, managerId, showAssetDistribution, onClick }: AssetProps) {
+  const roundNumber = asset.roundNumber!;
+  const displayPickNumber = getDisplayPickNumber(activeDraft!, asset.pickNumber!, roundNumber);
+  const id = `tradeAsset|${asset.overallPickNumber?.toString() ?? ''}-${roundNumber}-${asset.pickNumber}|${managerId}`;
+
+  return (
+    <Box
+      id={id}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      sx={{
+        p: 1,
+        mb: 1,
+        bgcolor: mode === 'light' ? '#fff' : dialogBgColor,
+        borderRadius: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: mode === 'light' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+        opacity: isDistributed ? 0.5 : 1,
+        position: 'relative',
+        cursor: isDistributed ? 'not-allowed' : (onClick ? 'pointer' : 'default'),
+        userSelect: 'none',
+        pointerEvents: isDistributed ? 'none' : 'auto',
+        '&:last-child': {
+          mb: 0
+        },
+        '&:hover': !isDistributed && onClick ? {
+          bgcolor: mode === 'light' ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.04)'
+        } : undefined
+      }}
+    >
+      <span style={{ userSelect: 'none' }}>
+        Round {roundNumber}, Pick {displayPickNumber}
+        (Overall: {asset.overallPickNumber?.toString() ?? ''})
+      </span>
+      {onRemove && (
+        <IconButton
+          size="small"
+      onClick={(e: React.MouseEvent) => {
+        e.stopPropagation();
+        onRemove();
+      }}
+          disabled={isDistributed}
+          sx={{
+            color: mode === 'light' ? 
+              theme.colors.pickState.selected.light : 
+              theme.colors.pickState.selected.dark,
+            '&:hover': {
+              color: mode === 'light' ?
+                theme.colors.pickState.selected.dark :
+                theme.colors.pickState.selected.light
+            },
+            opacity: isDistributed ? 0.5 : 1
+          }}
+        >
+          <DeleteIcon />
+        </IconButton>
+      )}
+    </Box>
+  );
+}
+
 export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }: TradeModalProps) {
   const { theme, mode } = useTheme();
   const [selectedManagers, setSelectedManagers] = useState<Manager[]>([]);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [tradeAssets, setTradeAssets] = useState<Record<string, TradeAsset[]>>({});
+  const [assetDistribution, setAssetDistribution] = useState<AssetDistribution>({});
+  const [distributedAssets, setDistributedAssets] = useState<Record<string, {
+    originalManagerId: string;
+    currentManagerId: string;
+  }>>({});
+  const [showAssetDistribution, setShowAssetDistribution] = useState(false);
   const [anchorEl, setAnchorEl] = useState<{ el: HTMLElement; managerId: string } | null>(null);
+  const [distributionAnchorEl, setDistributionAnchorEl] = useState<{ el: HTMLElement; asset: TradeAsset; managerId: string } | null>(null);
 
-  // Reset state when modal closes
+  const isAssetDistributed = useCallback((asset: TradeAsset) => {
+    if (!asset.overallPickNumber) return false;
+    
+    // First check if it's in the distributed assets tracking
+    if (asset.overallPickNumber?.toString() in distributedAssets) {
+      return true;
+    }
+
+    // Then check the asset distribution state
+    return Object.values(assetDistribution)
+      .some(distributions => 
+        Object.values(distributions)
+          .some(assets => 
+            assets.some(a => 
+              a.overallPickNumber !== undefined && 
+              asset.overallPickNumber !== undefined && 
+              a.overallPickNumber === asset.overallPickNumber
+            )
+          )
+      );
+  }, [assetDistribution, distributedAssets]);
+
   useEffect(() => {
     if (!open) {
       setSelectedManagers([]);
       setNotes('');
       setError(null);
       setTradeAssets({});
+      setAssetDistribution({});
+      setShowAssetDistribution(false);
       setAnchorEl(null);
+      setDistributionAnchorEl(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (selectedManagers.length < 3) {
+      setShowAssetDistribution(false);
+      setAssetDistribution({});
+    }
+  }, [selectedManagers.length]);
+
+  const dialogBgColor = mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark;
+  const dialogContentBgColor = mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark;
+  const dropZoneBorderColor = mode === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)';
 
   const handleAddManager = (manager: Manager) => {
     setSelectedManagers(prev => [...prev, manager]);
     setTradeAssets(prev => ({ ...prev, [manager.id!]: [] }));
+    setAssetDistribution(prev => ({ ...prev, [manager.id!]: {} }));
   };
 
   const handleRemoveManager = (managerId: string) => {
@@ -55,6 +176,23 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
       const { [managerId]: _, ...rest } = prev;
       return rest;
     });
+    setAssetDistribution(prev => {
+      const { [managerId]: _, ...rest } = prev;
+      Object.keys(rest).forEach(id => {
+        const { [managerId]: __, ...remaining } = rest[id];
+        rest[id] = remaining;
+      });
+      return rest;
+    });
+  };
+
+  const handleConfigureTradeClick = () => {
+    setShowAssetDistribution(true);
+    const initialDistribution: AssetDistribution = {};
+    selectedManagers.forEach(manager => {
+      initialDistribution[manager.id!] = {};
+    });
+    setAssetDistribution(initialDistribution);
   };
 
   const { data: activeDraftResponse } = useQuery({
@@ -70,7 +208,7 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
     const roundNumber = Math.floor((pick.overallPickNumber - 1) / activeDraft!.draftOrder.length) + 1;
     const asset: TradeAsset = {
       type: TradeAssetType.DraftPick,
-      draftId: activeDraftId,  // Use the prop instead of activeDraft.id
+      draftId: activeDraftId,
       overallPickNumber: pick.overallPickNumber,
       pickNumber: pick.pickNumber,
       roundNumber
@@ -86,27 +224,132 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
     setTradeAssets(prev => ({
       ...prev,
       [managerId]: prev[managerId].filter(a => 
-        !(a.type === asset.type && a.overallPickNumber === asset.overallPickNumber)
+        !(a.type === asset.type && 
+          a.overallPickNumber !== undefined && 
+          asset.overallPickNumber !== undefined && 
+          a.overallPickNumber === asset.overallPickNumber)
       )
     }));
   };
 
+  const handleUndoAssetMove = (asset: TradeAsset, fromManagerId: string, toManagerId: string) => {
+    // Just remove from distribution - the asset is already in Trade Assets
+    setAssetDistribution(prev => {
+      const newDistribution = { ...prev };
+      
+      if (newDistribution[toManagerId] && newDistribution[toManagerId][fromManagerId]) {
+        newDistribution[toManagerId][fromManagerId] = newDistribution[toManagerId][fromManagerId]
+          .filter(a => 
+            a.overallPickNumber !== undefined && 
+            asset.overallPickNumber !== undefined && 
+            a.overallPickNumber !== asset.overallPickNumber
+          );
+        
+        if (newDistribution[toManagerId][fromManagerId].length === 0) {
+          delete newDistribution[toManagerId][fromManagerId];
+        }
+        if (Object.keys(newDistribution[toManagerId]).length === 0) {
+          delete newDistribution[toManagerId];
+        }
+      }
+
+      return newDistribution;
+    });
+  };
+
+  const handleDistributeAsset = (asset: TradeAsset, fromManagerId: string, toManagerId: string) => {
+    setAssetDistribution(prev => {
+      const newDistribution = { ...prev };
+      
+      if (!newDistribution[toManagerId]) {
+        newDistribution[toManagerId] = {};
+      }
+      if (!newDistribution[toManagerId][fromManagerId]) {
+        newDistribution[toManagerId][fromManagerId] = [];
+      }
+
+      newDistribution[toManagerId][fromManagerId] = [
+        ...newDistribution[toManagerId][fromManagerId],
+        asset
+      ];
+
+      return newDistribution;
+    });
+    setDistributionAnchorEl(null);
+  };
+
   const handleSubmit = () => {
-    // Clear any previous errors
     setError(null);
 
-    // Validate that each manager has at least one asset
-    const managersWithoutAssets = selectedManagers.filter(
-      manager => !tradeAssets[manager.id!]?.length
-    );
-
-    if (managersWithoutAssets.length > 0) {
-      setError(
-        `The following managers need at least one asset: ${
-          managersWithoutAssets.map(m => m.name).join(', ')
-        }`
+    if (selectedManagers.length <= 2) {
+      const managersWithoutAssets = selectedManagers.filter(
+        manager => !tradeAssets[manager.id!]?.length
       );
-      return;
+
+      if (managersWithoutAssets.length > 0) {
+        setError(
+          `The following managers need at least one asset: ${
+            managersWithoutAssets.map(m => m.name).join(', ')
+          }`
+        );
+        return;
+      }
+    } else {
+      if (!showAssetDistribution) {
+        setError('Please configure the trade distribution first.');
+        return;
+      }
+
+      const undistributedAssets = selectedManagers.some(manager => {
+        const managerAssets = tradeAssets[manager.id!] || [];
+        const distributedAssets = Object.values(assetDistribution)
+          .flatMap(distributions => 
+            Object.values(distributions)
+              .flatMap(assets => assets)
+          );
+        return managerAssets.length > 0 && !distributedAssets.some(
+          da => managerAssets.some(ma => 
+            ma.overallPickNumber !== undefined && 
+            da.overallPickNumber !== undefined && 
+            ma.overallPickNumber === da.overallPickNumber
+          )
+        );
+      });
+
+      if (undistributedAssets) {
+        setError('All assets must be distributed before submitting the trade.');
+        return;
+      }
+
+      const managersNotReceiving = selectedManagers.filter(manager => {
+        const receivedAssets = Object.values(assetDistribution[manager.id!] || {})
+          .flatMap(assets => assets);
+        return receivedAssets.length === 0;
+      });
+
+      if (managersNotReceiving.length > 0) {
+        setError(
+          `The following managers must receive at least one asset: ${
+            managersNotReceiving.map(m => m.name).join(', ')
+          }`
+        );
+        return;
+      }
+    }
+
+    // Create or get asset distribution
+    const finalAssetDistribution = selectedManagers.length === 2 ? {
+      [selectedManagers[0].id!]: {
+        [selectedManagers[1].id!]: tradeAssets[selectedManagers[1].id!] || []
+      },
+      [selectedManagers[1].id!]: {
+        [selectedManagers[0].id!]: tradeAssets[selectedManagers[0].id!] || []
+      }
+    } : assetDistribution;
+
+    // Update state for future reference
+    if (selectedManagers.length === 2) {
+      setAssetDistribution(finalAssetDistribution);
     }
 
     const trade: Trade = {
@@ -115,13 +358,13 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
       status: TradeStatus.Completed,
       parties: selectedManagers.map(manager => ({
         managerId: manager.id!,
-        proposed: false,  // Set proposed to false for all parties
+        proposed: false,
         accepted: true,
         assets: tradeAssets[manager.id!] || []
-      }))
+      })),
+      assetDistribution: finalAssetDistribution
     };
 
-    // Log the trade object before submitting
     console.log('Submitting trade:', trade);
     apiClient.post('/debug/log', {
       level: 'Information',
@@ -132,16 +375,10 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
     onClose();
   };
 
-  const dialogBgColor = mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.elevated.dark;
-  const dialogContentBgColor = mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark;
-  const dropZoneBorderColor = mode === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)';
-  const dropZoneHoverColor = mode === 'light' ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.04)';
-
-  // Calculate grid columns based on number of managers
   const gridColumns = Math.min(3, selectedManagers.length || 1);
-  const columnWidth = 350; // Width of each column
-  const columnGap = 24; // Gap between columns
-  const dialogPadding = 48; // Total horizontal padding (24px on each side)
+  const columnWidth = 350;
+  const columnGap = 24;
+  const dialogPadding = 48;
   const totalWidth = (columnWidth * gridColumns) + (columnGap * (gridColumns - 1)) + dialogPadding;
 
   return (
@@ -204,6 +441,30 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
           />
         </Box>
 
+        {selectedManagers.length >= 3 && !showAssetDistribution && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+            {selectedManagers.some(manager => !tradeAssets[manager.id!]?.length) && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Add trade assets for each manager to enable trade distribution
+              </Typography>
+            )}
+            <Button
+              variant="contained"
+              onClick={handleConfigureTradeClick}
+              disabled={selectedManagers.some(manager => !tradeAssets[manager.id!]?.length)}
+              sx={{
+                bgcolor: theme.colors.primary.main,
+                color: theme.colors.primary.contrastText,
+                '&:hover': {
+                  bgcolor: theme.colors.primary.dark
+                }
+              }}
+            >
+              Configure Trade Distribution
+            </Button>
+          </Box>
+        )}
+
         <Box 
           sx={{ 
             display: 'grid',
@@ -225,7 +486,7 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
               }}
             >
               <Typography variant="subtitle2">{manager.name}</Typography>
-              {activeDraft && (
+              {activeDraft && !showAssetDistribution && (
                 <Button
                   variant="outlined"
                   onClick={(e) => setAnchorEl({ el: e.currentTarget, managerId: manager.id! })}
@@ -248,7 +509,8 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
               )}
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Trade Assets</Typography>
-                <Box 
+                <Box
+                  id={`tradeAssets|${manager.id}`}
                   sx={{
                     maxHeight: 200,
                     overflowY: 'auto',
@@ -256,61 +518,101 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
                     borderRadius: 1,
                     p: 1,
                     border: `1px dashed ${dropZoneBorderColor}`,
-                    transition: 'background-color 0.2s ease',
-                    '&:hover': {
-                      bgcolor: dropZoneHoverColor
-                    }
+                    transition: 'background-color 0.2s ease'
                   }}
                 >
-                  {tradeAssets[manager.id!]?.map((asset, index) => {
-                    const roundNumber = asset.roundNumber!;
-                    const displayPickNumber = getDisplayPickNumber(activeDraft!, asset.pickNumber!, roundNumber);
-                    
-                    return (
-                      <Box
-                        key={`${asset.type}-${asset.overallPickNumber}`}
-                        sx={{
-                          p: 1,
-                          mb: 1,
-                          bgcolor: mode === 'light' ? '#fff' : dialogBgColor,
-                          borderRadius: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          boxShadow: mode === 'light' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-                          '&:last-child': {
-                            mb: 0
+                  {tradeAssets[manager.id!]?.map((asset) => (
+                    <Asset
+                      key={`${asset.overallPickNumber?.toString() ?? ''}-${asset.roundNumber}-${asset.pickNumber}`}
+                      asset={asset}
+                      activeDraft={activeDraft!}
+                      mode={mode}
+                      theme={theme}
+                      dialogBgColor={dialogBgColor}
+                      onRemove={!showAssetDistribution ? () => handleRemoveAsset(manager.id!, asset) : undefined}
+                      managerId={manager.id!}
+                      isDistributed={isAssetDistributed(asset)}
+                      showAssetDistribution={showAssetDistribution}
+                      onClick={showAssetDistribution && !isAssetDistributed(asset) ? 
+                        () => {
+                          const element = document.getElementById(`tradeAsset|${asset.overallPickNumber?.toString() ?? ''}-${asset.roundNumber}-${asset.pickNumber}|${manager.id}`);
+                          if (element) {
+                            setDistributionAnchorEl({ el: element, asset, managerId: manager.id! });
                           }
-                        }}
-                      >
-                        <span>
-                          Round {roundNumber}, Pick {displayPickNumber} {/* Added space */}
-                          (Overall: {asset.overallPickNumber})
-                        </span>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleRemoveAsset(manager.id!, asset)}
-                          sx={{
-                            color: mode === 'light' ? 
-                              theme.colors.pickState.selected.light : 
-                              theme.colors.pickState.selected.dark,
-                            '&:hover': {
-                              color: mode === 'light' ?
-                                theme.colors.pickState.selected.dark :
-                                theme.colors.pickState.selected.light
-                            }
-                          }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    );
-                  })}
+                        } : 
+                        undefined}
+                    />
+                  ))}
                 </Box>
               </Box>
             </Box>
           ))}
         </Box>
+
+        {showAssetDistribution && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Assets Received</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Click on assets from Trade Assets to distribute them between managers. Each manager must receive at least one asset.
+            </Typography>
+            <Box 
+              sx={{ 
+                display: 'grid',
+                gridTemplateColumns: `repeat(${gridColumns}, ${columnWidth}px)`,
+                gap: 3,
+                mx: 'auto',
+                width: 'fit-content'
+              }}
+            >
+              {selectedManagers.map(manager => (
+                <Box 
+                  key={`received-${manager.id}`}
+                  sx={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2
+                  }}
+                >
+                  <Typography variant="subtitle2">{manager.name}</Typography>
+                  <Box
+                    id={`received|${manager.id}`}
+                    sx={{
+                      minHeight: 200,
+                      maxHeight: 400,
+                      overflowY: 'auto',
+                      bgcolor: dialogContentBgColor,
+                      borderRadius: 1,
+                      p: 1,
+                      border: `1px dashed ${dropZoneBorderColor}`,
+                      transition: 'background-color 0.2s ease'
+                    }}
+                  >
+                    {Object.entries(assetDistribution[manager.id!] || {}).map(([fromManagerId, assets]) => (
+                      <Box key={fromManagerId} sx={{ mb: 2 }}>
+                        <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
+                          From {managers.find(m => m.id === fromManagerId)?.name}:
+                        </Typography>
+                        {assets.map((asset) => (
+                          <Asset
+                            key={`${asset.overallPickNumber?.toString() ?? ''}-${asset.roundNumber}-${asset.pickNumber}`}
+                            asset={asset}
+                            activeDraft={activeDraft!}
+                            mode={mode}
+                            theme={theme}
+                            dialogBgColor={dialogBgColor}
+                            onRemove={() => handleUndoAssetMove(asset, fromManagerId, manager.id!)}
+                            managerId={fromManagerId}
+                            showAssetDistribution={showAssetDistribution}
+                          />
+                        ))}
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
 
         <TextField
           fullWidth
@@ -344,10 +646,19 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
           anchorEl={anchorEl.el}
           onClose={() => setAnchorEl(null)}
           managerId={anchorEl.managerId}
-          draft={activeDraft}
+          draft={activeDraft!}
           managers={managers}
           tradeAssets={tradeAssets[anchorEl.managerId] || []}
           onAddPick={(pick) => handleAddPick(anchorEl.managerId, pick)}
+        />
+      )}
+
+      {distributionAnchorEl && (
+        <AssetDistributionPopover
+          anchorEl={distributionAnchorEl.el}
+          onClose={() => setDistributionAnchorEl(null)}
+          managers={selectedManagers.filter(m => m.id !== distributionAnchorEl.managerId)}
+          onSelectManager={(managerId) => handleDistributeAsset(distributionAnchorEl.asset, distributionAnchorEl.managerId, managerId)}
         />
       )}
     </Dialog>

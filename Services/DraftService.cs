@@ -22,6 +22,43 @@ public class DraftService
     }
 
     /// <summary>
+    /// Gets a specific pick from a draft by its overall pick number
+    /// </summary>
+    /// <param name="draftId">The unique identifier of the draft</param>
+    /// <param name="overallPickNumber">The overall pick number to find</param>
+    /// <returns>The pick if found, null otherwise</returns>
+    public async Task<DraftPosition?> GetPickByOverallNumberAsync(string draftId, int overallPickNumber)
+    {
+        try
+        {
+            var draft = await _drafts.Find(d => d.Id == draftId).FirstOrDefaultAsync();
+            if (draft == null)
+            {
+                _logger.LogError("Draft not found: {DraftId}", draftId);
+                return null;
+            }
+
+            var pick = draft.Rounds
+                .SelectMany(r => r.Picks)
+                .FirstOrDefault(p => p.OverallPickNumber == overallPickNumber);
+
+            if (pick == null)
+            {
+                _logger.LogError("Pick not found: Draft {DraftId}, Overall {OverallPickNumber}", 
+                    draftId, overallPickNumber);
+            }
+
+            return pick;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting pick by overall number: Draft {DraftId}, Overall {OverallPickNumber}", 
+                draftId, overallPickNumber);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Updates a draft pick's ownership by modifying its tradedTo array
     /// </summary>
     /// <param name="draftId">The unique identifier of the draft</param>
@@ -50,11 +87,7 @@ public class DraftService
                 throw new InvalidOperationException($"Pick {overallPickNumber} not found in draft {draftId}");
             }
 
-            var filter = Builders<Draft>.Filter.And(
-                Builders<Draft>.Filter.Eq(d => d.Id, draftId),
-                Builders<Draft>.Filter.ElemMatch(d => d.Rounds, 
-                    r => r.Picks.Any(p => p.OverallPickNumber == overallPickNumber))
-            );
+            var filter = Builders<Draft>.Filter.Eq(d => d.Id, draftId);
 
             UpdateDefinition<Draft> update;
             if (isRevert)
@@ -73,7 +106,7 @@ public class DraftService
             }
             else if (newManagerId != null)
             {
-            // Add new manager to tradedTo array if it doesn't exist
+            // Add new manager to tradedTo array
             update = Builders<Draft>.Update.AddToSet(
                 "Rounds.$[roundIndex].Picks.$[pickIndex].TradedTo",
                 newManagerId
@@ -84,15 +117,18 @@ public class DraftService
                 throw new ArgumentNullException(nameof(newManagerId), "Manager ID required for non-revert operations");
             }
 
-            var arrayFilters = new List<ArrayFilterDefinition>
-            {
-                new BsonDocumentArrayFilterDefinition<BsonDocument>(
-                    new BsonDocument("roundIndex.Picks",
-                        new BsonDocument("$elemMatch",
-                            new BsonDocument("OverallPickNumber", overallPickNumber)))),
-                new BsonDocumentArrayFilterDefinition<BsonDocument>(
-                    new BsonDocument("pickIndex.OverallPickNumber", overallPickNumber))
-            };
+            var roundFilter = new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                new BsonDocument("roundIndex.Picks",
+                    new BsonDocument("$elemMatch",
+                        new BsonDocument("OverallPickNumber", overallPickNumber))));
+
+            var pickFilter = new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                new BsonDocument("pickIndex.OverallPickNumber", overallPickNumber));
+
+            var arrayFilters = new List<ArrayFilterDefinition> { roundFilter, pickFilter };
+
+            _logger.LogInformation("Using array filters: Round filter: {RoundFilter}, Pick filter: {PickFilter}", 
+                roundFilter.ToString(), pickFilter.ToString());
 
             var options = new UpdateOptions { ArrayFilters = arrayFilters };
             var result = await _drafts.UpdateOneAsync(filter, update, options);
@@ -945,7 +981,7 @@ public class DraftService
             {
                 _logger.LogInformation("Trade {TradeId}:", trade.Id);
                 _logger.LogInformation("  Status: {Status}", trade.Status);
-                _logger.LogInformation("  Raw trade: {Trade}", System.Text.Json.JsonSerializer.Serialize(trade));
+                _logger.LogInformation("  Parties: {PartyCount}", trade.Parties?.Count ?? 0);
                 
                 foreach (var party in trade.Parties)
                 {

@@ -1,11 +1,6 @@
 import { ApiResponse, Trade, TradeParty } from '../types/models';
 import { apiClient } from './apiClient';
 
-interface CreateTradeRequest {
-  parties: TradeParty[];
-  notes?: string;
-}
-
 const tradeService = {
   createTrade: async (trade: Trade) => {
     try {
@@ -25,13 +20,8 @@ const tradeService = {
         });
       });
 
-      // Extract only the properties needed for CreateTradeRequest
-      const request: CreateTradeRequest = {
-        parties: trade.parties,
-        notes: trade.notes
-      };
-
-      const response = await apiClient.post<ApiResponse<Trade>>('/trade', request);
+      // Send the complete trade object
+      const response = await apiClient.post<ApiResponse<Trade>>('/trade', trade);
       
       // Log the successful response
       console.log('Trade created successfully:', response.value);

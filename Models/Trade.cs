@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
 
 namespace DraftEngine.Models;
 
@@ -14,6 +15,7 @@ public class Trade
     [BsonRepresentation(BsonType.String)]
     public TradeStatus Status { get; set; }
     public List<TradeParty> Parties { get; set; } = new();
+    public Dictionary<string, Dictionary<string, List<TradeAsset>>> AssetDistribution { get; set; } = new();
 }
 
 public class TradeParty
@@ -41,12 +43,14 @@ public class TradeAsset
     public int? RoundNumber { get; set; }
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TradeAssetType
 {
     DraftPick,    // Will be serialized as "DraftPick" to match TypeScript
     Player
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TradeStatus
 {
     Proposed,    // Matches TypeScript enum values

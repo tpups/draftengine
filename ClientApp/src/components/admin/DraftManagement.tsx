@@ -44,6 +44,8 @@ export const DraftManagement: React.FC = () => {
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [initialRounds, setInitialRounds] = useState<string>('5');
   const [isSnakeDraft, setIsSnakeDraft] = useState<boolean>(true);
+  const [draftYear, setDraftYear] = useState<number>(new Date().getFullYear());
+  const [draftType, setDraftType] = useState<string>('');
 
   // Queries
   const { data: managersResponse } = useQuery({
@@ -182,17 +184,17 @@ export const DraftManagement: React.FC = () => {
         throw new Error('Number of rounds must be at least 1');
       }
       return draftService.createDraft({
-        year: new Date().getFullYear(),
-        type: 'standard',
+        year: draftYear,
+        type: draftType || 'standard',
         isSnakeDraft,
         initialRounds: rounds,
-          draftOrder: selectedManagers.map((managerId, index) => ({
-            managerId,
-            pickNumber: index + 1,
-            isComplete: false,
-            overallPickNumber: 0,
-            tradedTo: []
-          }))
+        draftOrder: selectedManagers.map((managerId, index) => ({
+          managerId,
+          pickNumber: index + 1,
+          isComplete: false,
+          overallPickNumber: 0,
+          tradedTo: []
+        }))
       });
     },
     onSuccess: () => {
@@ -407,7 +409,7 @@ export const DraftManagement: React.FC = () => {
         }}
       >
         <DialogTitle>Set Draft Order</DialogTitle>
-        <DialogContent sx={{ width: 1200, maxWidth: '90vw', overflow: 'hidden' }}>
+        <DialogContent sx={{ width: 800, maxWidth: '90vw', overflow: 'hidden' }}>
           <Typography gutterBottom>
             Set the draft order by dragging managers or clicking to select and add them. All managers must be included in the draft order.
           </Typography>
@@ -419,7 +421,42 @@ export const DraftManagement: React.FC = () => {
               maxSlots={managers.length}
             />
           </Box>
-          <Box sx={{ mt: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <Box sx={{ mt: 5, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 4 }}>
+            <Box sx={{ width: 200 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Year"
+                value={draftYear}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (!isNaN(value)) {
+                    setDraftYear(value);
+                  }
+                }}
+                sx={{ 
+                  mt: 2,
+                  '& .MuiInputBase-root': {
+                    bgcolor: dialogContentBgColor
+                  }
+                }}
+              />
+            </Box>
+            <Box sx={{ width: 200 }}>
+              <TextField
+                fullWidth
+                label="Type"
+                value={draftType}
+                onChange={(e) => setDraftType(e.target.value)}
+                placeholder="e.g., PS, Phase 2"
+                sx={{ 
+                  mt: 2,
+                  '& .MuiInputBase-root': {
+                    bgcolor: dialogContentBgColor
+                  }
+                }}
+              />
+            </Box>
             <Box sx={{ width: 200 }}>
               <TextField
                 fullWidth
@@ -440,25 +477,26 @@ export const DraftManagement: React.FC = () => {
                     : 'Enter number of rounds'
                 }
                 inputProps={{ min: 1 }}
-                margin="normal"
                 sx={{ 
+                  mt: 2,
                   '& .MuiInputBase-root': {
                     bgcolor: dialogContentBgColor
                   }
                 }}
               />
             </Box>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isSnakeDraft}
-                  onChange={(e) => setIsSnakeDraft(e.target.checked)}
-                  color="primary"
-                />
-              }
-              label="Snake Draft"
-              sx={{ transform: 'translateY(-8px)' }}
-            />
+            <Box sx={{ width: 200, display: 'flex', alignItems: 'center', minHeight: 56, mt: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={isSnakeDraft}
+                    onChange={(e) => setIsSnakeDraft(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="Snake Draft"
+              />
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ display: 'flex', alignItems: 'center', px: 3 }}>

@@ -46,6 +46,7 @@ public class DraftRound
 
 public class DraftPosition
 {
+    [BsonRepresentation(BsonType.ObjectId)]
     public string ManagerId { get; set; } = string.Empty;
     public List<string> TradedTo { get; set; } = new();
     public int PickNumber { get; set; }
