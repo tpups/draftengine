@@ -87,14 +87,15 @@ export function PlayerList() {
     excludeDrafted: boolean;
     teams: string[];
     ageRange: [number, number];
-    levels: string[];
+    levels?: string[];
+    playerType: 'all' | 'pitchers' | 'hitters';
   }>({
     excludeDrafted: false,
     teams: Object.values(MLB_TEAMS).flatMap(divisions => 
       Object.values(divisions).flat()
     ),
     ageRange: [18, 40],
-    levels: [...LEVELS]
+    playerType: 'all'
   });
 
   const { data: searchResult = { items: [], totalCount: 0 }, isLoading, error } = useQuery<PaginatedResult<Player>, Error>({

@@ -1257,6 +1257,8 @@ namespace DraftEngine.Controllers
             [FromQuery] int minAge = 18,
             [FromQuery] int maxAge = 40,
             [FromQuery] string[] levels = null,
+            [FromQuery] string playerType = "all",
+            [FromQuery] string position = null,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 100)
         {
@@ -1267,6 +1269,12 @@ namespace DraftEngine.Controllers
                     searchTerm, pageNumber, pageSize);
 
 
+                if (playerType != "all" && playerType != "pitchers" && playerType != "hitters")
+                {
+                    _logger.LogWarning("Invalid player type provided: {PlayerType}", playerType);
+                    return BadRequest(ApiResponse<string>.Create("Player type must be 'all', 'pitchers', or 'hitters'"));
+                }
+
                 var result = await _playerService.SearchPlayersPaginatedAsync(
                     searchTerm, 
                     excludeDrafted,
@@ -1274,6 +1282,8 @@ namespace DraftEngine.Controllers
                     minAge,
                     maxAge,
                     levels,
+                    playerType,
+                    position,
                     pageNumber, 
                     pageSize);
                 

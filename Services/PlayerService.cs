@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using MongoDB.Bson;
 using DraftEngine.Models;
 using DraftEngine.Models.Data;
 using System.Text;
@@ -313,6 +314,14 @@ namespace DraftEngine.Services
                         .Set(p => p.Weight, mlbPlayer.Weight)
                         .Set(p => p.Active, mlbPlayer.Active)
                         .Set(p => p.DraftYear, mlbPlayer.DraftYear);
+
+                    // Set Level to MLB if player has a debut date
+                    if (!string.IsNullOrEmpty(mlbPlayer.MlbDebutDate))
+                    {
+                        update = update.Set(p => p.Level, "MLB");
+                        _logger.LogInformation("Setting Level to MLB for {PlayerName} due to MLB debut date", 
+                            player.Name);
+                    }
 
                     _logger.LogInformation("MLB debut date from API for {PlayerName}: {DebutDate}", 
                         player.Name, mlbPlayer.MlbDebutDate ?? "null");
@@ -802,20 +811,42 @@ namespace DraftEngine.Services
             {
                 result.NewPositionStats = newPositionStats;
 
-                // Get the most recent year's stats to determine positions
-                var mostRecentYear = newPositionStats.Keys.Max();
-                var positions = await DeterminePositions(newPositionStats[mostRecentYear]);
+                string[] positions;
+                // Check if player is already marked as a pitcher from basic info
+                if (player.Position != null && player.Position.Contains("P"))
+                {
+                    // If they're already marked as a pitcher, keep that designation but update stats
+                    positions = new[] { "P" };
+                }
+                else
+                {
+                    // Get the most recent year's stats to determine positions
+                    var mostRecentYear = newPositionStats.Keys.Max();
+                    positions = await DeterminePositions(newPositionStats[mostRecentYear]);
+                }
 
-                var update = Builders<Player>.Update
-                    .Set(p => p.PositionStats, newPositionStats)
-                    .Set(p => p.Position, positions)
-                    .Set(p => p.LastUpdated, DateTime.UtcNow);
+                // Only update if the positions are different or stats have changed
+                var positionsChanged = player.Position == null || !player.Position.SequenceEqual(positions);
+                var statsChanged = player.PositionStats == null || !player.PositionStats.SequenceEqual(newPositionStats);
+                
+                if (positionsChanged || statsChanged)
+                {
+                    var update = Builders<Player>.Update
+                        .Set(p => p.PositionStats, newPositionStats)
+                        .Set(p => p.Position, positions)
+                        .Set(p => p.LastUpdated, DateTime.UtcNow);
 
-                var updateResult = await _players.UpdateOneAsync(p => p.Id == player.Id, update);
-                result.WasUpdated = updateResult.ModifiedCount > 0;
+                    var updateResult = await _players.UpdateOneAsync(p => p.Id == player.Id, update);
+                    result.WasUpdated = updateResult.ModifiedCount > 0;
 
-                _logger.LogInformation("Position stats update result for {PlayerName}: ModifiedCount = {ModifiedCount}, Positions = {Positions}", 
-                    player.Name, updateResult.ModifiedCount, string.Join(", ", positions));
+                    _logger.LogInformation("Position stats update result for {PlayerName}: ModifiedCount = {ModifiedCount}, Positions = {Positions}", 
+                        player.Name, updateResult.ModifiedCount, string.Join(", ", positions));
+                }
+                else
+                {
+                    _logger.LogInformation("No position update needed for {PlayerName}, positions and stats match", player.Name);
+                    result.WasUpdated = false;
+                }
             }
 
             return result;
@@ -828,6 +859,8 @@ namespace DraftEngine.Services
             int minAge = 18,
             int maxAge = 40,
             string[] levels = null,
+            string playerType = "all",
+            string position = null,
             int pageNumber = 1,
             int pageSize = 100)
         {
@@ -867,6 +900,75 @@ namespace DraftEngine.Services
             if (levels != null && levels.Length > 0)
             {
                 filters.Add(Builders<Player>.Filter.In(p => p.Level, levels));
+            }
+
+            // Add position filter if not in pitchers mode
+            if (!string.IsNullOrEmpty(position) && playerType != "pitchers")
+            {
+                var settings = await _leagueSettings.GetSettingsAsync();
+                
+                if (position == "OF")
+                {
+                    // For outfield, check both Position and PositionStats for OF, LF, CF, or RF
+                    var positionFilter = Builders<Player>.Filter.Or(
+                        Builders<Player>.Filter.AnyEq(p => p.Position, "OF"),
+                        Builders<Player>.Filter.AnyEq(p => p.Position, "LF"),
+                        Builders<Player>.Filter.AnyEq(p => p.Position, "CF"),
+                        Builders<Player>.Filter.AnyEq(p => p.Position, "RF")
+                    );
+
+                    var currentYear = "2024";
+                    var eligibilityFilter = Builders<Player>.Filter.And(
+                        Builders<Player>.Filter.Ne(p => p.PositionStats, null),
+                        Builders<Player>.Filter.Or(
+                            Builders<Player>.Filter.Gte($"PositionStats.{currentYear}.7", settings.MinGamesForPosition),
+                            Builders<Player>.Filter.Gte($"PositionStats.{currentYear}.8", settings.MinGamesForPosition),
+                            Builders<Player>.Filter.Gte($"PositionStats.{currentYear}.9", settings.MinGamesForPosition)
+                        )
+                    );
+                    filters.Add(Builders<Player>.Filter.Or(positionFilter, eligibilityFilter));
+                }
+                else
+                {
+                    // For other positions, check both Position and PositionStats
+                    var positionFilter = Builders<Player>.Filter.AnyEq(p => p.Position, position);
+
+                    var positionCode = position switch
+                    {
+                        "C" => "2",
+                        "1B" => "3",
+                        "2B" => "4",
+                        "3B" => "5",
+                        "SS" => "6",
+                        "DH" => "10",
+                        _ => position
+                    };
+
+                    var currentYear = "2024";
+                    var eligibilityFilter = Builders<Player>.Filter.And(
+                        Builders<Player>.Filter.Ne(p => p.PositionStats, null),
+                        Builders<Player>.Filter.Gte($"PositionStats.{currentYear}.{positionCode}", settings.MinGamesForPosition)
+                    );
+                    filters.Add(Builders<Player>.Filter.Or(positionFilter, eligibilityFilter));
+                }
+            }
+
+            // Add player type filter
+            if (playerType == "pitchers")
+            {
+                filters.Add(Builders<Player>.Filter.And(
+                    Builders<Player>.Filter.Ne(p => p.Position, null),
+                    Builders<Player>.Filter.AnyEq(p => p.Position, "P")
+                ));
+            }
+            else if (playerType == "hitters")
+            {
+                filters.Add(Builders<Player>.Filter.Or(
+                    Builders<Player>.Filter.Eq(p => p.Position, null),
+                    Builders<Player>.Filter.Not(
+                        Builders<Player>.Filter.AnyEq(p => p.Position, "P")
+                    )
+                ));
             }
 
             // Only add age filter if it differs from defaults

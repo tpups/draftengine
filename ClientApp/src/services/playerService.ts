@@ -18,6 +18,8 @@ export interface PlayerFilters {
   searchTerm?: string;
   pageNumber?: number;
   pageSize?: number;
+  playerType?: 'all' | 'pitchers' | 'hitters';
+  position?: string;
 }
 import { useMemo } from 'react';
 import { MLB_TEAMS } from '../components/PlayerListFilters';
@@ -99,6 +101,16 @@ const playerService = {
       params.append('maxAge', filters.ageRange[1].toString());
     }
     
+    // Add player type filter
+    if (filters.playerType && filters.playerType !== 'all') {
+      params.append('playerType', filters.playerType);
+    }
+
+    // Add position filter only if not in pitchers mode
+    if (filters.position && filters.playerType !== 'pitchers') {
+      params.append('position', filters.position);
+    }
+
     // Always include pagination
     params.append('pageNumber', (filters.pageNumber || 1).toString());
     params.append('pageSize', (filters.pageSize || 100).toString());

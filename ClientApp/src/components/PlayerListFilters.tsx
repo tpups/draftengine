@@ -1,5 +1,6 @@
 import { 
   Box, 
+  Button,
   Checkbox, 
   Chip, 
   FormControlLabel, 
@@ -35,14 +36,18 @@ export const MLB_TEAMS: MLBTeams = {
 };
 
 // Minor league levels from highest to lowest
-export const LEVELS: string[] = ['AAA', 'AA', 'A+', 'A', 'A-', 'Rookie', 'Complex'];
+export const LEVELS: string[] = ['MLB', 'AAA', 'AA', 'A+', 'A', 'A-', 'Rookie', 'INTL', 'Other'];
+
+export const POSITIONS: string[] = ['C', '1B', '2B', '3B', 'SS', 'OF', 'DH'];
 
 interface PlayerListFiltersProps {
   onFiltersChange: (filters: {
     excludeDrafted: boolean;
     teams: string[];
     ageRange: [number, number];
-    levels: string[];
+    levels?: string[];
+    playerType: 'all' | 'pitchers' | 'hitters';
+    position?: string;
   }) => void;
   minAge?: number;
   maxAge?: number;
@@ -63,7 +68,9 @@ export function PlayerListFilters({
     )
   );
   const [ageRange, setAgeRange] = useState<[number, number]>([minAge, maxAge]);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>(LEVELS);
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [playerType, setPlayerType] = useState<'all' | 'pitchers' | 'hitters'>('all');
+  const [selectedPosition, setSelectedPosition] = useState<string>('');
   const [expandedAccordion, setExpandedAccordion] = useState<string | false>(false);
 
   const handleAccordionChange = useCallback((panel: string) => (event: React.SyntheticEvent, expanded: boolean) => {
@@ -82,7 +89,8 @@ export function PlayerListFilters({
       excludeDrafted: newValue,
       teams: selectedTeams,
       ageRange,
-      levels: selectedLevels
+      levels: selectedLevels,
+      playerType
     });
   }, [selectedTeams, ageRange, selectedLevels, onFiltersChange]);
 
@@ -95,7 +103,8 @@ export function PlayerListFilters({
         excludeDrafted,
         teams: newTeams,
         ageRange,
-        levels: selectedLevels
+        levels: selectedLevels,
+        playerType
       });
       return newTeams;
     });
@@ -104,11 +113,12 @@ export function PlayerListFilters({
   const handleAgeRangeChange = useCallback((_event: Event, newValue: number | number[]) => {
     const newRange = newValue as [number, number];
     setAgeRange(newRange);
-    onFiltersChange({
-      excludeDrafted,
-      teams: selectedTeams,
-      ageRange: newRange,
-      levels: selectedLevels
+      onFiltersChange({
+        excludeDrafted,
+        teams: selectedTeams,
+        ageRange: newRange,
+        levels: selectedLevels,
+        playerType
     });
   }, [excludeDrafted, selectedTeams, selectedLevels, onFiltersChange]);
 
@@ -121,7 +131,8 @@ export function PlayerListFilters({
         excludeDrafted,
         teams: selectedTeams,
         ageRange,
-        levels: newLevels
+        levels: newLevels.length > 0 ? newLevels : undefined,
+        playerType
       });
       return newLevels;
     });
@@ -136,7 +147,8 @@ export function PlayerListFilters({
       excludeDrafted,
       teams: allTeams,
       ageRange,
-      levels: selectedLevels
+      levels: selectedLevels,
+      playerType
     });
   }, [excludeDrafted, ageRange, selectedLevels, onFiltersChange]);
 
@@ -146,7 +158,8 @@ export function PlayerListFilters({
       excludeDrafted,
       teams: [],
       ageRange,
-      levels: selectedLevels
+      levels: selectedLevels,
+      playerType
     });
   }, [excludeDrafted, ageRange, selectedLevels, onFiltersChange]);
 
@@ -156,7 +169,8 @@ export function PlayerListFilters({
       excludeDrafted,
       teams: selectedTeams,
       ageRange,
-      levels: LEVELS
+      levels: undefined,
+      playerType
     });
   }, [excludeDrafted, selectedTeams, ageRange, onFiltersChange]);
 
@@ -166,7 +180,8 @@ export function PlayerListFilters({
       excludeDrafted,
       teams: selectedTeams,
       ageRange,
-      levels: []
+      levels: [],
+      playerType
     });
   }, [excludeDrafted, selectedTeams, ageRange, onFiltersChange]);
 
@@ -205,7 +220,7 @@ export function PlayerListFilters({
       zIndex: 1500,
       backgroundColor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
       boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-      width: '300px',
+      width: '325px',
       top: '39px',
       left: 0,
       visibility: 'visible',
@@ -238,22 +253,145 @@ export function PlayerListFilters({
         onClick={handleBackdropClick}
       />
       {/* Exclude Drafted Toggle */}
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={excludeDrafted}
-            onChange={handleExcludeDraftedChange}
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={excludeDrafted}
+              onChange={handleExcludeDraftedChange}
+              size="small"
+              sx={{
+                color: mode === 'light' ? theme.colors.primary.light : theme.colors.primary.dark,
+                '&.Mui-checked': {
+                  color: theme.colors.primary.main
+                }
+              }}
+            />
+          }
+          label="Exclude drafted"
+        />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Button
+            variant={playerType === 'all' ? 'contained' : 'outlined'}
             size="small"
-            sx={{
-              color: mode === 'light' ? theme.colors.primary.light : theme.colors.primary.dark,
-              '&.Mui-checked': {
-                color: theme.colors.primary.main
-              }
+            onClick={() => {
+              setPlayerType('all');
+              onFiltersChange({
+                excludeDrafted,
+                teams: selectedTeams,
+                ageRange,
+                levels: selectedLevels,
+                playerType: 'all'
+              });
             }}
-          />
-        }
-        label="Exclude drafted"
-      />
+          >
+            All
+          </Button>
+          <Button
+            variant={playerType === 'pitchers' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => {
+              setPlayerType('pitchers');
+              onFiltersChange({
+                excludeDrafted,
+                teams: selectedTeams,
+                ageRange,
+                levels: selectedLevels,
+                playerType: 'pitchers'
+              });
+            }}
+          >
+            Pitchers
+          </Button>
+          <Button
+            variant={playerType === 'hitters' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => {
+              setPlayerType('hitters');
+              onFiltersChange({
+                excludeDrafted,
+                teams: selectedTeams,
+                ageRange,
+                levels: selectedLevels,
+                playerType: 'hitters'
+              });
+            }}
+          >
+            Hitters
+          </Button>
+        </Box>
+
+        {/* Position Dropdown */}
+        <Box sx={{ position: 'relative', height: '40px' }}>
+          <Accordion
+            expanded={expandedAccordion === 'position'}
+            onChange={handleAccordionChange('position')}
+            disabled={playerType === 'pitchers'}
+            sx={accordionStyles}
+          >
+            <AccordionSummary
+              ref={(el) => {
+                if (el && expandedAccordion === 'position') {
+                  const rect = el.getBoundingClientRect();
+                  const collapse = el.parentElement?.querySelector('.MuiCollapse-root');
+                  if (collapse) {
+                    (collapse as HTMLElement).style.left = `${rect.left}px`;
+                    (collapse as HTMLElement).style.top = `${rect.bottom + 4}px`;
+                  }
+                }
+              }}
+              expandIcon={<ExpandMoreIcon />}
+            >
+              <Typography variant="body2">
+                Position {selectedPosition ? `(${selectedPosition})` : ''}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  <Chip 
+                    label="Clear" 
+                    size="small"
+                    onClick={() => {
+                      setSelectedPosition('');
+                      onFiltersChange({
+                        excludeDrafted,
+                        teams: selectedTeams,
+                        ageRange,
+                        levels: selectedLevels,
+                        playerType,
+                        position: undefined
+                      });
+                    }}
+                  />
+                  {POSITIONS.map(position => (
+                    <Chip
+                      key={position}
+                      label={position}
+                      size="small"
+                      onClick={() => {
+                        const newPosition = selectedPosition === position ? '' : position;
+                        setSelectedPosition(newPosition);
+                        onFiltersChange({
+                          excludeDrafted,
+                          teams: selectedTeams,
+                          ageRange,
+                          levels: selectedLevels,
+                          playerType,
+                          position: newPosition || undefined
+                        });
+                      }}
+                      color={selectedPosition === position ? 'primary' : 'default'}
+                      variant={selectedPosition === position ? 'filled' : 'outlined'}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+      </Box>
 
       {/* Age Range Menu */}
       <Box sx={{ position: 'relative', height: '40px' }}>
