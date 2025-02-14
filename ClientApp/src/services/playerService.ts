@@ -54,6 +54,11 @@ const playerService = {
     apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/highlighted?pageNumber=${pageNumber}&pageSize=${pageSize}`)
       .then(response => response.value.items),
 
+  // Search operations
+  search: (searchTerm: string, pageNumber: number = 1, pageSize: number = 100) =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/search?searchTerm=${encodeURIComponent(searchTerm)}&pageNumber=${pageNumber}&pageSize=${pageSize}`)
+      .then(response => response.value.items),
+
   // Draft management
   markAsDrafted: (id: string, request: { draftedBy: string; round: number; pick: number; overallPick: number }) =>
     apiClient.post<void>(`${BASE_PATH}/${id}/draft`, request),
@@ -91,6 +96,11 @@ const playerService = {
   // Birthdate verification
   verifyBirthDates: (includeExisting: boolean) =>
     apiClient.post<ApiResponse<BirthDateVerificationResult>>(`${BASE_PATH}/verify-birthdates`, { includeExisting }),
+
+  // Get total count
+  getTotalCount: () =>
+    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}?pageNumber=1&pageSize=1`)
+      .then(response => response.value.totalCount),
 };
 
 export const usePlayerService = () => {

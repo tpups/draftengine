@@ -50,6 +50,46 @@ public class TradeService
             .ToListAsync();
     }
 
+    public async Task<bool> CanCancelTrade(string tradeId)
+    {
+        var trade = await _trades.Find(t => t.Id == tradeId).FirstOrDefaultAsync();
+        if (trade == null)
+            return false;
+
+        // Get all completed trades after this trade
+        var futureTrades = await _trades.Find(t => 
+            t.Status == TradeStatus.Completed && 
+            t.Timestamp > trade.Timestamp
+        ).ToListAsync();
+
+        if (!futureTrades.Any())
+            return true;
+
+        // Get all assets involved in this trade
+        var tradeAssets = trade.Parties.SelectMany(p => p.Assets).ToList();
+
+        // Check if any assets are involved in future completed trades
+        foreach (var futureTrade in futureTrades)
+        {
+            var futureAssets = futureTrade.Parties.SelectMany(p => p.Assets);
+            foreach (var asset in tradeAssets)
+            {
+                if (futureAssets.Any(fa => 
+                    fa.Type == asset.Type &&
+                    fa.DraftId == asset.DraftId &&
+                    fa.OverallPickNumber == asset.OverallPickNumber))
+                {
+                    _logger.LogInformation(
+                        "Trade {TradeId} cannot be cancelled because asset (Type: {Type}, DraftId: {DraftId}, Pick: {Pick}) is involved in future trade {FutureTradeId}",
+                        tradeId, asset.Type, asset.DraftId, asset.OverallPickNumber, futureTrade.Id);
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     public async Task<Trade> CreateTrade(Trade trade)
     {
         try
@@ -269,6 +309,12 @@ public class TradeService
         if (trade == null)
             throw new TradeValidationException("Trade not found");
 
+        // Check if trade can be cancelled
+        if (!await CanCancelTrade(tradeId))
+        {
+            throw new TradeValidationException("Cannot cancel trade because its assets are involved in more recent completed trades");
+        }
+
         // Get active draft to verify it exists
         var activeDraft = await _draftService.GetActiveDraftAsync();
         if (activeDraft == null)
@@ -431,26 +477,45 @@ public class TradeService
             );
         }
 
-        // Validate asset counts match
+        // For multi-party trades, only validate that each manager gives and receives at least one asset
         foreach (var party in trade.Parties)
         {
             var assetsGivenUp = party.Assets.Count;
             var assetsReceived = trade.AssetDistribution
                 .Where(kvp => kvp.Key == party.ManagerId)
-                .SelectMany(kvp => kvp.Value.Values)
-                .SelectMany(assets => assets)
-                .Count();
+                .SelectMany(kvp => kvp.Value)
+                .Sum(kvp => kvp.Value.Count);
 
             _logger.LogInformation("Manager {ManagerId}: Giving up {GivenUp} assets, Receiving {Received} assets",
                 party.ManagerId,
                 assetsGivenUp,
                 assetsReceived);
 
+            if (assetsGivenUp == 0)
+            {
+                _logger.LogError("Manager {ManagerId} is not giving up any assets", party.ManagerId);
+                throw new AssetDistributionException($"Manager {party.ManagerId} must give up at least one asset");
+            }
+
             if (assetsReceived == 0)
             {
                 _logger.LogError("Manager {ManagerId} is not receiving any assets", party.ManagerId);
                 throw new AssetDistributionException($"Manager {party.ManagerId} must receive at least one asset");
             }
+        }
+
+        // Validate total assets match between contributed and distributed
+        var totalContributedAssets = trade.Parties.Sum(p => p.Assets.Count);
+        var totalDistributedAssets = trade.AssetDistribution
+            .SelectMany(kvp => kvp.Value)
+            .Sum(kvp => kvp.Value.Count);
+
+        if (totalContributedAssets != totalDistributedAssets)
+        {
+            _logger.LogError("Total asset count mismatch: {ContributedCount} contributed vs {DistributedCount} distributed",
+                totalContributedAssets,
+                totalDistributedAssets);
+            throw new AssetDistributionException("Total number of assets must match between contributed and distributed assets");
         }
 
         // Validate all assets are properly distributed
@@ -706,7 +771,7 @@ public class TradeService
 
         await _draftService.UpdatePickOwnershipAsync(asset.DraftId!, asset.OverallPickNumber.Value, isRevert: true);
     }
-
+    
     private void LogTradeDetails(Trade trade)
     {
         var isMultiParty = trade.Parties.Count > 2;

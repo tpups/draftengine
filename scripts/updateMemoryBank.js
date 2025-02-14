@@ -1,14 +1,15 @@
-// updateActiveContext.js
+// updateMemoryBank.js
 //
-// Updates a section in activeContext.md by adding or deleting entries.
+// Updates a section in any memory bank file by adding or deleting entries.
 //
 // Usage:
-//   Add entry:    node updateActiveContext.js add "section name" "entry content"
-//   Delete entry: node updateActiveContext.js delete "section name" entry_number
+//   Add entry:    node updateMemoryBank.js add "filename" "section name" "entry content"
+//   Delete entry: node updateMemoryBank.js delete "filename" "section name" entry_number
 //
 // Examples:
-//   Add:    node updateActiveContext.js add "Recent Changes" "$(Get-Content entry.txt -Raw)"
-//   Delete: node updateActiveContext.js delete "Recent Changes" 5
+//   Add:    node updateMemoryBank.js add "activeContext.md" "Recent Changes" "$(Get-Content entry.txt -Raw)"
+//   Add:    node updateMemoryBank.js add "progress.md" "Recent Achievements" "$(Get-Content entry.txt -Raw)"
+//   Delete: node updateMemoryBank.js delete "activeContext.md" "Recent Changes" 5
 //
 // Notes:
 // - Entry content should follow the existing format (indentation, bullet points, etc.)
@@ -22,12 +23,12 @@ import fs from 'fs';
 import path from 'path';
 
 // Get command line arguments
-const [,, command, section, ...args] = process.argv;
+const [,, command, filename, section, ...args] = process.argv;
 
-if (!command || !section || (command !== 'add' && command !== 'delete')) {
+if (!command || !filename || !section || (command !== 'add' && command !== 'delete')) {
     console.error('Usage:');
-    console.error('  Add entry:    node updateActiveContext.js add "section name" "entry content"');
-    console.error('  Delete entry: node updateActiveContext.js delete "section name" entry_number');
+    console.error('  Add entry:    node updateMemoryBank.js add "filename" "section name" "entry content"');
+    console.error('  Delete entry: node updateMemoryBank.js delete "filename" "section name" entry_number');
     process.exit(1);
 }
 
@@ -66,7 +67,7 @@ function processSection(sectionContent) {
 }
 
 // Function to handle adding a new entry
-function addEntry(section, entryContent) {
+function addEntry(filename, section, entryContent) {
     const entry = args.join('\n');
     if (!entry) {
         console.error('Entry content is required for add command');
@@ -74,7 +75,7 @@ function addEntry(section, entryContent) {
     }
 
     // Read and process the file
-    const filePath = path.join(process.cwd(), '..', 'cline_docs', 'activeContext.md');
+    const filePath = path.join(process.cwd(), '..', 'cline_docs', filename);
     let content = fs.readFileSync(filePath, 'utf8');
 
     // Find the section
@@ -118,14 +119,14 @@ function addEntry(section, entryContent) {
     const entryPath = path.join(process.cwd(), 'entry.txt');
     if (fs.existsSync(entryPath)) {
         fs.unlinkSync(entryPath);
-        console.log('Successfully updated activeContext.md and cleaned up entry.txt');
+        console.log(`Successfully updated ${filename} and cleaned up entry.txt`);
     } else {
-        console.log('Successfully updated activeContext.md');
+        console.log(`Successfully updated ${filename}`);
     }
 }
 
 // Function to handle deleting an entry
-function deleteEntry(section, entryNumber) {
+function deleteEntry(filename, section, entryNumber) {
     const entryNum = parseInt(entryNumber);
     if (isNaN(entryNum) || entryNum < 1) {
         console.error('Entry number must be a positive integer');
@@ -133,7 +134,7 @@ function deleteEntry(section, entryNumber) {
     }
 
     // Read and process the file
-    const filePath = path.join(process.cwd(), '..', 'cline_docs', 'activeContext.md');
+    const filePath = path.join(process.cwd(), '..', 'cline_docs', filename);
     let content = fs.readFileSync(filePath, 'utf8');
 
     // Find the section
@@ -180,8 +181,8 @@ function deleteEntry(section, entryNumber) {
 
 // Execute the appropriate command
 if (command === 'add') {
-    addEntry(section, args);
+    addEntry(filename, section, args);
 } else if (command === 'delete') {
     const entryNumber = args[0];
-    deleteEntry(section, entryNumber);
+    deleteEntry(filename, section, entryNumber);
 }

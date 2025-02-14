@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using MongoDB.Bson;
+using MongoDB.Driver.Core.Operations;
 using DraftEngine.Models;
 
 namespace DraftEngine
@@ -28,22 +30,50 @@ namespace DraftEngine
         }
 
         private IMongoCollection<Player>? _players;
+        private async Task InitializePlayersCollectionAsync()
+        {
+            if (_players != null) return;
+
+            // Get or create collection
+            _players = _database.GetCollection<Player>("players");
+            
+            // Drop existing indexes
+            await _players.Indexes.DropAllAsync();
+
+            // Create case-insensitive collation
+            var collation = new Collation("en", strength: CollationStrength.Secondary);
+
+            // Create a case-insensitive index on the Name field
+            var nameIndexKeysDefinition = Builders<Player>.IndexKeys.Ascending(p => p.Name);
+            var nameIndexOptions = new CreateIndexOptions { 
+                Collation = collation
+            };
+            var nameIndexModel = new CreateIndexModel<Player>(nameIndexKeysDefinition, nameIndexOptions);
+            await _players.Indexes.CreateOneAsync(nameIndexModel);
+            
+            // Create compound index on name and birthDate
+            var compoundIndexKeysDefinition = Builders<Player>.IndexKeys
+                .Ascending(p => p.Name)
+                .Ascending(p => p.BirthDate);
+            var compoundIndexOptions = new CreateIndexOptions { 
+                Unique = true, 
+                Sparse = true,
+                Collation = collation
+            };
+            var compoundIndexModel = new CreateIndexModel<Player>(compoundIndexKeysDefinition, compoundIndexOptions);
+            await _players.Indexes.CreateOneAsync(compoundIndexModel);
+        }
+
         public IMongoCollection<Player> Players
         {
             get
             {
                 if (_players == null)
                 {
-                    _players = _database.GetCollection<Player>("players");
-                    // Create compound index on name and birthDate
-                    var indexKeysDefinition = Builders<Player>.IndexKeys
-                        .Ascending(p => p.Name)
-                        .Ascending(p => p.BirthDate);
-                    var indexOptions = new CreateIndexOptions { Unique = true, Sparse = true };
-                    var indexModel = new CreateIndexModel<Player>(indexKeysDefinition, indexOptions);
-                    _players.Indexes.CreateOne(indexModel);
+                    // Initialize synchronously to avoid async in property getter
+                    InitializePlayersCollectionAsync().GetAwaiter().GetResult();
                 }
-                return _players;
+                return _players!;
             }
         }
 

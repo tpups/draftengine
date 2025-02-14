@@ -79,10 +79,10 @@ function Asset({ asset, activeDraft, mode, theme, dialogBgColor, onRemove, isDis
       {onRemove && (
         <IconButton
           size="small"
-      onClick={(e: React.MouseEvent) => {
-        e.stopPropagation();
-        onRemove();
-      }}
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onRemove();
+          }}
           disabled={isDistributed}
           sx={{
             color: mode === 'light' ? 
@@ -376,9 +376,22 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
   };
 
   const gridColumns = Math.min(3, selectedManagers.length || 1);
-  const columnWidth = 350;
+  // Dynamically calculate column width based on number of managers
+  const baseColumnWidth = 350;
+  const minColumnWidth = 280;
   const columnGap = 24;
   const dialogPadding = 48;
+  const maxDialogWidth = Math.min(window.innerWidth * 0.95, 1400); // Cap at 1400px or 95% of window width
+  
+  // Reduce column width if needed to fit all columns
+  const columnWidth = Math.max(
+    minColumnWidth,
+    Math.min(
+      baseColumnWidth,
+      (maxDialogWidth - dialogPadding - (columnGap * (gridColumns - 1))) / gridColumns
+    )
+  );
+  
   const totalWidth = (columnWidth * gridColumns) + (columnGap * (gridColumns - 1)) + dialogPadding;
 
   return (
@@ -389,9 +402,11 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
       PaperProps={{
         sx: { 
           bgcolor: dialogBgColor,
-          width: `${Math.min(totalWidth, window.innerWidth * 0.95)}px`,
-          minHeight: 400,
-          maxHeight: '90vh'
+          width: `${Math.min(totalWidth, maxDialogWidth)}px`,
+          height: 'auto',
+          maxHeight: '98vh',
+          display: 'flex',
+          flexDirection: 'column'
         }
       }}
     >
@@ -422,7 +437,19 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
           display: 'flex',
           flexDirection: 'column',
           gap: 3,
-          minHeight: 0
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          '&::-webkit-scrollbar': {
+            width: '8px'
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent'
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: mode === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+            borderRadius: '4px'
+          }
         }}
       >
         {error && (
@@ -431,49 +458,68 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
           </Alert>
         )}
         
-        <Box>
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>Select Managers</Typography>
-          <ManagerSelector
-            managers={managers}
-            selectedManagers={selectedManagers}
-            onAddManager={handleAddManager}
-            onRemoveManager={handleRemoveManager}
-          />
-        </Box>
+        {!showAssetDistribution && (
+          <>
+            <Box>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Select Managers</Typography>
+              <ManagerSelector
+                managers={managers}
+                selectedManagers={selectedManagers}
+                onAddManager={handleAddManager}
+                onRemoveManager={handleRemoveManager}
+              />
+            </Box>
 
-        {selectedManagers.length >= 3 && !showAssetDistribution && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
-            {selectedManagers.some(manager => !tradeAssets[manager.id!]?.length) && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Add trade assets for each manager to enable trade distribution
-              </Typography>
+            {selectedManagers.length >= 3 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+                {selectedManagers.some(manager => !tradeAssets[manager.id!]?.length) && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Add trade assets for each manager to enable trade distribution
+                  </Typography>
+                )}
+                <Button
+                  variant="contained"
+                  onClick={handleConfigureTradeClick}
+                  disabled={selectedManagers.some(manager => !tradeAssets[manager.id!]?.length)}
+                  sx={{
+                    bgcolor: theme.colors.primary.main,
+                    color: theme.colors.primary.contrastText,
+                    '&:hover': {
+                      bgcolor: theme.colors.primary.dark
+                    }
+                  }}
+                >
+                  Configure Trade Distribution
+                </Button>
+              </Box>
             )}
-            <Button
-              variant="contained"
-              onClick={handleConfigureTradeClick}
-              disabled={selectedManagers.some(manager => !tradeAssets[manager.id!]?.length)}
-              sx={{
-                bgcolor: theme.colors.primary.main,
-                color: theme.colors.primary.contrastText,
-                '&:hover': {
-                  bgcolor: theme.colors.primary.dark
-                }
-              }}
-            >
-              Configure Trade Distribution
-            </Button>
-          </Box>
+          </>
         )}
 
         <Box 
           sx={{ 
             display: 'grid',
             gridTemplateColumns: `repeat(${gridColumns}, ${columnWidth}px)`,
-            gap: 3,
+            gap: 4,
             flex: 1,
-            minHeight: 0,
+            minHeight: 450,
             mx: 'auto',
-            width: 'fit-content'
+            width: 'fit-content',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            alignContent: 'flex-start',
+            height: '100%',
+            pb: 3,
+            '&::-webkit-scrollbar': {
+              width: '8px'
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'transparent'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: mode === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+              borderRadius: '4px'
+            }
           }}
         >
           {selectedManagers.map(manager => (
@@ -482,10 +528,18 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
               sx={{ 
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 2
+                gap: 3,
+                height: '100%',
+                minHeight: 250
               }}
             >
-              <Typography variant="subtitle2">{manager.name}</Typography>
+              <Typography variant="subtitle2" sx={{ 
+                color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
+                fontWeight: 600,
+                fontSize: '1rem'
+              }}>
+                {manager.name}
+              </Typography>
               {activeDraft && !showAssetDistribution && (
                 <Button
                   variant="outlined"
@@ -507,18 +561,36 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
                   Available Picks
                 </Button>
               )}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>Trade Assets</Typography>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <Typography variant="subtitle2" sx={{ 
+                  mb: 1,
+                  color: mode === 'light' ? 'text.secondary' : 'text.primary',
+                  fontWeight: 500
+                }}>
+                  Trade Assets
+                </Typography>
                 <Box
                   id={`tradeAssets|${manager.id}`}
                   sx={{
-                    maxHeight: 200,
+                    flex: 1,
+                    minHeight: 150,
+                    maxHeight: 250,
                     overflowY: 'auto',
                     bgcolor: dialogContentBgColor,
                     borderRadius: 1,
-                    p: 1,
+                    p: 2,
                     border: `1px dashed ${dropZoneBorderColor}`,
-                    transition: 'background-color 0.2s ease'
+                    transition: 'background-color 0.2s ease',
+                    '&::-webkit-scrollbar': {
+                      width: '8px'
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: 'transparent'
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: mode === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+                      borderRadius: '4px'
+                    }
                   }}
                 >
                   {tradeAssets[manager.id!]?.map((asset) => (
@@ -551,17 +623,34 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
 
         {showAssetDistribution && (
           <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>Assets Received</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Click on assets from Trade Assets to distribute them between managers. Each manager must receive at least one asset.
-            </Typography>
+            <Box sx={{ mb: 3, borderBottom: `1px solid ${dropZoneBorderColor}`, pb: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>Assets Received</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Click on assets from Trade Assets to distribute them between managers. Each manager must receive at least one asset.
+              </Typography>
+            </Box>
             <Box 
               sx={{ 
                 display: 'grid',
                 gridTemplateColumns: `repeat(${gridColumns}, ${columnWidth}px)`,
                 gap: 3,
                 mx: 'auto',
-                width: 'fit-content'
+                width: 'fit-content',
+                maxHeight: 'calc(100vh - 500px)',
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                alignContent: 'start',
+                pb: 2,
+                '&::-webkit-scrollbar': {
+                  width: '8px'
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: 'transparent'
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: mode === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+                  borderRadius: '4px'
+                }
               }}
             >
               {selectedManagers.map(manager => (
@@ -573,25 +662,56 @@ export function TradeModal({ open, onClose, onSubmit, managers, activeDraftId }:
                     gap: 2
                   }}
                 >
-                  <Typography variant="subtitle2">{manager.name}</Typography>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: mode === 'light' ? theme.colors.text.primary.light : theme.colors.text.primary.dark,
+                    fontWeight: 600,
+                    fontSize: '1rem'
+                  }}>
+                    {manager.name}
+                  </Typography>
                   <Box
                     id={`received|${manager.id}`}
                     sx={{
+                      flex: 1,
                       minHeight: 200,
                       maxHeight: 400,
                       overflowY: 'auto',
                       bgcolor: dialogContentBgColor,
                       borderRadius: 1,
-                      p: 1,
+                      p: 3,
                       border: `1px dashed ${dropZoneBorderColor}`,
-                      transition: 'background-color 0.2s ease'
+                      transition: 'background-color 0.2s ease',
+                      '& > div:not(:last-child)': {
+                        mb: 3
+                      },
+                      '&::-webkit-scrollbar': {
+                        width: '8px'
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: 'transparent'
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: mode === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+                        borderRadius: '4px'
+                      }
                     }}
                   >
                     {Object.entries(assetDistribution[manager.id!] || {}).map(([fromManagerId, assets]) => (
-                      <Box key={fromManagerId} sx={{ mb: 2 }}>
-                        <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
-                          From {managers.find(m => m.id === fromManagerId)?.name}:
-                        </Typography>
+                      <Box key={fromManagerId}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          mb: 1,
+                          pb: 1,
+                          borderBottom: `1px solid ${dropZoneBorderColor}`
+                        }}>
+                          <Typography variant="caption" sx={{ 
+                            color: mode === 'light' ? 'text.secondary' : 'text.primary',
+                            fontWeight: 500
+                          }}>
+                            From {managers.find(m => m.id === fromManagerId)?.name}
+                          </Typography>
+                        </Box>
                         {assets.map((asset) => (
                           <Asset
                             key={`${asset.overallPickNumber?.toString() ?? ''}-${asset.roundNumber}-${asset.pickNumber}`}

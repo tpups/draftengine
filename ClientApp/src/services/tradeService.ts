@@ -1,4 +1,4 @@
-import { ApiResponse, Trade, TradeParty } from '../types/models';
+import { ApiResponse, Trade, TradeParty, Draft } from '../types/models';
 import { apiClient } from './apiClient';
 
 const tradeService = {
@@ -57,6 +57,26 @@ const tradeService = {
       } else {
         throw new Error('Failed to get trades. Please try again.');
       }
+    }
+  },
+
+  getDraftInfo: async (draftId: string) => {
+    try {
+      const response = await apiClient.get<ApiResponse<Draft>>(`/draft/${draftId}`);
+      return response.value;
+    } catch (error: any) {
+      console.error('Error getting draft info:', error);
+      throw new Error('Failed to get draft info');
+    }
+  },
+
+  canCancelTrade: async (tradeId: string) => {
+    try {
+      const response = await apiClient.get<ApiResponse<boolean>>(`/trade/${tradeId}/canCancel`);
+      return response.value;
+    } catch (error: any) {
+      console.error('Error checking if trade can be cancelled:', error);
+      return false;
     }
   },
 

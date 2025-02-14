@@ -1,6 +1,8 @@
 using MongoDB.Driver;
 using DraftEngine.Models;
 using DraftEngine.Models.Data;
+using System.Text;
+using System.Globalization;
 
 namespace DraftEngine.Services
 {
@@ -558,6 +560,40 @@ namespace DraftEngine.Services
         {
             var filter = Builders<Player>.Filter.Eq(p => p.IsHighlighted, true);
             return await GetPaginatedAsync(pageNumber, pageSize, filter);
+        }
+
+        /// <summary>
+        /// Gets a paginated list of players matching a search term
+        /// </summary>
+        /// <param name="searchTerm">The term to search for in player names</param>
+        /// <param name="pageNumber">The page number to retrieve (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
+        /// <returns>A paginated result containing the matching players</returns>
+        public async Task<PaginatedResult<Player>> SearchPlayersPaginatedAsync(
+            string searchTerm,
+            int pageNumber = 1,
+            int pageSize = 100)
+        {
+            var filter = Builders<Player>.Filter.Regex(
+                p => p.Name,
+                new MongoDB.Bson.BsonRegularExpression($".*{searchTerm}.*", "i")
+            );
+
+            var totalCount = await _players.CountDocumentsAsync(filter);
+            var skip = (pageNumber - 1) * pageSize;
+
+            var items = await _players.Find(filter)
+                .Skip(skip)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<Player>
+            {
+                Items = items,
+                TotalCount = (int)totalCount,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
     }
 }

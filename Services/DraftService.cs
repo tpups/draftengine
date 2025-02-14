@@ -107,7 +107,7 @@ public class DraftService
             else if (newManagerId != null)
             {
             // Add new manager to tradedTo array
-            update = Builders<Draft>.Update.AddToSet(
+            update = Builders<Draft>.Update.Push(
                 "Rounds.$[roundIndex].Picks.$[pickIndex].TradedTo",
                 newManagerId
             );

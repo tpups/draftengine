@@ -28,6 +28,24 @@ public class TradeController : ControllerBase
         _debugService = debugService;
     }
 
+    [HttpGet("{id}/canCancel")]
+    public async Task<ActionResult<ApiResponse<bool>>> CanCancelTrade(string id)
+    {
+        try
+        {
+            _logger.LogInformation("Checking if trade {TradeId} can be cancelled", id);
+            var canCancel = await _tradeService.CanCancelTrade(id);
+            _logger.LogInformation("Trade {TradeId} can be cancelled: {CanCancel}", id, canCancel);
+            return Ok(ApiResponse<bool>.Create(canCancel));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if trade {TradeId} can be cancelled", id);
+            _debugService.LogToFrontend(LogLevel.Error, $"Error checking if trade can be cancelled: {ex.Message}");
+            return StatusCode(500, ApiResponse<bool>.Create(false, "An error occurred checking if trade can be cancelled"));
+        }
+    }
+
     [HttpPost]
     public async Task<ActionResult<ApiResponse<Trade>>> CreateTrade()
     {

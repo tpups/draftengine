@@ -1167,6 +1167,60 @@ namespace DraftEngine.Controllers
             }
         }
 
+        /// <summary>
+        /// Searches for players by name
+        /// </summary>
+        /// <remarks>
+        /// Returns players whose names match the search term:
+        /// - Case-insensitive search
+        /// - Partial matches supported
+        /// - Results are paginated
+        /// - Sorted by relevance
+        /// 
+        /// Common use cases:
+        /// - Quick player lookup
+        /// - Draft preparation
+        /// - Player comparison
+        /// </remarks>
+        /// <param name="searchTerm">The term to search for in player names</param>
+        /// <param name="pageNumber">The page number to retrieve (1-based)</param>
+        /// <param name="pageSize">The number of items per page</param>
+        /// <returns>List of players matching the search term</returns>
+        /// <response code="200">Successfully retrieved matching players</response>
+        /// <response code="400">If the search term is empty or invalid</response>
+        [HttpGet("search")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> SearchPlayers(
+            [FromQuery] string searchTerm,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 100)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Searching for players with term '{SearchTerm}' (Page {Page}, Size {Size})", 
+                    searchTerm, pageNumber, pageSize);
+
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    _logger.LogWarning("Empty search term provided");
+                    return BadRequest(ApiResponse<string>.Create("Search term is required"));
+                }
+
+                var result = await _playerService.SearchPlayersPaginatedAsync(searchTerm, pageNumber, pageSize);
+                
+                _logger.LogInformation(
+                    "Found {Total} players matching '{SearchTerm}' (Page {Page} of {TotalPages})", 
+                    result.TotalCount, searchTerm, result.CurrentPage, result.TotalPages);
+                return Ok(ApiResponse<PaginatedResult<Player>>.Create(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching players with term '{SearchTerm}'", searchTerm);
+                return StatusCode(500, ApiResponse<string>.Create($"Internal server error: {ex.Message}"));
+            }
+        }
+
         // Import operations
     /// <summary>
     /// Import players from a CSV file

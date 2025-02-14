@@ -51,6 +51,38 @@ public class DraftController : ControllerBase
     }
 
     /// <summary>
+    /// Retrieves a specific draft by ID
+    /// </summary>
+    /// <remarks>
+    /// Returns a single draft by its unique identifier.
+    /// </remarks>
+    /// <param name="id">The unique identifier of the draft</param>
+    /// <response code="200">Returns the Draft object</response>
+    /// <response code="404">Draft not found</response>
+    /// <response code="500">Internal server error retrieving draft</response>
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(ApiResponse<Draft>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 404)]
+    [ProducesResponseType(typeof(ApiResponse<string>), 500)]
+    public async Task<IActionResult> GetDraftById(string id)
+    {
+        try
+        {
+            var draft = await _draftService.GetByIdAsync(id);
+            if (draft == null)
+            {
+                return NotFound(new { message = "Draft not found" });
+            }
+            return Ok(new { value = draft });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting draft by ID: {DraftId}", id);
+            return StatusCode(500, new { message = "Error getting draft" });
+        }
+    }
+
+    /// <summary>
     /// Retrieves the currently active draft
     /// </summary>
     /// <remarks>

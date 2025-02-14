@@ -1,7 +1,7 @@
 import { Box, CircularProgress, Alert, Snackbar, Popover, Paper, useTheme as useMuiTheme } from '@mui/material';
 import { useTheme } from '../contexts/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Player, Manager, ApiResponse, Draft } from '../types/models';
 import { PickResponse } from '../services/draftService';
 import { playerService } from '../services/playerService';
@@ -54,9 +54,7 @@ export function PlayerList() {
   const [pickSelectorAnchor, setPickSelectorAnchor] = useState<HTMLElement | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
-
   const queryClient = useQueryClient();
-
   // Queries
   const { data: managersResponse } = useQuery({
     queryKey: ['managers'],
@@ -78,11 +76,25 @@ export function PlayerList() {
     staleTime: 0 // Always refetch after invalidation
   });
 
-  const { data: players = [], isLoading, error } = useQuery({
-    queryKey: ['players'],
-    queryFn: () => playerService.getAll(),
-    staleTime: 0 // Always refetch after invalidation
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ['playerCount'],
+    queryFn: () => playerService.getTotalCount(),
+    staleTime: 0
   });
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
+
+  const { data: players = [], isLoading, error } = useQuery<Player[], Error, Player[]>({
+    queryKey: ['players', page, pageSize],
+    queryFn: () => playerService.getAll(page, pageSize),
+    placeholderData: (prev) => prev, // Keep showing previous data while loading next
+    staleTime: 0, // Always refetch after invalidation
+    enabled: true, // Always enabled
+    refetchOnWindowFocus: false, // Don't refetch on window focus to prevent search disruption
+    retry: false // Don't retry failed searches
+  });
+
   const managers = managersResponse?.value ?? [];
   const activeDraft = activeDraftResponse?.value;
   const currentPick = currentPickResponse?.value;
@@ -102,9 +114,9 @@ export function PlayerList() {
       return nextPick;
     },
     onSuccess: async (response) => {
-  if (config.debug.enableConsoleLogging) {
-    console.log('Advanced to pick:', response.value);
-  }
+      if (config.debug.enableConsoleLogging) {
+        console.log('Advanced to pick:', response.value);
+      }
       // Invalidate and refetch all queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['currentPick'] }),
@@ -421,7 +433,7 @@ export function PlayerList() {
     );
   }
 
-  // Render empty state
+  // Only show empty state if there are no players and we're not searching
   if (!players || players.length === 0) {
     return (
       <Box display="flex" flexDirection="column" gap={2}>
@@ -506,7 +518,7 @@ export function PlayerList() {
         players={players}
         managers={managers}
         currentUser={currentUser}
-            onPlayerClick={(player: Player) => {
+        onPlayerClick={(player: Player) => {
           setSelectedPlayer(player);
           setDetailsModalOpen(true);
         }}
@@ -520,6 +532,15 @@ export function PlayerList() {
         onPlayerUndraft={handleUndraftClick}
         canDraft={canDraft}
         activeDraft={activeDraft}
+        totalCount={totalCount}
+        currentPage={page}
+        onPaginationChange={(model) => {
+          // DataGrid is 0-based, our API is 1-based
+          const newPage = model.page + 1;
+          console.debug('Pagination change:', { model, newPage, pageSize: model.pageSize });
+          setPage(newPage);
+          setPageSize(model.pageSize);
+        }}
       />
       {activeDraft?.activeRound && activeDraft?.activePick && (
         <Popover
