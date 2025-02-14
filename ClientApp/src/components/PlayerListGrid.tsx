@@ -398,13 +398,15 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
         elevation={0} 
         sx={{
         position: 'relative',
-        width: '100%',
+        width: 'auto',
         flex: 1,
         bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
         display: 'flex',
         flexDirection: 'column',
         borderRadius: '12px',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        p: 0,
+        m: 2
       }}>
         <DataGrid
           getRowClassName={getRowClassName}
@@ -441,7 +443,7 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
           }}
           sx={{
             border: 'none',
-            bgcolor: 'transparent',
+            bgcolor: mode === 'light' ? theme.colors.background.elevated.light : theme.colors.background.paper.dark,
             position: 'relative',
             borderRadius: 0,
             '& .MuiDataGrid-root': {
@@ -478,7 +480,7 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
               marginRight: '24px',
               paddingBottom: '24px',
               borderRadius: '12px',
-              marginTop: '56px', // Add margin to prevent scrollbar from overlapping header
+              marginTop: '0',
               '&:after': {
                 display: 'none'
               }

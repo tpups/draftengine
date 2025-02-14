@@ -60,7 +60,10 @@ export function SearchInput({ value, onChange, placeholder = 'Search players...'
         }
       }}
       sx={{
-        mb: 2
+        width: '300px',
+        '& .MuiInputBase-root': {
+          height: '36px'
+        }
       }}
     />
   );

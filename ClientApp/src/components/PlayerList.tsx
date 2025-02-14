@@ -453,17 +453,16 @@ export function PlayerList() {
             elevation={2}
             sx={{ 
               height: '100%',
-              p: 4,
+              p: 0,
               borderRadius: '16px',
               bgcolor: mode === 'light' ? theme.colors.background.paper.light : theme.colors.background.paper.dark,
               display: 'flex',
               flexDirection: 'column',
-              gap: 2,
               position: 'absolute',
               inset: 0
             }}
           >
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, '& > :last-child': { alignSelf: 'flex-end' } }}>
               <PlayerListToolbar
                 gridMode={gridMode}
                 onGridModeChange={handleGridModeChange}
