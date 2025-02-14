@@ -8,7 +8,19 @@ import {
   BirthDateVerificationResult,
   PaginatedResult
 } from '../types/models';
+
+export interface PlayerFilters {
+  excludeDrafted?: boolean;
+  teams?: string[];
+  ageRange?: [number, number];
+  levels?: string[];
+  searchTerm?: string;
+  pageNumber?: number;
+  pageSize?: number;
+}
 import { useMemo } from 'react';
+import { MLB_TEAMS } from '../components/PlayerListFilters';
+import type { MLBTeams } from '../components/PlayerListFilters';
 
 const BASE_PATH = '/player';
 
@@ -55,9 +67,44 @@ const playerService = {
       .then(response => response.value.items),
 
   // Search operations
-  search: (searchTerm: string, pageNumber: number = 1, pageSize: number = 100) =>
-    apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/search?searchTerm=${encodeURIComponent(searchTerm)}&pageNumber=${pageNumber}&pageSize=${pageSize}`)
-      .then(response => response.value.items),
+  search: (filters: PlayerFilters) => {
+    const params = new URLSearchParams();
+    const defaultTeams = Object.values(MLB_TEAMS).flatMap(divisions => 
+      Object.values(divisions).flat()
+    ) as string[];
+    const defaultLevels = ['AAA', 'AA', 'A+', 'A', 'A-', 'Rookie', 'Complex'];
+    
+    // Only add non-default parameters
+    if (filters.searchTerm) {
+      params.append('searchTerm', filters.searchTerm);
+    }
+    if (filters.excludeDrafted) {
+      params.append('excludeDrafted', 'true');
+    }
+    
+    // Only add teams if they differ from default (all teams)
+    if (filters.teams?.length && filters.teams.length !== defaultTeams.length) {
+      filters.teams.forEach(team => params.append('teams', team));
+    }
+    
+    // Only add levels if they differ from default (all levels)
+    if (filters.levels?.length && filters.levels.length !== defaultLevels.length) {
+      filters.levels.forEach(level => params.append('levels', level));
+    }
+    
+    // Only add age range if it differs from default (18-40)
+    if (filters.ageRange && (filters.ageRange[0] !== 18 || filters.ageRange[1] !== 40)) {
+      params.append('minAge', filters.ageRange[0].toString());
+      params.append('maxAge', filters.ageRange[1].toString());
+    }
+    
+    // Always include pagination
+    params.append('pageNumber', (filters.pageNumber || 1).toString());
+    params.append('pageSize', (filters.pageSize || 100).toString());
+
+    return apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/search?${params.toString()}`)
+      .then(response => response.value);
+  },
 
   // Draft management
   markAsDrafted: (id: string, request: { draftedBy: string; round: number; pick: number; overallPick: number }) =>

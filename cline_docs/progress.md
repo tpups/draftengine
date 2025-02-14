@@ -204,7 +204,22 @@
 
 ## Recent Achievements
 
-1. Progress.md Cleanup (2/13/25):
+1. Player List Filtering System:
+    - Added comprehensive filtering capabilities:
+      * Exclude drafted toggle for quick filtering
+      * Team filter organized by league and division
+      * Age range slider with dynamic min/max
+      * Level filter from MLB to rookie ball
+    - Enhanced search and pagination:
+      * Server-side filtering with accurate counts
+      * Maintained search input focus
+      * Smooth UI transitions
+    - Fixed drafted player highlighting:
+      * Consistent highlighting in both prep and draft modes
+      * Proper styling for user's picks vs other managers
+      * Fixed activeDraft query to work in both modes
+
+2. Progress.md Cleanup (2/13/25):
     - Reorganized progress tracking for better clarity:
       * Moved older achievements into Completed Features âœ“
       * Kept only recent achievements (last 2-3 major changes) âœ“
@@ -215,8 +230,7 @@
       * Better organization of feature status âœ“
       * Improved readability âœ“
       * Consistent progress tracking âœ“
-
-2. Server-Side Search Implementation (2/13/25):
+3. Server-Side Search Implementation (2/13/25):
     - Successfully implemented server-side search functionality:
       * Added noRowsOverlay prop to PlayerListGrid âœ“
       * Integrated MUI X Data Grid server-side filtering âœ“
@@ -237,7 +251,7 @@
       * Consider adding advanced filters
       * Add search analytics
       * Enhance error recovery
-3. Server-Side Pagination and Search Planning (2/13/25):
+4. Server-Side Pagination and Search Planning (2/13/25):
     - Successfully implemented server-side pagination:
       * Added proper pagination to PlayerListGrid âœ“
       * Implemented page/size state management âœ“
@@ -259,7 +273,7 @@
       * Add search state management
       * Integrate with pagination system
       * Add proper loading states
-4. Frontend Pagination and Draft Pick Investigation (2/5/25):
+5. Frontend Pagination and Draft Pick Investigation (2/5/25):
     - Added PaginatedResult interface to models.ts ✓
     - Updated playerService methods to handle paginated responses:
       * getAll now extracts items from paginated response ✓
@@ -274,7 +288,7 @@
       * Backend using GetNextPickAsync method
       * Need to implement new nextPick endpoint
       * Need to verify pick completion workflow
-5. Draft Controller and Service Refactoring: (2/5/25)
+6. Draft Controller and Service Refactoring: (2/5/25)
     - Simplified pick state management:
       * Unified current pick tracking ✓
       * Removed redundant state checks ✓
@@ -295,7 +309,7 @@
       * Added missing response types ✓
       * Improved response documentation ✓
       * Consistent attribute usage ✓
-6. Backend Service Layer Improvements: (2/4/25)
+7. Backend Service Layer Improvements: (2/4/25)
     - Enhanced Draft Service:
       * Improved method documentation and error handling ✓
       * Added robust input validation ✓
@@ -314,7 +328,7 @@
       * Improved error messages and logging ✓
       * Added detailed method remarks ✓
       * Enhanced exception documentation ✓
-7. Pick State Management Fix: (2/2/25)
+8. Pick State Management Fix: (2/2/25)
    - Fixed pick advancement behavior:
      * Added updateActivePick endpoint for backend state ✓
      * Implemented proper state sync between frontend and backend ✓
@@ -328,7 +342,7 @@
      * Backend validation for pick updates ✓
      * Frontend error messages for state changes ✓
      * Detailed state logging for debugging ✓
-8. Admin Panel UI Improvements: (2/2/25)
+9. Admin Panel UI Improvements: (2/2/25)
    - Enhanced Manager Section:
      * Added manager count display ✓
      * Moved Add Manager button to header row ✓
@@ -341,7 +355,7 @@
      * Added remove round capability ✓
      * Improved validation and error handling ✓
      * Consistent dialog styling ✓
-9. Admin Panel Organization & Draft Management: (2/2/25)
+10. Admin Panel Organization & Draft Management: (2/2/25)
    - Successfully split AdminPanel into focused components ✓
    - Implemented comprehensive draft management:
      * Draft generation with round selection ✓
@@ -358,7 +372,7 @@
      * Proper loading states ✓
      * Clear success/error messages ✓
      * Confirmation dialogs ✓
-10. Player Creation API:
+11. Player Creation API:
    - Successfully implemented player creation
    - MongoDB Id auto-generation working
    - Proper model validation
@@ -367,24 +381,24 @@
    - Fixed validation to support minimal player creation
    - Enabled flexible data entry for MLB/prospect players
    - Verified working in development environment
-11. API Response Handling:
+12. API Response Handling:
    - Fixed delete operation error handling
    - Improved apiClient response parsing
    - Added proper support for 204 No Content
    - Enhanced void type handling
    - Verified working in development environment
-12. Development Environment Improvements:
+13. Development Environment Improvements:
    - Fixed frontend hot reloading with proper file watching
    - Configured Vite for Docker environment
    - Removed redundant file copying in Dockerfile.dev
    - Set up proper volume mounting
    - Verified live updates working
-13. UI Enhancements:
+14. UI Enhancements:
    - Added hover animations to buttons
    - Improved delete button visibility and feedback
    - Added tooltips for better UX
    - Verified changes in development environment
-14. Player Data Import:
+15. Player Data Import:
    - Successfully combined player data from multiple batch files
    - Created comprehensive top_players.json with 100 players
    - Properly sorted by steamer_2025 rank (1-100)
@@ -392,7 +406,7 @@
    - Verified data integrity and format
    - Fixed PowerShell command syntax issues
    - Documented data import process
-15. React Router Integration:
+16. React Router Integration:
    - Successfully fixed routing issues in App.tsx ✓
    - Properly integrated Material-UI with React Router ✓
    - Implemented correct Link component usage ✓

@@ -1191,7 +1191,12 @@ namespace DraftEngine.Controllers
         [HttpGet("search")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> SearchPlayers(
-            [FromQuery] string searchTerm,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] bool excludeDrafted = false,
+            [FromQuery] string[] teams = null,
+            [FromQuery] int minAge = 18,
+            [FromQuery] int maxAge = 40,
+            [FromQuery] string[] levels = null,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 100)
         {
@@ -1201,13 +1206,16 @@ namespace DraftEngine.Controllers
                     "Searching for players with term '{SearchTerm}' (Page {Page}, Size {Size})", 
                     searchTerm, pageNumber, pageSize);
 
-                if (string.IsNullOrWhiteSpace(searchTerm))
-                {
-                    _logger.LogWarning("Empty search term provided");
-                    return BadRequest(ApiResponse<string>.Create("Search term is required"));
-                }
 
-                var result = await _playerService.SearchPlayersPaginatedAsync(searchTerm, pageNumber, pageSize);
+                var result = await _playerService.SearchPlayersPaginatedAsync(
+                    searchTerm, 
+                    excludeDrafted,
+                    teams,
+                    minAge,
+                    maxAge,
+                    levels,
+                    pageNumber, 
+                    pageSize);
                 
                 _logger.LogInformation(
                     "Found {Total} players matching '{SearchTerm}' (Page {Page} of {TotalPages})", 

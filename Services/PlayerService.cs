@@ -571,13 +571,66 @@ namespace DraftEngine.Services
         /// <returns>A paginated result containing the matching players</returns>
         public async Task<PaginatedResult<Player>> SearchPlayersPaginatedAsync(
             string searchTerm,
+            bool excludeDrafted = false,
+            string[] teams = null,
+            int minAge = 18,
+            int maxAge = 40,
+            string[] levels = null,
             int pageNumber = 1,
             int pageSize = 100)
         {
-            var filter = Builders<Player>.Filter.Regex(
-                p => p.Name,
-                new MongoDB.Bson.BsonRegularExpression($".*{searchTerm}.*", "i")
-            );
+            var filters = new List<FilterDefinition<Player>>();
+            
+            // Only add search filter if search term is provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filters.Add(Builders<Player>.Filter.Regex(
+                    p => p.Name,
+                    new MongoDB.Bson.BsonRegularExpression($".*{searchTerm}.*", "i")
+                ));
+            }
+
+            if (excludeDrafted)
+            {
+                var draft = await _draftService.GetActiveDraftAsync();
+                if (draft != null)
+                {
+                    filters.Add(Builders<Player>.Filter.Or(
+                        Builders<Player>.Filter.Eq(p => p.DraftStatuses, null),
+                        Builders<Player>.Filter.Not(
+                            Builders<Player>.Filter.ElemMatch(
+                                p => p.DraftStatuses,
+                                ds => ds.DraftId == draft.Id
+                            )
+                        )
+                    ));
+                }
+            }
+
+            if (teams != null && teams.Length > 0)
+            {
+                filters.Add(Builders<Player>.Filter.In(p => p.MLBTeam, teams));
+            }
+
+            if (levels != null && levels.Length > 0)
+            {
+                filters.Add(Builders<Player>.Filter.In(p => p.Level, levels));
+            }
+
+            // Only add age filter if it differs from defaults
+            if (minAge != 18 || maxAge != 40)
+            {
+                var minDate = DateTime.Today.AddYears(-maxAge);
+                var maxDate = DateTime.Today.AddYears(-minAge);
+                filters.Add(Builders<Player>.Filter.And(
+                    Builders<Player>.Filter.Gte(p => p.BirthDate, minDate),
+                    Builders<Player>.Filter.Lte(p => p.BirthDate, maxDate)
+                ));
+            }
+
+            var filter = filters.Count > 0 
+                ? Builders<Player>.Filter.And(filters)
+                : Builders<Player>.Filter.Empty;
 
             var totalCount = await _players.CountDocumentsAsync(filter);
             var skip = (pageNumber - 1) * pageSize;

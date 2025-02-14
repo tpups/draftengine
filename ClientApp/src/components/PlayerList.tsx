@@ -3,7 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
-import { Player, Manager, ApiResponse, Draft } from '../types/models';
+import { Player, Manager, ApiResponse, Draft, PaginatedResult } from '../types/models';
 import { PickResponse } from '../services/draftService';
 import { playerService } from '../services/playerService';
 import { draftService } from '../services/draftService';
@@ -15,6 +15,8 @@ import { PlayerListGrid } from './PlayerListGrid';
 import { PlayerListDialogs } from './PlayerListDialogs';
 import { UserDraftedPlayers } from './UserDraftedPlayers';
 import { SearchInput } from './SearchInput';
+import { PlayerListFilters } from './PlayerListFilters';
+import { MLB_TEAMS, LEVELS } from './PlayerListFilters';
 
 // Helper function to log pick state
 const logPickState = (activeDraft: Draft | undefined | null, context: string) => {
@@ -67,7 +69,6 @@ export function PlayerList() {
   const { data: activeDraftResponse } = useQuery({
     queryKey: ['activeDraft'],
     queryFn: () => draftService.getActiveDraft(),
-    enabled: gridMode === 'draft',
     staleTime: 0 // Always refetch after invalidation
   });
 
@@ -78,22 +79,32 @@ export function PlayerList() {
     staleTime: 0 // Always refetch after invalidation
   });
 
-  const { data: totalCount = 0 } = useQuery({
-    queryKey: ['playerCount'],
-    queryFn: () => playerService.getTotalCount(),
-    staleTime: 0
-  });
-
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
+  const [filters, setFilters] = useState<{
+    excludeDrafted: boolean;
+    teams: string[];
+    ageRange: [number, number];
+    levels: string[];
+  }>({
+    excludeDrafted: false,
+    teams: Object.values(MLB_TEAMS).flatMap(divisions => 
+      Object.values(divisions).flat()
+    ),
+    ageRange: [18, 40],
+    levels: [...LEVELS]
+  });
 
-  const { data: players = [], isLoading, error } = useQuery<Player[], Error, Player[]>({
-    queryKey: ['players', page, pageSize, debouncedSearchTerm],
-    queryFn: () => debouncedSearchTerm 
-      ? playerService.search(debouncedSearchTerm, page, pageSize)
-      : playerService.getAll(page, pageSize),
+  const { data: searchResult = { items: [], totalCount: 0 }, isLoading, error } = useQuery<PaginatedResult<Player>, Error>({
+    queryKey: ['players', page, pageSize, debouncedSearchTerm, filters],
+    queryFn: () => playerService.search({ 
+      searchTerm: debouncedSearchTerm,
+      pageNumber: page, 
+      pageSize,
+      ...filters
+    }),
     placeholderData: (prev) => prev, // Keep showing previous data while loading next
     staleTime: 0, // Always refetch after invalidation
     enabled: true, // Always enabled
@@ -176,10 +187,6 @@ export function PlayerList() {
   }, [activeDraft, managers]);
 
   // Determines if user can advance to the next pick
-  // Returns false if:
-  // 1. No active draft or current pick exists
-  // 2. User is at the last pick of the last round
-  // For snake drafts, considers reversed pick order in even rounds
   const canAdvance = useCallback(() => {
     if (!activeDraft?.activeRound || !activeDraft?.activePick) return false;
     
@@ -196,11 +203,6 @@ export function PlayerList() {
   }, [activeDraft]);
 
   // Determines if user can skip to the next incomplete pick
-  // Returns false if:
-  // 1. No active draft or current pick exists
-  // 2. Currently on the active pick (prevents skipping current pick)
-  // 3. No incomplete picks remain after current pick
-  // For snake drafts, considers reversed pick order in even rounds when searching
   const canSkipToIncomplete = useCallback(() => {
     if (!activeDraft?.activeRound || !activeDraft?.activePick || !activeDraft?.currentOverallPick) return false;
     
@@ -228,10 +230,6 @@ export function PlayerList() {
   }, [activeDraft]);
 
   // Determines if a player can be drafted with the active pick
-  // Returns false if:
-  // 1. No active draft exists
-  // 2. Pick is not found
-  // 3. Pick is already complete
   const canDraft = useCallback((playerId: string) => {
     if (!activeDraft?.activeRound || !activeDraft?.activePick) return false;
 
@@ -248,17 +246,12 @@ export function PlayerList() {
     return true;
   }, [activeDraft]);
 
-  // Handles the draft pick process
-  // 1. Marks the pick as complete in the draft (backend will handle marking player as drafted)
-  // 2. Advances to next pick (handled by backend)
-  // 3. Refreshes all relevant queries to sync UI state
-  // Includes detailed logging in debug mode
   const handleUndraftClick = async (playerId: string) => {
     if (!activeDraft) return;
 
     try {
       // Get the player's draft status to find the pick details
-      const player = players.find(p => p.id === playerId);
+      const player = searchResult.items.find(p => p.id === playerId);
       const draftStatus = player?.draftStatuses?.find(ds => ds.draftId === activeDraft.id);
       if (!draftStatus) return;
 
@@ -462,7 +455,7 @@ export function PlayerList() {
               inset: 0
             }}
           >
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, '& > :last-child': { alignSelf: 'flex-end' } }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}>
               <PlayerListToolbar
                 gridMode={gridMode}
                 onGridModeChange={handleGridModeChange}
@@ -475,15 +468,26 @@ export function PlayerList() {
                 canSkipToIncomplete={canSkipToIncomplete()}
                 getActivePickManager={getActivePickManager}
               />
-              <SearchInput
-                value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder="Search players..."
-              />
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2,
+                alignItems: 'center'
+              }}>
+                <PlayerListFilters
+                  onFiltersChange={setFilters}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <SearchInput
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                    placeholder="Search players..."
+                  />
+                </Box>
+              </Box>
             </Box>
             <PlayerListGrid
               gridMode={gridMode}
-              players={players}
+              players={searchResult.items}
               managers={managers}
               currentUser={currentUser}
               onPlayerClick={(player: Player) => {
@@ -500,7 +504,7 @@ export function PlayerList() {
               onPlayerUndraft={handleUndraftClick}
               canDraft={canDraft}
               activeDraft={activeDraft}
-              totalCount={totalCount}
+              totalCount={searchResult.totalCount}
               currentPage={page}
               onPaginationChange={(model) => {
                 // DataGrid is 0-based, our API is 1-based
@@ -636,7 +640,7 @@ export function PlayerList() {
           }}
         >
           <UserDraftedPlayers
-            players={players}
+            players={searchResult.items}
             activeDraft={activeDraft}
             currentUser={currentUser}
             onPlayerClick={(player) => {
