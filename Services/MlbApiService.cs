@@ -13,6 +13,7 @@ namespace DraftEngine.Services
     public interface IMlbApiService
     {
         Task<MlbPlayerResponse?> GetPlayerInfoAsync(string mlbId);
+        Task<MlbPositionResponse?> GetPlayerPositionStatsAsync(string mlbId, string season);
     }
 
     public class MlbApiService : IMlbApiService, IDisposable
@@ -73,8 +74,8 @@ namespace DraftEngine.Services
                         }
                         else
                         {
-                            _logger.LogInformation("Successfully parsed player data for MLB ID {MlbId}. BirthDate: {BirthDate}", 
-                                mlbId, result.People[0].BirthDate);
+                        _logger.LogInformation("Successfully parsed player data for MLB ID {MlbId}. BirthDate: {BirthDate}, MlbDebutDate: {MlbDebutDate}", 
+                            mlbId, result.People[0].BirthDate, result.People[0].MlbDebutDate);
                         }
                         
                         return result;
@@ -93,6 +94,66 @@ namespace DraftEngine.Services
                     _logger.LogWarning("Rate limit hit for MLB ID: {MlbId}. Retrying after delay.", mlbId);
                     await Task.Delay(_options.Value.RateLimit.RetryDelayMs);
                     return await GetPlayerInfoAsync(mlbId);
+                }
+
+                _logger.LogError("MLB API request failed for ID {MlbId}. Status: {Status}, Response: {Response}", 
+                    mlbId, response.StatusCode, content);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching MLB player info for ID: {MlbId}", mlbId);
+                return null;
+            }
+        }
+
+        public async Task<MlbPositionResponse?> GetPlayerPositionStatsAsync(string mlbId, string season)
+        {
+            await WaitForRateLimit();
+
+            try
+            {
+                _logger.LogInformation("Fetching MLB position stats for ID: {MlbId}, Season: {Season}", mlbId, season);
+                var endpoint = $"people/{mlbId}?hydrate=stats(group=[fielding],type=[season],season={season})&fields=people,id,fullName,stats,type,displayName,group,splits,season,stat,position,code,name,type,abbreviation,games,gamesStarted";
+                var response = await _httpClient.GetAsync(endpoint);
+                var content = await response.Content.ReadAsStringAsync();
+                
+                _logger.LogInformation("MLB API Position Stats Response for ID {MlbId}: {Response}", mlbId, content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var result = JsonSerializer.Deserialize<MlbPositionResponse>(content, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                        
+                        if (result?.People == null || result.People.Length == 0)
+                        {
+                            _logger.LogWarning("No position stats found for MLB ID: {MlbId}", mlbId);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Successfully parsed position stats for MLB ID {MlbId}", mlbId);
+                        }
+                        
+                        return result;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogError(ex, "Error parsing MLB API response for ID {MlbId}. Content: {Content}", 
+                            mlbId, content);
+                        return null;
+                    }
+                }
+
+                // Handle rate limiting
+                if ((int)response.StatusCode == 429) // Too Many Requests
+                {
+                    _logger.LogWarning("Rate limit hit for MLB ID: {MlbId}. Retrying after delay.", mlbId);
+                    await Task.Delay(_options.Value.RateLimit.RetryDelayMs);
+                    return await GetPlayerPositionStatsAsync(mlbId, season);
                 }
 
                 _logger.LogError("MLB API request failed for ID {MlbId}. Status: {Status}, Response: {Response}", 

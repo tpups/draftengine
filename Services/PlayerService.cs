@@ -11,18 +11,70 @@ namespace DraftEngine.Services
         private readonly IMongoCollection<Player> _players;
         private readonly IMlbApiService _mlbApiService;
         private readonly DraftService _draftService;
+        private readonly LeagueSettingsService _leagueSettings;
         private readonly ILogger<PlayerService> _logger;
 
         public PlayerService(
             MongoDbContext context, 
             IMlbApiService mlbApiService,
             DraftService draftService,
+            LeagueSettingsService leagueSettings,
             ILogger<PlayerService> logger)
         {
             _players = context.Players;
             _mlbApiService = mlbApiService;
             _draftService = draftService;
+            _leagueSettings = leagueSettings;
             _logger = logger;
+        }
+
+        private async Task<string[]> DeterminePositions(Dictionary<string, int> positionStats)
+        {
+            var settings = await _leagueSettings.GetSettingsAsync();
+            var positions = new HashSet<string>();
+
+            // Always add pitcher if they have any pitching appearances
+            if (positionStats.TryGetValue("1", out int pitchingGames) && pitchingGames > 0)
+            {
+                positions.Add("P");
+            }
+
+            // For position players, check against minimum games threshold
+            foreach (var (pos, games) in positionStats)
+            {
+                if (pos == "1") continue; // Skip pitcher as it's already handled
+                if (games >= settings.MinGamesForPosition)
+                {
+                    switch (pos)
+                    {
+                        case "7":
+                        case "8":
+                        case "9":
+                            positions.Add("OF");
+                            break;
+                        case "2":
+                            positions.Add("C");
+                            break;
+                        case "3":
+                            positions.Add("1B");
+                            break;
+                        case "4":
+                            positions.Add("2B");
+                            break;
+                        case "5":
+                            positions.Add("3B");
+                            break;
+                        case "6":
+                            positions.Add("SS");
+                            break;
+                        case "10":
+                            positions.Add("DH");
+                            break;
+                    }
+                }
+            }
+
+            return positions.ToArray();
         }
 
         // Basic CRUD operations
@@ -149,19 +201,19 @@ namespace DraftEngine.Services
             {
                 try
                 {
-                    // Skip if player has birthdate and we're not checking existing
-                    if (player.BirthDate.HasValue && !includeExisting)
-                    {
-                        result.ProcessedCount++;
-                        continue;
-                    }
-
                     // Skip if no MLBAM ID
                     if (player.ExternalIds == null || !player.ExternalIds.ContainsKey("mlbam_id"))
                     {
                         result.ProcessedCount++;
                         result.Errors.Add($"No MLBAM ID found for player: {player.Name}");
                         result.FailedCount++;
+                        continue;
+                    }
+
+                    // Skip if player has birthdate and we're not checking existing
+                    if (!includeExisting && player.BirthDate.HasValue && player.Position?.Length > 0)
+                    {
+                        result.ProcessedCount++;
                         continue;
                     }
 
@@ -190,7 +242,9 @@ namespace DraftEngine.Services
             {
                 PlayerId = player.Id ?? string.Empty,
                 PlayerName = player.Name,
-                OldBirthDate = player.BirthDate
+                OldBirthDate = player.BirthDate,
+                OldBatSide = player.BatSide,
+                OldPitchHand = player.PitchHand
             };
 
             var mlbId = player.ExternalIds!["mlbam_id"];
@@ -222,16 +276,66 @@ namespace DraftEngine.Services
                     player.Name, birthDate);
                 
                 result.NewBirthDate = birthDate;
+                result.NewBatSide = mlbPlayer.BatSide?.Code;
+                result.NewPitchHand = mlbPlayer.PitchHand?.Code;
 
+                var currentPosition = player.Position != null ? string.Join(", ", player.Position) : "none";
+                var newPosition = mlbPlayer.PrimaryPosition != null ? mlbPlayer.PrimaryPosition.Abbreviation : "none";
+                
                 // Only update if different
-                if (!player.BirthDate.HasValue || player.BirthDate.Value.Date != birthDate.Date)
+                var shouldUpdate = !player.BirthDate.HasValue || 
+                    player.BirthDate.Value.Date != birthDate.Date ||
+                    player.BatSide != mlbPlayer.BatSide?.Code || 
+                    player.PitchHand != mlbPlayer.PitchHand?.Code ||
+                    !player.MlbDebutDate.HasValue || 
+                    currentPosition != newPosition;
+
+                if (currentPosition != newPosition) {
+                    _logger.LogInformation("Position change detected for {PlayerName}: {OldPosition} -> {NewPosition}", 
+                        player.Name, currentPosition, newPosition);
+                }
+
+                if (shouldUpdate)
                 {
-                    _logger.LogInformation("Updating birthdate for {PlayerName}. Old: {OldDate}, New: {NewDate}", 
-                        player.Name, player.BirthDate, birthDate);
+                    _logger.LogInformation("Updating player info for {PlayerName}. BirthDate Old: {OldDate}, New: {NewDate}, BatSide: {BatSide}, PitchHand: {PitchHand}, Position Old: {OldPosition}, New: {NewPosition}", 
+                        player.Name, player.BirthDate, birthDate, mlbPlayer.BatSide, mlbPlayer.PitchHand, currentPosition, newPosition);
 
                     var update = Builders<Player>.Update
                         .Set(p => p.BirthDate, birthDate)
-                        .Set(p => p.LastUpdated, DateTime.UtcNow);
+                        .Set(p => p.BatSide, mlbPlayer.BatSide?.Code)
+                        .Set(p => p.PitchHand, mlbPlayer.PitchHand?.Code)
+                        .Set(p => p.Position, mlbPlayer.PrimaryPosition != null ? new[] { mlbPlayer.PrimaryPosition.Abbreviation } : null)
+                        .Set(p => p.LastUpdated, DateTime.UtcNow)
+                        .Set(p => p.BirthCity, mlbPlayer.BirthCity)
+                        .Set(p => p.BirthStateProvince, mlbPlayer.BirthStateProvince)
+                        .Set(p => p.BirthCountry, mlbPlayer.BirthCountry)
+                        .Set(p => p.Height, mlbPlayer.Height)
+                        .Set(p => p.Weight, mlbPlayer.Weight)
+                        .Set(p => p.Active, mlbPlayer.Active)
+                        .Set(p => p.DraftYear, mlbPlayer.DraftYear);
+
+                    _logger.LogInformation("MLB debut date from API for {PlayerName}: {DebutDate}", 
+                        player.Name, mlbPlayer.MlbDebutDate ?? "null");
+
+                    if (!string.IsNullOrEmpty(mlbPlayer.MlbDebutDate))
+                    {
+                        if (DateTime.TryParse(mlbPlayer.MlbDebutDate, out DateTime debutDate))
+                        {
+                            update = update.Set(p => p.MlbDebutDate, debutDate);
+                            _logger.LogInformation("Setting MLB debut date for {PlayerName} to {DebutDate}", 
+                                player.Name, debutDate);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to parse MLB debut date '{DebutDate}' for player {PlayerName}", 
+                                mlbPlayer.MlbDebutDate, player.Name);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No MLB debut date returned from API for player {PlayerName}", 
+                            player.Name);
+                    }
 
                     var updateResult = await _players.UpdateOneAsync(p => p.Id == player.Id, update);
                     result.WasUpdated = updateResult.ModifiedCount > 0;
@@ -241,8 +345,8 @@ namespace DraftEngine.Services
                 }
                 else
                 {
-                    _logger.LogInformation("No update needed for {PlayerName}, dates match: {BirthDate}", 
-                        player.Name, birthDate);
+                    _logger.LogInformation("No update needed for {PlayerName}, values match: BirthDate = {BirthDate}, Position = {Position}", 
+                        player.Name, birthDate, currentPosition);
                 }
             }
             else
@@ -563,12 +667,160 @@ namespace DraftEngine.Services
         }
 
         /// <summary>
-        /// Gets a paginated list of players matching a search term
+        /// Updates position stats for all players or only those without existing stats
         /// </summary>
-        /// <param name="searchTerm">The term to search for in player names</param>
-        /// <param name="pageNumber">The page number to retrieve (1-based)</param>
-        /// <param name="pageSize">The number of items per page</param>
-        /// <returns>A paginated result containing the matching players</returns>
+        /// <remarks>
+        /// For each player with an MLB ID and debut date:
+        /// - Fetches position stats for each season from debut to current year
+        /// - Updates the player's position stats in the database
+        /// - Tracks progress and results of the update operation
+        /// </remarks>
+        /// <param name="includeExisting">Whether to update players that already have position stats</param>
+        /// <returns>A result object containing update statistics and details</returns>
+        public async Task<PositionUpdateResult> UpdatePositionStatsAsync(bool includeExisting)
+        {
+            var result = new PositionUpdateResult();
+            var players = await GetAsync();
+            result.TotalPlayers = players.Count;
+
+            foreach (var player in players)
+            {
+                try
+                {
+                    // Skip if player has no MLB ID
+                    if (player.ExternalIds == null || !player.ExternalIds.ContainsKey("mlbam_id"))
+                    {
+                        result.ProcessedCount++;
+                        result.Errors.Add($"No MLBAM ID found for player: {player.Name}");
+                        result.FailedCount++;
+                        continue;
+                    }
+
+                    // Skip if player has no MLB debut date
+                    if (!player.MlbDebutDate.HasValue)
+                    {
+                        result.ProcessedCount++;
+                        result.Errors.Add($"No MLB debut date found for player: {player.Name}");
+                        result.FailedCount++;
+                        continue;
+                    }
+
+                    // Skip if player has position stats and we're not checking existing
+                    if (!includeExisting && player.PositionStats != null && player.PositionStats.Any())
+                    {
+                        result.ProcessedCount++;
+                        continue;
+                    }
+
+                    var updateResult = await UpdatePlayerPositionStatsAsync(player);
+                    result.Updates.Add(updateResult);
+                    result.ProcessedCount++;
+
+                    if (updateResult.WasUpdated)
+                    {
+                        result.UpdatedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add($"Error processing player {player.Name}: {ex.Message}");
+                    result.FailedCount++;
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<PositionUpdatePlayerResult> UpdatePlayerPositionStatsAsync(Player player)
+        {
+            var result = new PositionUpdatePlayerResult
+            {
+                PlayerId = player.Id ?? string.Empty,
+                PlayerName = player.Name,
+                MlbDebutDate = player.MlbDebutDate,
+                OldPositionStats = player.PositionStats
+            };
+
+            var mlbId = player.ExternalIds!["mlbam_id"];
+            var debutYear = player.MlbDebutDate!.Value.Year;
+            var currentYear = 2024;
+            var newPositionStats = new Dictionary<string, Dictionary<string, int>>();
+
+            for (int year = debutYear; year <= currentYear; year++)
+            {
+                try
+                {
+                    _logger.LogInformation("Fetching position stats for player {PlayerName}, year {Year}", 
+                        player.Name, year);
+
+                    var response = await _mlbApiService.GetPlayerPositionStatsAsync(mlbId, year.ToString());
+                    if (response?.People == null || response.People.Length == 0 || 
+                        response.People[0].Stats == null || !response.People[0].Stats.Any())
+                    {
+                        _logger.LogInformation("No position stats found for player {PlayerName} in {Year}", 
+                            player.Name, year);
+                        continue;
+                    }
+
+                    var yearStats = new Dictionary<string, int>();
+                    var stats = response.People[0].Stats;
+
+                    foreach (var stat in stats)
+                    {
+                        if (stat.Group?.DisplayName != "fielding" || stat.Splits == null)
+                            continue;
+
+                        foreach (var split in stat.Splits)
+                        {
+                            if (split.Position?.Code == null || split.Stat == null)
+                                continue;
+
+                            var position = split.Position.Code;
+                            var games = split.Stat.Games;
+
+                            if (yearStats.ContainsKey(position))
+                                yearStats[position] += games;
+                            else
+                                yearStats[position] = games;
+                        }
+                    }
+
+                    if (yearStats.Any())
+                    {
+                        newPositionStats[year.ToString()] = yearStats;
+                        result.ProcessedSeasons.Add(year.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error fetching position stats for player {PlayerName} in year {Year}", 
+                        player.Name, year);
+                }
+            }
+
+            if (newPositionStats.Any())
+            {
+                result.NewPositionStats = newPositionStats;
+
+                // Get the most recent year's stats to determine positions
+                var mostRecentYear = newPositionStats.Keys.Max();
+                var positions = await DeterminePositions(newPositionStats[mostRecentYear]);
+
+                var update = Builders<Player>.Update
+                    .Set(p => p.PositionStats, newPositionStats)
+                    .Set(p => p.Position, positions)
+                    .Set(p => p.LastUpdated, DateTime.UtcNow);
+
+                var updateResult = await _players.UpdateOneAsync(p => p.Id == player.Id, update);
+                result.WasUpdated = updateResult.ModifiedCount > 0;
+
+                _logger.LogInformation("Position stats update result for {PlayerName}: ModifiedCount = {ModifiedCount}, Positions = {Positions}", 
+                    player.Name, updateResult.ModifiedCount, string.Join(", ", positions));
+            }
+
+            return result;
+        }
+
         public async Task<PaginatedResult<Player>> SearchPlayersPaginatedAsync(
             string searchTerm,
             bool excludeDrafted = false,

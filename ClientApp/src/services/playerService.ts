@@ -6,7 +6,8 @@ import {
   RiskLevelParams, 
   ApiResponse,
   BirthDateVerificationResult,
-  PaginatedResult
+  PaginatedResult,
+  PositionUpdateResult
 } from '../types/models';
 
 export interface PlayerFilters {
@@ -148,6 +149,10 @@ const playerService = {
   getTotalCount: () =>
     apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}?pageNumber=1&pageSize=1`)
       .then(response => response.value.totalCount),
+
+  // Position stats update
+  updatePositions: (includeExisting: boolean) =>
+    apiClient.post<ApiResponse<PositionUpdateResult>>(`${BASE_PATH}/update-positions`, { includeExisting }),
 };
 
 export const usePlayerService = () => {

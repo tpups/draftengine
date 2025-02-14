@@ -16,7 +16,8 @@ import {
 } from '@mui/material';
 import { usePlayerService } from '../../services/playerService';
 import { apiClient } from '../../services/apiClient';
-import { BirthDateVerificationResult } from '../../types/models';
+import { BirthDateVerificationResult, PositionUpdateResult } from '../../types/models';
+import { LeagueSettingsModal } from './LeagueSettingsModal';
 
 interface VerifyBirthDatesStatus {
   success: boolean;
@@ -47,6 +48,15 @@ export const DataManagement: React.FC = () => {
   const [verifyBirthDatesDialogOpen, setVerifyBirthDatesDialogOpen] = useState(false);
   const [verifyBirthDatesLoading, setVerifyBirthDatesLoading] = useState(false);
   const [verifyBirthDatesStatus, setVerifyBirthDatesStatus] = useState<VerifyBirthDatesStatus | null>(null);
+
+  const [updatePositionsDialogOpen, setUpdatePositionsDialogOpen] = useState(false);
+  const [updatePositionsLoading, setUpdatePositionsLoading] = useState(false);
+  const [updatePositionsStatus, setUpdatePositionsStatus] = useState<{
+    success: boolean;
+    message: string;
+    details?: PositionUpdateResult;
+  } | null>(null);
+  const [leagueSettingsOpen, setLeagueSettingsOpen] = useState(false);
 
   const playerService = usePlayerService();
 
@@ -224,6 +234,18 @@ export const DataManagement: React.FC = () => {
             <Button
               variant="contained"
               sx={{ 
+                bgcolor: theme.colors.primary.main,
+                '&:hover': {
+                  bgcolor: theme.colors.primary.dark
+                }
+              }}
+              onClick={() => setLeagueSettingsOpen(true)}
+            >
+              League Settings
+            </Button>
+            <Button
+              variant="contained"
+              sx={{ 
               bgcolor: theme.colors.pickState.selected.light,
               '&:hover': {
                 bgcolor: theme.colors.pickState.selected.dark
@@ -243,7 +265,19 @@ export const DataManagement: React.FC = () => {
               }}
               onClick={() => setVerifyBirthDatesDialogOpen(true)}
             >
-              Update Birthdates
+              MLB API BASIC INFO
+            </Button>
+            <Button
+              variant="contained"
+              sx={{ 
+                bgcolor: theme.colors.primary.main,
+                '&:hover': {
+                  bgcolor: theme.colors.primary.dark
+                }
+              }}
+              onClick={() => setUpdatePositionsDialogOpen(true)}
+            >
+              MLB API POSITIONS
             </Button>
           </Box>
         </Box>
@@ -367,11 +401,11 @@ export const DataManagement: React.FC = () => {
           open={verifyBirthDatesDialogOpen}
           onClose={() => !verifyBirthDatesLoading && setVerifyBirthDatesDialogOpen(false)}
         >
-          <DialogTitle>Update Player Birthdates</DialogTitle>
+          <DialogTitle>MLB API Basic Info Update</DialogTitle>
           <DialogContent>
             <Typography>
-              Would you like to update birthdates for players that already have a birthdate set?
-              If not, only players without a birthdate will be updated.
+              Would you like to update basic MLB info (birthdate, height, weight, etc.) for players that already have data?
+              If not, only players without existing data will be updated.
             </Typography>
           </DialogContent>
           <DialogActions>
@@ -392,7 +426,7 @@ export const DataManagement: React.FC = () => {
                   const result = await playerService.verifyBirthDates(false);
                   setVerifyBirthDatesStatus({
                     success: true,
-                    message: 'Successfully updated birthdates',
+                    message: 'Successfully updated MLB basic info',
                     details: {
                       totalPlayers: result.value.totalPlayers,
                       processedCount: result.value.processedCount,
@@ -406,7 +440,7 @@ export const DataManagement: React.FC = () => {
                 } catch (error) {
                   setVerifyBirthDatesStatus({
                     success: false,
-                    message: `Error updating birthdates: ${error instanceof Error ? error.message : 'Unknown error'}`
+                    message: `Error updating MLB basic info: ${error instanceof Error ? error.message : 'Unknown error'}`
                   });
                   setVerifyBirthDatesDialogOpen(false);
                 } finally {
@@ -426,7 +460,7 @@ export const DataManagement: React.FC = () => {
                   const result = await playerService.verifyBirthDates(true);
                   setVerifyBirthDatesStatus({
                     success: true,
-                    message: 'Successfully updated birthdates',
+                    message: 'Successfully updated MLB basic info',
                     details: {
                       totalPlayers: result.value.totalPlayers,
                       processedCount: result.value.processedCount,
@@ -440,7 +474,7 @@ export const DataManagement: React.FC = () => {
                 } catch (error) {
                   setVerifyBirthDatesStatus({
                     success: false,
-                    message: `Error updating birthdates: ${error instanceof Error ? error.message : 'Unknown error'}`
+                    message: `Error updating MLB basic info: ${error instanceof Error ? error.message : 'Unknown error'}`
                   });
                   setVerifyBirthDatesDialogOpen(false);
                 } finally {
@@ -450,6 +484,97 @@ export const DataManagement: React.FC = () => {
               disabled={verifyBirthDatesLoading}
             >
               {verifyBirthDatesLoading ? 'Updating...' : 'Check All'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={updatePositionsDialogOpen}
+          onClose={() => !updatePositionsLoading && setUpdatePositionsDialogOpen(false)}
+        >
+          <DialogTitle>MLB API Position Update</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Would you like to update MLB position history for players that already have position stats?
+              If not, only players without existing position stats will be updated.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => {
+                setUpdatePositionsDialogOpen(false);
+                setUpdatePositionsStatus(null);
+              }}
+              disabled={updatePositionsLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  setUpdatePositionsLoading(true);
+                  setUpdatePositionsStatus(null);
+                  const result = await playerService.updatePositions(false);
+                  setUpdatePositionsStatus({
+                    success: true,
+                    message: 'Successfully updated MLB position history',
+                    details: {
+                      totalPlayers: result.value.totalPlayers,
+                      processedCount: result.value.processedCount,
+                      updatedCount: result.value.updatedCount,
+                      failedCount: result.value.failedCount,
+                      updates: result.value.updates,
+                      errors: result.value.errors
+                    }
+                  });
+                  setUpdatePositionsDialogOpen(false);
+                } catch (error) {
+                  setUpdatePositionsStatus({
+                    success: false,
+                    message: `Error updating MLB position history: ${error instanceof Error ? error.message : 'Unknown error'}`
+                  });
+                  setUpdatePositionsDialogOpen(false);
+                } finally {
+                  setUpdatePositionsLoading(false);
+                }
+              }}
+              disabled={updatePositionsLoading}
+            >
+              {updatePositionsLoading ? 'Updating...' : 'Skip Existing'}
+            </Button>
+            <Button
+              variant="contained"
+              onClick={async () => {
+                try {
+                  setUpdatePositionsLoading(true);
+                  setUpdatePositionsStatus(null);
+                  const result = await playerService.updatePositions(true);
+                  setUpdatePositionsStatus({
+                    success: true,
+                    message: 'Successfully updated MLB position history',
+                    details: {
+                      totalPlayers: result.value.totalPlayers,
+                      processedCount: result.value.processedCount,
+                      updatedCount: result.value.updatedCount,
+                      failedCount: result.value.failedCount,
+                      updates: result.value.updates,
+                      errors: result.value.errors
+                    }
+                  });
+                  setUpdatePositionsDialogOpen(false);
+                } catch (error) {
+                  setUpdatePositionsStatus({
+                    success: false,
+                    message: `Error updating MLB position history: ${error instanceof Error ? error.message : 'Unknown error'}`
+                  });
+                  setUpdatePositionsDialogOpen(false);
+                } finally {
+                  setUpdatePositionsLoading(false);
+                }
+              }}
+              disabled={updatePositionsLoading}
+            >
+              {updatePositionsLoading ? 'Updating...' : 'Check All'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -490,6 +615,38 @@ export const DataManagement: React.FC = () => {
           )}
         </Alert>
       )}
+
+      {updatePositionsStatus && (
+        <Alert 
+          severity={updatePositionsStatus.success ? 'success' : 'error'}
+          sx={{ mt: 2 }}
+        >
+          <Typography>{updatePositionsStatus.message}</Typography>
+          {updatePositionsStatus.details && (
+            <>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Processed {updatePositionsStatus.details.totalPlayers} players: {' '}
+                {updatePositionsStatus.details.updatedCount} updated, {' '}
+                {updatePositionsStatus.details.failedCount} failed
+              </Typography>
+              {updatePositionsStatus.details?.errors && updatePositionsStatus.details.errors.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  {updatePositionsStatus.details.errors?.map((error: string, index: number) => (
+                    <Typography key={index} variant="body2" color="error">
+                      {error}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
+            </>
+          )}
+        </Alert>
+      )}
+
+      <LeagueSettingsModal
+        open={leagueSettingsOpen}
+        onClose={() => setLeagueSettingsOpen(false)}
+      />
     </Paper>
   );
 };

@@ -21,6 +21,14 @@ namespace DraftEngine.Models
         public string? MLBTeam { get; set; }
         public string? Level { get; set; }  // MLB, AAA, AA, etc.
         public DateTime? BirthDate { get; set; }
+        public string? BirthCity { get; set; }
+        public string? BirthStateProvince { get; set; }
+        public string? BirthCountry { get; set; }
+        public DateTime? MlbDebutDate { get; set; }
+        public string? Height { get; set; }
+        public int? Weight { get; set; }
+        public bool Active { get; set; }
+        public int? DraftYear { get; set; }
         public int? ETA { get; set; }  // Year expected to reach MLB
 
         // Risk assessments from multiple sources
@@ -49,7 +57,14 @@ namespace DraftEngine.Models
         public int? PersonalRank { get; set; }
         public decimal? StarsRating { get; set; }  // 0-5 in 0.5 increments
 
+        // Batting/Pitching information
+        public string? BatSide { get; set; }
+        public string? PitchHand { get; set; }
+
         // Statistical projections from multiple sources (Steamer, ZiPS, etc.)
         public Dictionary<string, ProjectionData>? Projections { get; set; }
+
+        // Position history by season
+        public Dictionary<string, Dictionary<string, int>>? PositionStats { get; set; } // Year -> (Position -> Games)
     }
 }

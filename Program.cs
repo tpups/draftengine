@@ -28,6 +28,7 @@ builder.Services.AddSingleton<PlayerService>(sp => new PlayerService(
     sp.GetRequiredService<MongoDbContext>(),
     sp.GetRequiredService<IMlbApiService>(),
     sp.GetRequiredService<DraftService>(),
+    sp.GetRequiredService<LeagueSettingsService>(),
     sp.GetRequiredService<ILogger<PlayerService>>()
 ));
 builder.Services.AddSingleton<ManagerService>(sp => new ManagerService(
@@ -38,6 +39,10 @@ builder.Services.AddSingleton<TradeService>(sp => new TradeService(
     sp.GetRequiredService<MongoDbContext>(),
     sp.GetRequiredService<DraftService>(),
     sp.GetRequiredService<ILogger<TradeService>>()
+));
+builder.Services.AddSingleton<LeagueSettingsService>(sp => new LeagueSettingsService(
+    sp.GetRequiredService<MongoDbContext>(),
+    sp.GetRequiredService<ILogger<LeagueSettingsService>>()
 ));
 builder.Services.AddHttpClient();
 builder.Services.Configure<MlbApiOptions>(builder.Configuration.GetSection("MlbApi"));

@@ -81,20 +81,22 @@ namespace DraftEngine.Models.Data
 
         [JsonPropertyName("mlbDebutDate")]
         public string? MlbDebutDate { get; set; }
+
+        [JsonPropertyName("batSide")]
+        public Side? BatSide { get; set; }
+
+        [JsonPropertyName("pitchHand")]
+        public Side? PitchHand { get; set; }
     }
 
-    public class Position
+    public class Side
     {
         [JsonPropertyName("code")]
         public string? Code { get; set; }
 
-        [JsonPropertyName("name")]
-        public string? Name { get; set; }
-
-        [JsonPropertyName("type")]
-        public string? Type { get; set; }
-
-        [JsonPropertyName("abbreviation")]
-        public string? Abbreviation { get; set; }
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
     }
+
+
 }

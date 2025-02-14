@@ -1118,6 +1118,66 @@ namespace DraftEngine.Controllers
         /// <response code="200">Successfully completed verification</response>
         /// <response code="400">If the request is invalid</response>
         /// <response code="500">If there was an error during verification</response>
+        /// <summary>
+        /// Updates position stats for players using MLB Stats API
+        /// </summary>
+        /// <remarks>
+        /// For each player with an MLB ID and debut date:
+        /// - Fetches fielding stats for each season from debut through 2024
+        /// - Records games played at each position per season
+        /// - Updates player record with position history
+        /// - Maintains detailed update history
+        /// 
+        /// The operation:
+        /// - Can be run multiple times
+        /// - Is safe for concurrent access
+        /// - Logs all changes
+        /// - Provides detailed results
+        /// </remarks>
+        /// <param name="request">Parameters controlling the update process</param>
+        /// <returns>Detailed results of the update process</returns>
+        /// <response code="200">Successfully completed update</response>
+        /// <response code="400">If the request is invalid</response>
+        /// <response code="500">If there was an error during update</response>
+        [HttpPost("update-positions")]
+        [ProducesResponseType(typeof(ApiResponse<PositionUpdateResult>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UpdatePositionStats([FromBody] PositionUpdateRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Starting position stats update process. Include existing: {IncludeExisting}", 
+                    request.IncludeExisting);
+
+                var result = await _playerService.UpdatePositionStatsAsync(request.IncludeExisting);
+                
+                _logger.LogInformation(
+                    "Position stats update completed. Total: {Total}, Processed: {Processed}, " + 
+                    "Updated: {Updated}, Failed: {Failed}, Skipped: {Skipped}", 
+                    result.TotalPlayers,
+                    result.ProcessedCount,
+                    result.UpdatedCount,
+                    result.FailedCount,
+                    result.TotalPlayers - result.ProcessedCount);
+
+                if (result.Errors.Any())
+                {
+                    _logger.LogWarning("Update completed with {Count} errors", result.Errors.Count);
+                    foreach (var error in result.Errors)
+                    {
+                        _logger.LogWarning("Update error: {Error}", error);
+                    }
+                }
+
+                return Ok(ApiResponse<PositionUpdateResult>.Create(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during position stats update process");
+                return StatusCode(500, ApiResponse<string>.Create($"Internal server error: {ex.Message}"));
+            }
+        }
+
         [HttpPost("verify-birthdates")]
         [ProducesResponseType(typeof(ApiResponse<BirthDateVerificationResult>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]

@@ -21,6 +21,13 @@ export interface Player {
     mlbTeam?: string;
     level?: string;
     birthDate?: string;  // ISO date string
+    birthCity?: string;
+    birthStateProvince?: string;
+    birthCountry?: string;
+    height?: string;
+    weight?: number;
+    active: boolean;
+    draftYear?: number;
     eta?: number | null;
     prospectRisk?: Record<string, string>;
     personalRiskAssessment?: string;
@@ -34,6 +41,7 @@ export interface Player {
     personalRank?: number | null;
     starsRating?: number | null;  // 0-5 in 0.5 increments (matches C# decimal)
     projections?: Record<string, ProjectionData>;
+    positionStats?: Record<string, Record<string, number>>;  // Year -> (Position -> Games)
 }
 
 // Computed property to match C# model
@@ -155,6 +163,25 @@ export interface BirthDateUpdateResult {
     wasUpdated: boolean;
 }
 
+export interface PositionUpdateResult {
+    totalPlayers: number;
+    processedCount: number;
+    updatedCount: number;
+    failedCount: number;
+    updates: PositionUpdatePlayerResult[];
+    errors: string[];
+}
+
+export interface PositionUpdatePlayerResult {
+    playerId: string;
+    playerName: string;
+    mlbDebutDate: string | null;
+    oldPositionStats: Record<string, Record<string, number>> | null;
+    newPositionStats: Record<string, Record<string, number>> | null;
+    wasUpdated: boolean;
+    processedSeasons: string[];
+}
+
 export interface TradeAssetDistribution {
     fromManagerId: string;
     asset: TradeAsset;
@@ -203,4 +230,9 @@ export enum TradeStatus {
     Completed = 'Completed',
     Reversed = 'Reversed',
     Cancelled = 'Cancelled'
+}
+
+export interface LeagueSettings {
+    id?: string;
+    minGamesForPosition: number;
 }

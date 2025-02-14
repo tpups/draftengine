@@ -1,30 +1,28 @@
 namespace DraftEngine.Models.Data
 {
-    public class BirthDateVerificationRequest
+    public class PositionUpdateRequest
     {
         public bool IncludeExisting { get; set; }
     }
 
-    public class BirthDateVerificationResult
+    public class PositionUpdateResult
     {
         public int TotalPlayers { get; set; }
         public int ProcessedCount { get; set; }
         public int UpdatedCount { get; set; }
         public int FailedCount { get; set; }
-        public List<BirthDateUpdateResult> Updates { get; set; } = new();
+        public List<PositionUpdatePlayerResult> Updates { get; set; } = new();
         public List<string> Errors { get; set; } = new();
     }
 
-    public class BirthDateUpdateResult
+    public class PositionUpdatePlayerResult
     {
         public string PlayerId { get; set; } = string.Empty;
         public string PlayerName { get; set; } = string.Empty;
-        public DateTime? OldBirthDate { get; set; }
-        public DateTime? NewBirthDate { get; set; }
-        public string? OldBatSide { get; set; }
-        public string? NewBatSide { get; set; }
-        public string? OldPitchHand { get; set; }
-        public string? NewPitchHand { get; set; }
+        public DateTime? MlbDebutDate { get; set; }
+        public Dictionary<string, Dictionary<string, int>>? OldPositionStats { get; set; }
+        public Dictionary<string, Dictionary<string, int>>? NewPositionStats { get; set; }
         public bool WasUpdated { get; set; }
+        public List<string> ProcessedSeasons { get; set; } = new();
     }
 }

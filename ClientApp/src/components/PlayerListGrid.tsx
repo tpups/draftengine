@@ -2,7 +2,7 @@ import { Box, Paper } from '@mui/material';
 import { useTheme } from '../contexts/ThemeContext';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import { Draft, Manager, Player } from '../types/models';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { DraftManagerFlyout } from './DraftManagerFlyout';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -12,11 +12,14 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import UndoIcon from '@mui/icons-material/Undo';
 import { calculateBaseballAge, CURRENT_BASEBALL_SEASON } from '../utils/dateUtils';
 import { getDisplayPickNumber } from '../utils/draftUtils';
+import { useLeagueSettings } from '../hooks/useLeagueSettings';
+import { determineEligiblePositions } from '../utils/positionUtils';
 
 interface GridPlayer {
   id?: string;
   name: string;
   position: string;
+  eligible: string;
   mlbTeam?: string;
   level?: string;
   rank: number | null;
@@ -93,8 +96,10 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
     }));
   }, [currentPage]);
   const { theme, mode } = useTheme();
+  const { settings } = useLeagueSettings();
 
-  const handlePlayerClick = useCallback((id: string | undefined) => {
+  const handlePlayerClick = useCallback((id: string | undefined, event?: React.MouseEvent) => {
+    event?.stopPropagation();
     const player = players.find(p => p.id === id);
     if (player) {
       onPlayerClick(player);
@@ -150,11 +155,26 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       ? managers.find((m: Manager) => m.id === draftStatus.managerId)
       : null;
 
+    // Get the most recent year's position stats
+    const years = player.positionStats && Object.keys(player.positionStats).length > 0 
+      ? Object.keys(player.positionStats) 
+      : [];
+    const mostRecentYear = years.length > 0 ? Math.max(...years.map(Number)) : null;
+    const mostRecentStats = mostRecentYear && player.positionStats 
+      ? player.positionStats[mostRecentYear.toString()] 
+      : null;
+
+    // Determine eligible positions based on games played
+    const eligiblePositions = mostRecentStats 
+      ? determineEligiblePositions(mostRecentStats, settings?.minGamesForPosition || 10)
+      : [];
+
     return {
       id: player.id,
       name: player.name,
       mlbTeam: player.mlbTeam,
       level: player.level,
+      eligible: eligiblePositions.join(', '),
       rank: player.rank?.['steamer_2025'] || null,
       age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
       position: player.position?.join(', ') || '',
@@ -324,7 +344,7 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
               opacity: 0.9
             }
           }}
-          onClick={() => handlePlayerClick(params.row.id)}
+          onClick={(event) => handlePlayerClick(params.row.id, event)}
         >
           {params.row.name}
         </Box>
@@ -333,6 +353,13 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
     {
       field: 'position',
       headerName: 'Position',
+      width: 120,
+      align: 'center' as const,
+      headerAlign: 'center' as const
+    },
+    {
+      field: 'eligible',
+      headerName: 'Eligible',
       width: 120,
       align: 'center' as const,
       headerAlign: 'center' as const
@@ -618,18 +645,15 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
     </>
   );
 }, (prevProps: PlayerListGridProps, nextProps: PlayerListGridProps) => {
-  const shouldUpdate = (
-    prevProps.players !== nextProps.players ||
-    prevProps.managers !== nextProps.managers ||
-    prevProps.currentUser !== nextProps.currentUser ||
-    prevProps.activeDraft !== nextProps.activeDraft ||
-    prevProps.gridMode !== nextProps.gridMode ||
-    prevProps.currentPage !== nextProps.currentPage ||
-    prevProps.totalCount !== nextProps.totalCount ||
-    prevProps.noRowsOverlay !== nextProps.noRowsOverlay
-  );
-  console.debug('[PlayerListGrid] Memo Update', { shouldUpdate });
-  return !shouldUpdate;
+  // Only update if key props change
+  if (prevProps.players !== nextProps.players ||
+      prevProps.currentPage !== nextProps.currentPage ||
+      prevProps.totalCount !== nextProps.totalCount ||
+      prevProps.gridMode !== nextProps.gridMode ||
+      prevProps.activeDraft !== nextProps.activeDraft) {
+    return false;
+  }
+  return true;
 });
 
 export const PlayerListGrid = PlayerListGridComponent;

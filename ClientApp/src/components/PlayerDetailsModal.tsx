@@ -1,8 +1,9 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Tabs, Tab, Divider, useTheme as useMuiTheme } from '@mui/material';
 import { useTheme } from '../contexts/ThemeContext';
 import { Player, ScoutingGrades } from '../types/models';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatAgeDisplay } from '../utils/dateUtils';
+import { formatPositionStats } from '../utils/positionUtils';
 import { StarRating } from './StarRating';
 
 interface TabPanelProps {
@@ -82,12 +83,28 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
   const muiTheme = useMuiTheme();
   const { theme } = useTheme();
 
+  // Reset tab value when modal closes
+  useEffect(() => {
+    if (!open) {
+      setTabValue(0);
+    }
+  }, [open]);
+
   if (!player) return null;
 
   return (
     <Dialog 
       open={open} 
-      onClose={onClose}
+      onClose={(_, reason) => {
+        if (reason === 'backdropClick') {
+          // Prevent event bubbling when clicking outside
+          document.body.click();
+        }
+        // Add a small delay before closing
+        setTimeout(() => {
+          onClose();
+        }, 100);
+      }}
       maxWidth="md"
       fullWidth
     >
@@ -116,6 +133,21 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
             {Array.isArray(player.position) ? player.position.join(', ') : player.position} | {player.mlbTeam || 'N/A'} | {player.level || 'N/A'}
             {player.birthDate && ` | ${formatAgeDisplay(player.birthDate)}`}
           </Typography>
+          <Typography variant="subtitle2" color="text.secondary">
+            {[
+              player.birthCity && `Born in ${player.birthCity}`,
+              player.birthStateProvince,
+              player.birthCountry
+            ].filter(Boolean).join(', ')}
+          </Typography>
+          <Typography variant="subtitle2" color="text.secondary">
+            {[
+              player.height && `Height: ${player.height}`,
+              player.weight && `Weight: ${player.weight} lbs`,
+              player.draftYear && `Draft Year: ${player.draftYear}`,
+              player.active ? 'Active' : 'Inactive'
+            ].filter(Boolean).join(' | ')}
+          </Typography>
         </Box>
       </DialogTitle>
       <Divider />
@@ -123,6 +155,7 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
         <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
           <Tab label="Rankings" />
           <Tab label="Scouting" />
+          <Tab label="Position" />
           <Tab label="Draft Info" />
           <Tab label="Notes" />
         </Tabs>
@@ -210,6 +243,31 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
 
         <TabPanel value={tabValue} index={2}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6">Games Played By Position</Typography>
+            {player.positionStats && Object.entries(player.positionStats)
+              .sort((a, b) => parseInt(b[0]) - parseInt(a[0])) // Sort years descending
+              .map(([year, positions]) => (
+                <Box key={year} sx={{ mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ minWidth: '60px' }}>
+                      {year}:
+                    </Typography>
+                    <Typography variant="body1">
+                      {formatPositionStats(positions)}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            {(!player.positionStats || Object.keys(player.positionStats).length === 0) && (
+              <Typography variant="body1">
+                No position history available
+              </Typography>
+            )}
+          </Box>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Draft Status */}
             <Typography variant="h6">Draft Status</Typography>
             {player.draftStatuses && player.draftStatuses.length > 0 ? (
@@ -266,7 +324,7 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
           </Box>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={4}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Notes */}
             <Typography variant="h6">Notes</Typography>
@@ -277,7 +335,12 @@ export function PlayerDetailsModal({ player, open, onClose }: PlayerDetailsModal
         </TabPanel>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={() => {
+          // Add a small delay before closing
+          setTimeout(() => {
+            onClose();
+          }, 100);
+        }}>Close</Button>
       </DialogActions>
     </Dialog>
   );
