@@ -54,6 +54,7 @@ interface PlayerListGridProps {
   totalCount: number;
   onPaginationChange: (model: { page: number; pageSize: number }) => void;
   currentPage: number;
+  noRowsOverlay?: React.ReactNode;
 }
 
 const PlayerListGridComponent = React.memo(function PlayerListGridInner({
@@ -71,7 +72,8 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
   canDraft,
   totalCount,
   onPaginationChange,
-  currentPage
+  currentPage,
+  noRowsOverlay
 }: PlayerListGridProps): JSX.Element {
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -425,7 +427,7 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
             bottom: 0
           })}
           slots={{
-            noRowsOverlay: () => (
+            noRowsOverlay: () => noRowsOverlay || (
               <Box sx={{ 
                 display: 'flex', 
                 justifyContent: 'center', 
@@ -621,7 +623,8 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
     prevProps.activeDraft !== nextProps.activeDraft ||
     prevProps.gridMode !== nextProps.gridMode ||
     prevProps.currentPage !== nextProps.currentPage ||
-    prevProps.totalCount !== nextProps.totalCount
+    prevProps.totalCount !== nextProps.totalCount ||
+    prevProps.noRowsOverlay !== nextProps.noRowsOverlay
   );
   console.debug('[PlayerListGrid] Memo Update', { shouldUpdate });
   return !shouldUpdate;
