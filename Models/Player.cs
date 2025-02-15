@@ -35,11 +35,42 @@ namespace DraftEngine.Models
         }
     }
 
+    public class ProspectRankDictionarySerializer : SerializerBase<Dictionary<ProspectSource, int>>
+    {
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, Dictionary<ProspectSource, int> value)
+        {
+            var dictionary = new Dictionary<string, int>();
+            if (value != null)
+            {
+                foreach (var kvp in value)
+                {
+                    dictionary[kvp.Key.ToString()] = kvp.Value;
+                }
+            }
+            BsonSerializer.Serialize(context.Writer, dictionary);
+        }
+
+        public override Dictionary<ProspectSource, int> Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            var dictionary = BsonSerializer.Deserialize<Dictionary<string, int>>(context.Reader);
+            var result = new Dictionary<ProspectSource, int>();
+            foreach (var kvp in dictionary)
+            {
+                if (Enum.TryParse<ProspectSource>(kvp.Key, out var prospectSource))
+                {
+                    result[prospectSource] = kvp.Value;
+                }
+            }
+            return result;
+        }
+    }
+
     public class Player
     {
         static Player()
         {
             BsonSerializer.RegisterSerializer(new RankingDictionarySerializer());
+            BsonSerializer.RegisterSerializer(new ProspectRankDictionarySerializer());
         }
 
         [BsonId]
@@ -53,7 +84,8 @@ namespace DraftEngine.Models
         [BsonSerializer(typeof(RankingDictionarySerializer))]
         public Dictionary<RankingSource, int>? Rank { get; set; }
 
-        public Dictionary<string, int>? ProspectRank { get; set; }
+        [BsonSerializer(typeof(ProspectRankDictionarySerializer))]
+        public Dictionary<ProspectSource, int>? ProspectRank { get; set; }
 
         // Player information
         public string? MLBTeam { get; set; }

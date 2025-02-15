@@ -185,7 +185,7 @@ namespace DraftEngine.Controllers
                 newPlayer.ExternalIds ??= new Dictionary<string, string>();
                 newPlayer.Position ??= Array.Empty<string>();
                 newPlayer.Rank ??= new Dictionary<RankingSource, int>();
-                newPlayer.ProspectRank ??= new Dictionary<string, int>();
+                newPlayer.ProspectRank ??= new Dictionary<ProspectSource, int>();
                 newPlayer.ProspectRisk ??= new Dictionary<string, string>();
                 newPlayer.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
                 newPlayer.PersonalGrades ??= new ScoutingGrades();
@@ -1422,10 +1422,15 @@ namespace DraftEngine.Controllers
                 var existingPlayers = await _playerService.GetAsync();
                 List<Player> players;
 
-                if (request.DataType == "rankings" && request.RankingSource.HasValue)
+                if ((request.DataType == "rankings" && request.RankingSource.HasValue) ||
+                    (request.DataType == "prospects" && request.ProspectSource.HasValue))
                 {
                     // Use rankings-specific import
-                    var records = CsvPlayerImport.ParseRankingsContent(csvContent, request.PlayerCount, request.RankingSource.Value);
+                    var records = CsvPlayerImport.ParseRankingsContent(
+                        csvContent, 
+                        request.PlayerCount, 
+                        request.DataType == "rankings" ? request.RankingSource : null,
+                        request.DataType == "prospects" ? request.ProspectSource : null);
                     
                     if (records.Count == 0)
                     {
@@ -1450,16 +1455,29 @@ namespace DraftEngine.Controllers
 
                         if (existingPlayer != null)
                         {
-                    // Update existing player's rank
+                    // Update existing player's rank or prospect rank
                     existingPlayer.LastUpdated = importDate;
-                    existingPlayer.Rank ??= new Dictionary<RankingSource, int>();
-                    existingPlayer.Rank[request.RankingSource.Value] = record.RANK!.Value;
+                    if (request.DataType == "rankings")
+                    {
+                        existingPlayer.Rank ??= new Dictionary<RankingSource, int>();
+                        existingPlayer.Rank[request.RankingSource!.Value] = record.RANK!.Value;
+                    }
+                    else if (request.DataType == "prospects")
+                    {
+                        existingPlayer.ProspectRank ??= new Dictionary<ProspectSource, int>();
+                        existingPlayer.ProspectRank[request.ProspectSource!.Value] = record.RANK!.Value;
+                    }
                     players.Add(existingPlayer);
                         }
                         else
                         {
                             // Create new player
-                            players.Add(CsvPlayerImport.MapRankingsToPlayer(record, request.DataSource, importDate, request.RankingSource.Value));
+                            players.Add(CsvPlayerImport.MapRankingsToPlayer(
+                                record, 
+                                request.DataSource, 
+                                importDate, 
+                                request.DataType == "rankings" ? request.RankingSource : null,
+                                request.DataType == "prospects" ? request.ProspectSource : null));
                         }
                     }
                 }
@@ -1529,7 +1547,7 @@ namespace DraftEngine.Controllers
                 {
                     player.Position ??= Array.Empty<string>();
                     player.Rank ??= new Dictionary<RankingSource, int>();
-                    player.ProspectRank ??= new Dictionary<string, int>();
+                    player.ProspectRank ??= new Dictionary<ProspectSource, int>();
                     player.ProspectRisk ??= new Dictionary<string, string>();
                     player.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
                     player.PersonalGrades ??= new ScoutingGrades();
@@ -1588,7 +1606,7 @@ namespace DraftEngine.Controllers
                     player.ExternalIds ??= new Dictionary<string, string>();
                     player.Position ??= Array.Empty<string>();
                     player.Rank ??= new Dictionary<RankingSource, int>();
-                    player.ProspectRank ??= new Dictionary<string, int>();
+                    player.ProspectRank ??= new Dictionary<ProspectSource, int>();
                     player.ProspectRisk ??= new Dictionary<string, string>();
                     player.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
                     player.PersonalGrades ??= new ScoutingGrades();

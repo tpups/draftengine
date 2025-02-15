@@ -130,10 +130,10 @@ namespace DraftEngine.Models.Data
             };
         }
 
-        public static List<CsvPlayerRecord> ParseRankingsContent(string csvContent, int playerCount, RankingSource rankingSource)
+        public static List<CsvPlayerRecord> ParseRankingsContent(string csvContent, int playerCount, RankingSource? rankingSource = null, ProspectSource? prospectSource = null)
         {
             using var reader = new StringReader(csvContent);
-            var config = rankingSource == RankingSource.IBW 
+            var config = (rankingSource == RankingSource.IBW || prospectSource == ProspectSource.IBW)
                 ? GetIbwCsvConfig()
                 : new CsvConfiguration(CultureInfo.InvariantCulture)
                 {
@@ -143,7 +143,7 @@ namespace DraftEngine.Models.Data
                 };
 
             using var csv = new CsvReader(reader, config);
-            if (rankingSource == RankingSource.IBW)
+            if (rankingSource == RankingSource.IBW || prospectSource == ProspectSource.IBW)
             {
                 csv.Context.RegisterClassMap<IbwRankingsMap>();
             }
@@ -192,7 +192,7 @@ namespace DraftEngine.Models.Data
             return records;
         }
 
-        public static Player MapRankingsToPlayer(CsvPlayerRecord record, string dataSource, DateTime importDate, RankingSource rankingSource)
+        public static Player MapRankingsToPlayer(CsvPlayerRecord record, string dataSource, DateTime importDate, RankingSource? rankingSource = null, ProspectSource? prospectSource = null)
         {
             var player = new Player
             {
@@ -201,12 +201,23 @@ namespace DraftEngine.Models.Data
                 LastUpdated = importDate,
                 ExternalIds = new Dictionary<string, string>(),
                 Position = GetPosition(record, "rankings"),
-                CreatedFrom = rankingSource,
-                Rank = new Dictionary<RankingSource, int>
-                {
-                    [rankingSource] = record.RANK!.Value
-                }
+                CreatedFrom = rankingSource
             };
+
+            if (rankingSource.HasValue)
+            {
+                player.Rank = new Dictionary<RankingSource, int>
+                {
+                    [rankingSource.Value] = record.RANK!.Value
+                };
+            }
+            else if (prospectSource.HasValue)
+            {
+                player.ProspectRank = new Dictionary<ProspectSource, int>
+                {
+                    [prospectSource.Value] = record.RANK!.Value
+                };
+            }
 
             if (!string.IsNullOrWhiteSpace(record.PlayerId))
             {
