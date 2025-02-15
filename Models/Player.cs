@@ -1,10 +1,47 @@
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Serializers;
 
 namespace DraftEngine.Models
 {
+    public class RankingDictionarySerializer : SerializerBase<Dictionary<RankingSource, int>>
+    {
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, Dictionary<RankingSource, int> value)
+        {
+            var dictionary = new Dictionary<string, int>();
+            if (value != null)
+            {
+                foreach (var kvp in value)
+                {
+                    dictionary[kvp.Key.ToString()] = kvp.Value;
+                }
+            }
+            BsonSerializer.Serialize(context.Writer, dictionary);
+        }
+
+        public override Dictionary<RankingSource, int> Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            var dictionary = BsonSerializer.Deserialize<Dictionary<string, int>>(context.Reader);
+            var result = new Dictionary<RankingSource, int>();
+            foreach (var kvp in dictionary)
+            {
+                if (Enum.TryParse<RankingSource>(kvp.Key, out var rankingSource))
+                {
+                    result[rankingSource] = kvp.Value;
+                }
+            }
+            return result;
+        }
+    }
+
     public class Player
     {
+        static Player()
+        {
+            BsonSerializer.RegisterSerializer(new RankingDictionarySerializer());
+        }
+
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
@@ -13,7 +50,8 @@ namespace DraftEngine.Models
 
         public string[]? Position { get; set; }
 
-        public Dictionary<string, int>? Rank { get; set; }
+        [BsonSerializer(typeof(RankingDictionarySerializer))]
+        public Dictionary<RankingSource, int>? Rank { get; set; }
 
         public Dictionary<string, int>? ProspectRank { get; set; }
 
@@ -56,6 +94,9 @@ namespace DraftEngine.Models
         public string? Notes { get; set; }
         public int? PersonalRank { get; set; }
         public decimal? StarsRating { get; set; }  // 0-5 in 0.5 increments
+
+        [BsonRepresentation(BsonType.String)]
+        public RankingSource? CreatedFrom { get; set; }
 
         // Batting/Pitching information
         public string? BatSide { get; set; }

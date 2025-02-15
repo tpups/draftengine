@@ -1,7 +1,7 @@
 import { Box, Paper } from '@mui/material';
 import { useTheme } from '../contexts/ThemeContext';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
-import { Draft, Manager, Player } from '../types/models';
+import { Draft, Manager, Player, RankingSource } from '../types/models';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { DraftManagerFlyout } from './DraftManagerFlyout';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -175,7 +175,7 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       mlbTeam: player.mlbTeam,
       level: player.level,
       eligible: eligiblePositions.join(', '),
-      rank: player.rank?.['steamer_2025'] || null,
+      rank: player.rank?.[RankingSource.IBW] || null,
       age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
       position: player.position?.join(', ') || '',
       draftingManagerName: draftStatus?.isDrafted ? (draftingManager?.name ?? '[Manager Deleted]') : '',

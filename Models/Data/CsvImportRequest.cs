@@ -20,16 +20,31 @@ namespace DraftEngine.Models.Data
         public ProjectionType? ProjectionType { get; set; }
 
         /// <summary>
-        /// The source of the data (e.g., steamer_2025)
+        /// The source of the data for projections
         /// </summary>
-        [Required]
-        public string DataSource { get; set; } = null!;
+        public ProjectionSource? ProjectionSource { get; set; }
+
+        /// <summary>
+        /// The source of the data for rankings
+        /// </summary>
+        public RankingSource? RankingSource { get; set; }
+
+        /// <summary>
+        /// The source of the data for prospects
+        /// </summary>
+        public ProspectSource? ProspectSource { get; set; }
 
         /// <summary>
         /// Type of data: projections, rankings, or prospects
         /// </summary>
         [Required]
         public string DataType { get; set; } = null!;
+
+        /// <summary>
+        /// The source of the data (maintained for backward compatibility)
+        /// </summary>
+        [Required]
+        public string DataSource { get; set; } = null!;
 
         /// <summary>
         /// Number of players to import from the CSV

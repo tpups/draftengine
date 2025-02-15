@@ -24,6 +24,8 @@ namespace DraftEngine.Models.Data
             public string? Team { get; set; }
             public string? PlayerId { get; set; }  // FanGraphs ID
             public string? MLBAMID { get; set; } // MLBAM ID
+            public int? RANK { get; set; }  // For rankings imports
+            public string? POS { get; set; }  // For rankings/prospects imports
             
             // Hitter Projections
             public double? HR { get; set; }
@@ -67,6 +69,8 @@ namespace DraftEngine.Models.Data
                 Map(m => m.Team).Name("Team");
                 Map(m => m.PlayerId).Name("PlayerId");
                 Map(m => m.MLBAMID).Name("MLBAMID");
+                Map(m => m.RANK).Name("RANK");
+                Map(m => m.POS).Name("POS");
                 
                 // Hitter Projections
                 Map(m => m.HR).Name("HR");
@@ -101,6 +105,72 @@ namespace DraftEngine.Models.Data
             }
         }
 
+        public class IbwRankingsMap : ClassMap<CsvPlayerRecord>
+        {
+            public IbwRankingsMap()
+            {
+                Map(m => m.Name).Name("NAME");
+                Map(m => m.Team).Name("TM");
+                Map(m => m.PlayerId).Name("ID");
+                Map(m => m.RANK).Name("RANK");
+                Map(m => m.POS).Name("POS");
+            }
+        }
+
+        private static CsvConfiguration GetIbwCsvConfig()
+        {
+            return new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true,
+                MissingFieldFound = null,
+                HeaderValidated = null,
+                TrimOptions = TrimOptions.Trim,
+                Mode = CsvMode.RFC4180,
+                AllowComments = true
+            };
+        }
+
+        public static List<CsvPlayerRecord> ParseRankingsContent(string csvContent, int playerCount, RankingSource rankingSource)
+        {
+            using var reader = new StringReader(csvContent);
+            var config = rankingSource == RankingSource.IBW 
+                ? GetIbwCsvConfig()
+                : new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = true,
+                    MissingFieldFound = null,
+                    HeaderValidated = null
+                };
+
+            using var csv = new CsvReader(reader, config);
+            if (rankingSource == RankingSource.IBW)
+            {
+                csv.Context.RegisterClassMap<IbwRankingsMap>();
+            }
+            else
+            {
+                csv.Context.RegisterClassMap<CsvPlayerRecordMap>();
+            }
+            
+            var records = csv.GetRecords<CsvPlayerRecord>()
+                .Where(r => !string.IsNullOrWhiteSpace(r.Name) && r.RANK.HasValue && r.RANK.Value > 0)
+                .Take(playerCount)
+                .ToList();
+
+            // Validate no duplicate ranks
+            var duplicateRanks = records.GroupBy(r => r.RANK)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateRanks.Any())
+            {
+                throw new InvalidOperationException($"Duplicate ranks found: {string.Join(", ", duplicateRanks)}");
+            }
+
+            return records;
+        }
+
         public static List<CsvPlayerRecord> ParseCsvContent(string csvContent, int playerCount)
         {
             using var reader = new StringReader(csvContent);
@@ -122,7 +192,7 @@ namespace DraftEngine.Models.Data
             return records;
         }
 
-        public static Player MapToPlayer(CsvPlayerRecord record, string dataSource, string dataType, DateTime importDate, ProjectionType? projectionType)
+        public static Player MapRankingsToPlayer(CsvPlayerRecord record, string dataSource, DateTime importDate, RankingSource rankingSource)
         {
             var player = new Player
             {
@@ -130,8 +200,12 @@ namespace DraftEngine.Models.Data
                 MLBTeam = record.Team,
                 LastUpdated = importDate,
                 ExternalIds = new Dictionary<string, string>(),
-                // Set position based on stats - if they have IP, they're a pitcher
-                Position = record.IP.HasValue && record.IP.Value > 0 ? new[] { "P" } : Array.Empty<string>()
+                Position = GetPosition(record, "rankings"),
+                CreatedFrom = rankingSource,
+                Rank = new Dictionary<RankingSource, int>
+                {
+                    [rankingSource] = record.RANK!.Value
+                }
             };
 
             if (!string.IsNullOrWhiteSpace(record.PlayerId))
@@ -144,8 +218,40 @@ namespace DraftEngine.Models.Data
                 player.ExternalIds["mlbam_id"] = record.MLBAMID;
             }
 
-            // Handle projections
-            if (dataType == "projections" && projectionType.HasValue)
+            return player;
+        }
+
+        public static Player MapToPlayer(CsvPlayerRecord record, string dataSource, string dataType, DateTime importDate, ProjectionType? projectionType)
+        {
+            var player = new Player
+            {
+                Name = record.Name!,
+                MLBTeam = record.Team,
+                LastUpdated = importDate,
+                ExternalIds = new Dictionary<string, string>(),
+                Position = GetPosition(record, dataType),
+                CreatedFrom = null
+            };
+
+            if (!string.IsNullOrWhiteSpace(record.PlayerId))
+            {
+                player.ExternalIds["fangraphs_id"] = record.PlayerId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(record.MLBAMID))
+            {
+                player.ExternalIds["mlbam_id"] = record.MLBAMID;
+            }
+
+            // Handle different import types
+            if (dataType == "rankings" && record.RANK.HasValue)
+            {
+                player.Rank = new Dictionary<RankingSource, int>
+                {
+                    [RankingSource.IBW] = record.RANK.Value
+                };
+            }
+            else if (dataType == "projections" && projectionType.HasValue)
             {
                 var projectionData = new ProjectionData();
 
@@ -206,6 +312,22 @@ namespace DraftEngine.Models.Data
             }
 
             return player;
+        }
+
+        private static string[] GetPosition(CsvPlayerRecord record, string dataType)
+        {
+            if (!string.IsNullOrWhiteSpace(record.POS))
+            {
+                return record.POS.Split('/');
+            }
+            
+            // For projections, infer position from stats
+            if (dataType == "projections")
+            {
+                return record.IP.HasValue && record.IP.Value > 0 ? new[] { "P" } : Array.Empty<string>();
+            }
+
+            return Array.Empty<string>();
         }
     }
 }

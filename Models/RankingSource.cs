@@ -4,7 +4,26 @@ using DraftEngine.Models;
 
 namespace DraftEngine.Models
 {
-    public class RankingSource
+    public enum ProjectionSource
+{
+    Steamer,
+    ZiPS
+}
+
+public enum RankingSource
+{
+    IBW
+}
+
+public enum ProspectSource
+{
+    BaseballProspectus,
+    BaseballAmerica,
+    FanGraphs,
+    IBW
+}
+
+public class RankingSourceManager
     {
         public string SourceName { get; set; } = null!;
         public List<Player> Players { get; set; } = new List<Player>();
@@ -51,7 +70,7 @@ namespace DraftEngine.Models
                 player.Level = updatedPlayer.Level;
                 player.BirthDate = updatedPlayer.BirthDate;
                 player.ETA = updatedPlayer.ETA;
-                player.Rank = updatedPlayer.Rank;
+                player.Rank = new Dictionary<RankingSource, int>(updatedPlayer.Rank ?? new Dictionary<RankingSource, int>());
                 player.ProspectRank = updatedPlayer.ProspectRank;
                 player.ProspectRisk = updatedPlayer.ProspectRisk;
                 player.ScoutingGrades = updatedPlayer.ScoutingGrades;
@@ -61,7 +80,7 @@ namespace DraftEngine.Models
         }
 
         // Sorts the players by their rank from a specific source
-        public void SortPlayersByRank(string source)
+        public void SortPlayersByRank(RankingSource source)
         {
             Players = Players.OrderBy(p => p.Rank?.ContainsKey(source) == true ? p.Rank[source] : int.MaxValue).ToList();
         }

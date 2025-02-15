@@ -21,7 +21,7 @@ export interface Player {
     id?: string;
     name: string;
     position?: string[];
-    rank?: Record<string, number>;
+    rank?: Record<RankingSource, number>;
     prospectRank?: Record<string, number>;
     mlbTeam?: string;
     level?: string;
@@ -243,6 +243,22 @@ export interface LeagueSettings {
 }
 
 export enum ProjectionType {
-    Hitter = 'hitter',
-    Pitcher = 'pitcher'
+    Hitter = "Hitter",
+    Pitcher = "Pitcher"
+}
+
+export enum ProjectionSource {
+    Steamer = "Steamer",
+    ZiPS = "ZiPS"
+}
+
+export enum RankingSource {
+    IBW = "IBW"
+}
+
+export enum ProspectSource {
+    MLBPipeline = "BaseballProspectus",
+    BaseballAmerica = "BaseballAmerica",
+    FanGraphs = "FanGraphs",
+    IBW = "IBW"
 }

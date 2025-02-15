@@ -108,10 +108,13 @@ namespace DraftEngine.Services
                     return nameAndBirthMatch;
             }
 
-            // If still no match and we have a name, try to find by name
+            // If still no match and we have a name, try to find by name with diacritic-insensitive comparison
             if (player.Name != null)
             {
-                return await _players.Find(p => p.Name == player.Name).FirstOrDefaultAsync();
+                var allPlayers = await _players.Find(p => true).ToListAsync();
+                return allPlayers.FirstOrDefault(p => 
+                    StringNormalizationUtils.NormalizedEquals(p.Name, player.Name)
+                );
             }
 
             return null;
@@ -123,10 +126,10 @@ namespace DraftEngine.Services
             existing.LastUpdated = DateTime.UtcNow;
 
             // Helper function to merge dictionaries
-            void MergeDictionary<T>(Dictionary<string, T>? existing, Dictionary<string, T>? newData)
+            void MergeDictionary<TKey, TValue>(Dictionary<TKey, TValue>? existing, Dictionary<TKey, TValue>? newData)
             {
                 if (newData == null) return;
-                existing ??= new Dictionary<string, T>();
+                existing ??= new Dictionary<TKey, TValue>();
                 foreach (var item in newData)
                 {
                     existing[item.Key] = item.Value;
@@ -187,7 +190,7 @@ namespace DraftEngine.Services
             if (newData.Notes != null) existing.Notes = newData.Notes;
 
             // Merge dictionary fields
-            MergeDictionary(existing.Rank, newData.Rank);
+            MergeDictionary(existing.Rank as Dictionary<RankingSource, int>, newData.Rank as Dictionary<RankingSource, int>);
             MergeDictionary(existing.ProspectRank, newData.ProspectRank);
             MergeDictionary(existing.ProspectRisk, newData.ProspectRisk);
             MergeDictionary(existing.ScoutingGrades, newData.ScoutingGrades);

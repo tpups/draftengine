@@ -16,7 +16,14 @@ import {
 } from '@mui/material';
 import { usePlayerService } from '../../services/playerService';
 import { apiClient } from '../../services/apiClient';
-import { BirthDateVerificationResult, PositionUpdateResult, ProjectionType } from '../../types/models';
+import { 
+  BirthDateVerificationResult, 
+  PositionUpdateResult, 
+  ProjectionType,
+  ProjectionSource,
+  RankingSource,
+  ProspectSource 
+} from '../../types/models';
 import { LeagueSettingsModal } from './LeagueSettingsModal';
 
 interface VerifyBirthDatesStatus {
@@ -40,11 +47,22 @@ export const DataManagement: React.FC = () => {
   } | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
-  const [importConfig, setImportConfig] = useState({
+  const [importConfig, setImportConfig] = useState<{
+    dataSource: string;
+    dataType: string;
+    playerCount: number;
+    projectionType: ProjectionType;
+    projectionSource: ProjectionSource | '';
+    rankingSource: RankingSource | '';
+    prospectSource: ProspectSource | '';
+  }>({
     dataSource: '',
-    dataType: 'projections',
+    dataType: '',
     playerCount: 100,
-    projectionType: ProjectionType.Hitter
+    projectionType: ProjectionType.Hitter,
+    projectionSource: '',
+    rankingSource: '',
+    prospectSource: ''
   });
   const [verifyBirthDatesDialogOpen, setVerifyBirthDatesDialogOpen] = useState(false);
   const [verifyBirthDatesLoading, setVerifyBirthDatesLoading] = useState(false);
@@ -148,12 +166,23 @@ export const DataManagement: React.FC = () => {
       setImportStatus(null);
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('dataSource', importConfig.dataSource);
       formData.append('dataType', importConfig.dataType);
       formData.append('playerCount', importConfig.playerCount.toString());
+
+      // Set dataSource based on the type
+      let dataSource = '';
       if (importConfig.dataType === 'projections') {
-        formData.append('projectionType', importConfig.projectionType);
+        dataSource = importConfig.projectionSource;
+        formData.append('projectionType', importConfig.projectionType.toString());
+        formData.append('projectionSource', importConfig.projectionSource.toString());
+      } else if (importConfig.dataType === 'rankings') {
+        dataSource = importConfig.rankingSource;
+        formData.append('rankingSource', importConfig.rankingSource.toString());
+      } else if (importConfig.dataType === 'prospects') {
+        dataSource = importConfig.prospectSource;
+        formData.append('prospectSource', importConfig.prospectSource.toString());
       }
+      formData.append('dataSource', dataSource);
 
       const result = await apiClient.upload<{ message: string }>('player/importcsv', formData);
       
@@ -225,8 +254,9 @@ export const DataManagement: React.FC = () => {
             >
               {importStatus.message}
             </Alert>
-          )}
-        </Box>
+              )}
+
+            </Box>
 
         <Divider sx={{ my: 2 }} />
 
@@ -350,21 +380,20 @@ export const DataManagement: React.FC = () => {
           <DialogContent>
             <Box sx={{ mt: 2, minWidth: 300 }}>
               <TextField
-                fullWidth
-                label="Data Source"
-                value={importConfig.dataSource}
-                onChange={(e) => setImportConfig(prev => ({ ...prev, dataSource: e.target.value }))}
-                margin="normal"
-                helperText="e.g., steamer_2025"
-              />
-              
-              <TextField
                 select
                 fullWidth
                 margin="normal"
                 label="Data Type"
                 value={importConfig.dataType}
-                onChange={(e) => setImportConfig(prev => ({ ...prev, dataType: e.target.value }))}
+                onChange={(e) => setImportConfig(prev => ({ 
+                  ...prev, 
+                  dataType: e.target.value,
+                  // Reset sources when changing type
+                  projectionSource: '',
+                  rankingSource: '',
+                  prospectSource: '',
+                  dataSource: ''
+                }))}
               >
                 <MenuItem value="projections">Projections</MenuItem>
                 <MenuItem value="rankings">Rankings</MenuItem>
@@ -372,19 +401,80 @@ export const DataManagement: React.FC = () => {
               </TextField>
 
               {importConfig.dataType === 'projections' && (
+                <>
+                  <TextField
+                    select
+                    fullWidth
+                    required
+                    label="Projection Source"
+                    value={importConfig.projectionSource}
+                    onChange={(e) => setImportConfig(prev => ({ 
+                      ...prev, 
+                      projectionSource: e.target.value as ProjectionSource,
+                      dataSource: e.target.value
+                    }))}
+                    margin="normal"
+                  >
+                    {Object.values(ProjectionSource).map(source => (
+                      <MenuItem key={source} value={source}>{source}</MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    select
+                    fullWidth
+                    required
+                    label="Projection Type"
+                    value={importConfig.projectionType}
+                    onChange={(e) => setImportConfig(prev => ({ 
+                      ...prev, 
+                      projectionType: e.target.value as ProjectionType
+                    }))}
+                    margin="normal"
+                  >
+                    <MenuItem value={ProjectionType.Hitter}>Hitter</MenuItem>
+                    <MenuItem value={ProjectionType.Pitcher}>Pitcher</MenuItem>
+                  </TextField>
+                </>
+              )}
+
+              {importConfig.dataType === 'rankings' && (
                 <TextField
                   select
                   fullWidth
-                  margin="normal"
-                  label="Projection Type"
-                  value={importConfig.projectionType}
+                  required
+                  label="Ranking Source"
+                  value={importConfig.rankingSource}
                   onChange={(e) => setImportConfig(prev => ({ 
                     ...prev, 
-                    projectionType: e.target.value as ProjectionType
+                    rankingSource: e.target.value as RankingSource,
+                    dataSource: e.target.value
                   }))}
+                  margin="normal"
                 >
-                  <MenuItem value={ProjectionType.Hitter}>Hitter</MenuItem>
-                  <MenuItem value={ProjectionType.Pitcher}>Pitcher</MenuItem>
+                  {Object.values(RankingSource).map(source => (
+                    <MenuItem key={source} value={source}>{source}</MenuItem>
+                  ))}
+                </TextField>
+              )}
+
+              {importConfig.dataType === 'prospects' && (
+                <TextField
+                  select
+                  fullWidth
+                  required
+                  label="Prospect Source"
+                  value={importConfig.prospectSource}
+                  onChange={(e) => setImportConfig(prev => ({ 
+                    ...prev, 
+                    prospectSource: e.target.value as ProspectSource,
+                    dataSource: e.target.value
+                  }))}
+                  margin="normal"
+                >
+                  {Object.values(ProspectSource).map(source => (
+                    <MenuItem key={source} value={source}>{source}</MenuItem>
+                  ))}
                 </TextField>
               )}
 
@@ -393,7 +483,10 @@ export const DataManagement: React.FC = () => {
                 type="number"
                 label="Number of Players"
                 value={importConfig.playerCount}
-                onChange={(e) => setImportConfig(prev => ({ ...prev, playerCount: parseInt(e.target.value) || 0 }))}
+                onChange={(e) => setImportConfig(prev => ({ 
+                  ...prev, 
+                  playerCount: parseInt(e.target.value) || 0 
+                }))}
                 margin="normal"
                 inputProps={{ min: 1 }}
               />
@@ -411,7 +504,14 @@ export const DataManagement: React.FC = () => {
             <Button
               onClick={handleCsvImport}
               variant="contained"
-              disabled={!importConfig.dataSource || importConfig.playerCount < 1 || importLoading}
+              disabled={
+                !importConfig.dataType || 
+                importConfig.playerCount < 1 || 
+                importLoading ||
+                (importConfig.dataType === 'projections' && !importConfig.projectionSource) ||
+                (importConfig.dataType === 'rankings' && !importConfig.rankingSource) ||
+                (importConfig.dataType === 'prospects' && !importConfig.prospectSource)
+              }
             >
               {importLoading ? 'Importing...' : 'Import CSV'}
             </Button>

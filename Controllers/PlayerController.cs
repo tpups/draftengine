@@ -184,7 +184,7 @@ namespace DraftEngine.Controllers
                 newPlayer.LastUpdated = DateTime.UtcNow;
                 newPlayer.ExternalIds ??= new Dictionary<string, string>();
                 newPlayer.Position ??= Array.Empty<string>();
-                newPlayer.Rank ??= new Dictionary<string, int>();
+                newPlayer.Rank ??= new Dictionary<RankingSource, int>();
                 newPlayer.ProspectRank ??= new Dictionary<string, int>();
                 newPlayer.ProspectRisk ??= new Dictionary<string, string>();
                 newPlayer.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
@@ -1402,77 +1402,133 @@ namespace DraftEngine.Controllers
                 var csvContent = await reader.ReadToEndAsync();
 
                 // Validate projection type is provided when importing projections
-                if (request.DataType == "projections" && !request.ProjectionType.HasValue)
+                // Validate data type specific requirements
+                switch (request.DataType)
                 {
-                    _logger.LogWarning("Missing projection type for projections import");
-                    return BadRequest(ApiResponse<string>.Create("Projection type is required when importing projections"));
-                }
+                    case "projections" when !request.ProjectionType.HasValue:
+                        _logger.LogWarning("Missing projection type for projections import");
+                        return BadRequest(ApiResponse<string>.Create("Projection type is required when importing projections"));
 
-                var records = CsvPlayerImport.ParseCsvContent(csvContent, request.PlayerCount);
+                    case "rankings" when !request.RankingSource.HasValue:
+                        _logger.LogWarning("Missing ranking source for rankings import");
+                        return BadRequest(ApiResponse<string>.Create("Ranking source is required when importing rankings"));
 
-                if (records.Count == 0)
-                {
-                    _logger.LogWarning("No valid records found in CSV file: {FileName}", request.File.FileName);
-                    return BadRequest(ApiResponse<string>.Create("No valid records found in CSV file"));
-                }
-
-                if (records.Count < request.PlayerCount)
-                {
-                    _logger.LogWarning("Insufficient records in CSV file. Expected: {Expected}, Found: {Found}", 
-                        request.PlayerCount, records.Count);
-                    return BadRequest(ApiResponse<string>.Create(
-                        $"Insufficient records in CSV file. Expected {request.PlayerCount} players but found only {records.Count}"));
+                    case "prospects" when !request.ProspectSource.HasValue:
+                        _logger.LogWarning("Missing prospect source for prospects import");
+                        return BadRequest(ApiResponse<string>.Create("Prospect source is required when importing prospects"));
                 }
 
                 var importDate = DateTime.UtcNow;
-                // Get all existing players first
                 var existingPlayers = await _playerService.GetAsync();
+                List<Player> players;
 
-                var players = records.Select(r => 
+                if (request.DataType == "rankings" && request.RankingSource.HasValue)
                 {
-                    var player = CsvPlayerImport.MapToPlayer(r, request.DataSource, request.DataType, importDate, request.ProjectionType);
+                    // Use rankings-specific import
+                    var records = CsvPlayerImport.ParseRankingsContent(csvContent, request.PlayerCount, request.RankingSource.Value);
                     
-                    // For projections, merge with existing player data if found
-                    if (request.DataType == "projections")
+                    if (records.Count == 0)
                     {
-                        var existingPlayer = existingPlayers.FirstOrDefault(p => p.Name == player.Name);
+                        _logger.LogWarning("No valid records found in CSV file: {FileName}", request.File.FileName);
+                        return BadRequest(ApiResponse<string>.Create("No valid records found in CSV file"));
+                    }
+
+                    if (records.Count < request.PlayerCount)
+                    {
+                        _logger.LogWarning("Insufficient records in CSV file. Expected: {Expected}, Found: {Found}", 
+                            request.PlayerCount, records.Count);
+                        return BadRequest(ApiResponse<string>.Create(
+                            $"Insufficient records in CSV file. Expected {request.PlayerCount} players but found only {records.Count}"));
+                    }
+
+                    players = new List<Player>();
+                    foreach (var record in records)
+                    {
+                        // Try to find existing player by name
+                        var existingPlayer = existingPlayers.FirstOrDefault(p => 
+                            StringNormalizationUtils.NormalizedEquals(p.Name, record.Name!));
+
                         if (existingPlayer != null)
                         {
-                            // Preserve existing projections
-                            if (existingPlayer.Projections != null && 
-                                existingPlayer.Projections.TryGetValue(request.DataSource, out var existingProjection))
-                            {
-                                var newProjection = player.Projections[request.DataSource];
-                                
-                                // Keep existing projection data for the type we're not updating
-                                if (request.ProjectionType == Models.Data.ProjectionType.Hitter)
-                                {
-                                    newProjection.Pitcher = existingProjection.Pitcher;
-                                }
-                                else if (request.ProjectionType == Models.Data.ProjectionType.Pitcher)
-                                {
-                                    newProjection.Hitter = existingProjection.Hitter;
-                                }
-                                
-                                player.Projections[request.DataSource] = newProjection;
-                            }
-                            
-                            // Preserve TWP status
-                            if (existingPlayer.Position?.Contains("TWP") == true)
-                            {
-                                player.Position = existingPlayer.Position;
-                            }
+                    // Update existing player's rank
+                    existingPlayer.LastUpdated = importDate;
+                    existingPlayer.Rank ??= new Dictionary<RankingSource, int>();
+                    existingPlayer.Rank[request.RankingSource.Value] = record.RANK!.Value;
+                    players.Add(existingPlayer);
+                        }
+                        else
+                        {
+                            // Create new player
+                            players.Add(CsvPlayerImport.MapRankingsToPlayer(record, request.DataSource, importDate, request.RankingSource.Value));
                         }
                     }
-                    
-                    return player;
-                }).ToList();
+                }
+                else
+                {
+                    // Use standard import for projections
+                    var records = CsvPlayerImport.ParseCsvContent(csvContent, request.PlayerCount);
+
+                    if (records.Count == 0)
+                    {
+                        _logger.LogWarning("No valid records found in CSV file: {FileName}", request.File.FileName);
+                        return BadRequest(ApiResponse<string>.Create("No valid records found in CSV file"));
+                    }
+
+                    if (records.Count < request.PlayerCount)
+                    {
+                        _logger.LogWarning("Insufficient records in CSV file. Expected: {Expected}, Found: {Found}", 
+                            request.PlayerCount, records.Count);
+                        return BadRequest(ApiResponse<string>.Create(
+                            $"Insufficient records in CSV file. Expected {request.PlayerCount} players but found only {records.Count}"));
+                    }
+
+                    players = records.Select(r => 
+                    {
+                        var player = CsvPlayerImport.MapToPlayer(r, request.DataSource, request.DataType, importDate, request.ProjectionType);
+                        
+                        // For projections, merge with existing player data if found
+                        if (request.DataType == "projections")
+                        {
+                            var existingPlayer = existingPlayers.FirstOrDefault(p => 
+                                StringNormalizationUtils.NormalizedEquals(p.Name, player.Name));
+                            if (existingPlayer != null)
+                            {
+                                // Preserve existing projections
+                                if (existingPlayer.Projections != null && 
+                                    existingPlayer.Projections.TryGetValue(request.DataSource, out var existingProjection))
+                                {
+                                    var newProjection = player.Projections[request.DataSource];
+                                    
+                                    // Keep existing projection data for the type we're not updating
+                                    if (request.ProjectionType == Models.Data.ProjectionType.Hitter)
+                                    {
+                                        newProjection.Pitcher = existingProjection.Pitcher;
+                                    }
+                                    else if (request.ProjectionType == Models.Data.ProjectionType.Pitcher)
+                                    {
+                                        newProjection.Hitter = existingProjection.Hitter;
+                                    }
+                                    
+                                    player.Projections[request.DataSource] = newProjection;
+                                }
+                                
+                                // Preserve TWP status
+                                if (existingPlayer.Position?.Contains("TWP") == true)
+                                {
+                                    player.Position = existingPlayer.Position;
+                                }
+                            }
+                        }
+                        
+                        return player;
+                    }).ToList();
+                }
 
                 // Initialize collections and required fields for each player
                 foreach (var player in players)
                 {
                     player.Position ??= Array.Empty<string>();
-                    player.Rank ??= new Dictionary<string, int>();
+                    player.Rank ??= new Dictionary<RankingSource, int>();
                     player.ProspectRank ??= new Dictionary<string, int>();
                     player.ProspectRisk ??= new Dictionary<string, string>();
                     player.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
@@ -1531,7 +1587,7 @@ namespace DraftEngine.Controllers
                     player.LastUpdated = now;
                     player.ExternalIds ??= new Dictionary<string, string>();
                     player.Position ??= Array.Empty<string>();
-                    player.Rank ??= new Dictionary<string, int>();
+                    player.Rank ??= new Dictionary<RankingSource, int>();
                     player.ProspectRank ??= new Dictionary<string, int>();
                     player.ProspectRisk ??= new Dictionary<string, string>();
                     player.ScoutingGrades ??= new Dictionary<string, ScoutingGrades>();
