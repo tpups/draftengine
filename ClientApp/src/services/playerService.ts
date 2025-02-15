@@ -20,6 +20,8 @@ export interface PlayerFilters {
   pageSize?: number;
   playerType?: 'all' | 'pitchers' | 'hitters';
   position?: string;
+  sortField?: string;
+  sortDescending?: boolean;
 }
 import { useMemo } from 'react';
 import { MLB_TEAMS } from '../components/PlayerListFilters';
@@ -114,6 +116,12 @@ const playerService = {
     // Always include pagination
     params.append('pageNumber', (filters.pageNumber || 1).toString());
     params.append('pageSize', (filters.pageSize || 100).toString());
+
+    // Add sorting if specified
+    if (filters.sortField) {
+      params.append('sortField', filters.sortField);
+      params.append('sortDescending', filters.sortDescending ? 'true' : 'false');
+    }
 
     return apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/search?${params.toString()}`)
       .then(response => response.value);

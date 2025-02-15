@@ -89,6 +89,8 @@ export function PlayerList() {
     ageRange: [number, number];
     levels?: string[];
     playerType: 'all' | 'pitchers' | 'hitters';
+    sortField?: string;
+    sortDescending?: boolean;
   }>({
     excludeDrafted: false,
     teams: Object.values(MLB_TEAMS).flatMap(divisions => 
@@ -99,7 +101,7 @@ export function PlayerList() {
   });
 
   const { data: searchResult = { items: [], totalCount: 0 }, isLoading, error } = useQuery<PaginatedResult<Player>, Error>({
-    queryKey: ['players', page, pageSize, debouncedSearchTerm, filters],
+    queryKey: ['players', page, pageSize, debouncedSearchTerm, filters, filters.sortField, filters.sortDescending],
     queryFn: () => playerService.search({ 
       searchTerm: debouncedSearchTerm,
       pageNumber: page, 
@@ -513,6 +515,13 @@ export function PlayerList() {
                 console.debug('Pagination change:', { model, newPage, pageSize: model.pageSize });
                 setPage(newPage);
                 setPageSize(model.pageSize);
+              }}
+              onSortChange={(field, descending) => {
+                setFilters(prev => ({
+                  ...prev,
+                  sortField: field || undefined,
+                  sortDescending: field ? descending : undefined
+                }));
               }}
               noRowsOverlay={
                 searchTerm ? 

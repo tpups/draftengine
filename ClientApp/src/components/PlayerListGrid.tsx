@@ -56,6 +56,7 @@ interface PlayerListGridProps {
   canDraft: (playerId: string) => boolean;
   totalCount: number;
   onPaginationChange: (model: { page: number; pageSize: number }) => void;
+  onSortChange?: (field: string, descending: boolean) => void;
   currentPage: number;
   noRowsOverlay?: React.ReactNode;
 }
@@ -75,6 +76,7 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
   canDraft,
   totalCount,
   onPaginationChange,
+  onSortChange,
   currentPage,
   noRowsOverlay
 }: PlayerListGridProps): JSX.Element {
@@ -326,12 +328,14 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       width: 80,
       type: 'number' as const,
       align: 'center' as const,
-      headerAlign: 'center' as const
+      headerAlign: 'center' as const,
+      sortable: true
     },
     {
       field: 'name',
       headerName: 'Name',
       width: 200,
+      sortable: true,
       renderCell: (params: GridRenderCellParams<GridPlayer>) => (
         <Box
           component="span"
@@ -355,14 +359,16 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       headerName: 'Position',
       width: 120,
       align: 'center' as const,
-      headerAlign: 'center' as const
+      headerAlign: 'center' as const,
+      sortable: true
     },
     {
       field: 'eligible',
       headerName: 'Eligible',
       width: 120,
       align: 'center' as const,
-      headerAlign: 'center' as const
+      headerAlign: 'center' as const,
+      sortable: true
     },
     {
       field: 'age',
@@ -370,21 +376,24 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       width: 80,
       type: 'number' as const,
       align: 'center' as const,
-      headerAlign: 'center' as const
+      headerAlign: 'center' as const,
+      sortable: true
     },
     {
       field: 'mlbTeam',
       headerName: 'Team',
       width: 100,
       align: 'center' as const,
-      headerAlign: 'center' as const
+      headerAlign: 'center' as const,
+      sortable: true
     },
     {
       field: 'level',
       headerName: 'Level',
       width: 100,
       align: 'center' as const,
-      headerAlign: 'center' as const
+      headerAlign: 'center' as const,
+      sortable: true
     },
     {
       field: 'actions',
@@ -450,6 +459,14 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
             onPaginationChange(model);
           }}
           paginationMode="server"
+          sortingMode="server"
+          onSortModelChange={(model) => {
+            if (onSortChange) {
+              const sortField = model[0]?.field;
+              const sortDescending = model[0]?.sort === 'desc';
+              onSortChange(sortField, sortDescending);
+            }
+          }}
           rowCount={totalCount}
           getRowSpacing={() => ({
             top: 0,
@@ -650,7 +667,8 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       prevProps.currentPage !== nextProps.currentPage ||
       prevProps.totalCount !== nextProps.totalCount ||
       prevProps.gridMode !== nextProps.gridMode ||
-      prevProps.activeDraft !== nextProps.activeDraft) {
+      prevProps.activeDraft !== nextProps.activeDraft ||
+      prevProps.onSortChange !== nextProps.onSortChange) {
     return false;
   }
   return true;

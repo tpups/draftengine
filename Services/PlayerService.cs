@@ -939,7 +939,9 @@ namespace DraftEngine.Services
             string position = null,
             int pageNumber = 1,
             int pageSize = 100,
-            string mlbId = null)
+            string mlbId = null,
+            string sortField = null,
+            bool sortDescending = false)
         {
             var filters = new List<FilterDefinition<Player>>();
             
@@ -1083,7 +1085,45 @@ namespace DraftEngine.Services
             var totalCount = await _players.CountDocumentsAsync(filter);
             var skip = (pageNumber - 1) * pageSize;
 
-            var items = await _players.Find(filter)
+            var findFluent = _players.Find(filter);
+
+            // Apply sorting if specified
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                // Map grid field names to MongoDB field names
+                var mongoField = sortField switch
+                {
+                    "rank" => $"Rank.{RankingSource.IBW}",
+                    "name" => "Name",
+                    "position" => "Position",
+                    "eligible" => "PositionStats.2024", // Current year position stats
+                    "age" => "BirthDate", // Sort by birthdate for age (reverse order)
+                    "mlbTeam" => "MLBTeam",
+                    "level" => "Level",
+                    _ => sortField
+                };
+
+                // For age sorting, we need to reverse the order since older = earlier birthdate
+                if (sortField == "age")
+                {
+                    sortDescending = !sortDescending;
+                }
+
+                var sortDefinition = sortDescending
+                    ? Builders<Player>.Sort.Descending(mongoField)
+                    : Builders<Player>.Sort.Ascending(mongoField);
+                findFluent = findFluent.Sort(sortDefinition);
+            }
+            else
+            {
+                // Default sort by IBW rank if available, then name
+                var defaultSort = Builders<Player>.Sort
+                    .Ascending($"Rank.{RankingSource.IBW}")
+                    .Ascending("Name");
+                findFluent = findFluent.Sort(defaultSort);
+            }
+
+            var items = await findFluent
                 .Skip(skip)
                 .Limit(pageSize)
                 .ToListAsync();
