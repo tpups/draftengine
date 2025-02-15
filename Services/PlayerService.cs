@@ -951,9 +951,21 @@ namespace DraftEngine.Services
             // Only add search filter if search term is provided and no MLB ID filter
             else if (!string.IsNullOrWhiteSpace(searchTerm))
             {
+                // Normalize search term to remove diacritics
+                var normalizedSearchTerm = searchTerm.Normalize(NormalizationForm.FormD);
+                var searchTermWithoutDiacritics = new StringBuilder();
+                foreach (char c in normalizedSearchTerm)
+                {
+                    if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                    {
+                        searchTermWithoutDiacritics.Append(c);
+                    }
+                }
+
+                // Create a filter that matches on the normalized name
                 filters.Add(Builders<Player>.Filter.Regex(
                     p => p.Name,
-                    new MongoDB.Bson.BsonRegularExpression($".*{searchTerm}.*", "i")
+                    new MongoDB.Bson.BsonRegularExpression($".*{searchTermWithoutDiacritics}.*", "i")
                 ));
             }
 

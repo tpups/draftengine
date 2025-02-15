@@ -26,6 +26,7 @@ namespace DraftEngine.Models.Data
             public string? MLBAMID { get; set; } // MLBAM ID
             public int? RANK { get; set; }  // For rankings imports
             public string? POS { get; set; }  // For rankings/prospects imports
+            public string? SecondaryPosition { get; set; }  // For secondary positions in prospect imports
             
             // Hitter Projections
             public double? HR { get; set; }
@@ -117,6 +118,30 @@ namespace DraftEngine.Models.Data
             }
         }
 
+        public class IbwProspectsMap : ClassMap<CsvPlayerRecord>
+        {
+            public IbwProspectsMap()
+            {
+                Map(m => m.Name).Name("NAME");
+                Map(m => m.Team).Name("TM");
+                Map(m => m.PlayerId).Name("ID");
+                Map(m => m.RANK).Name("PROSPECT RANK");
+                Map(m => m.POS).Name("POS");
+            }
+        }
+
+        public class BpRankingsMap : ClassMap<CsvPlayerRecord>
+        {
+            public BpRankingsMap()
+            {
+                Map(m => m.Name).Name("Player");
+                Map(m => m.Team).Name("Team");
+                Map(m => m.RANK).Name("Rank");
+                Map(m => m.POS).Name("POS.");
+                Map(m => m.SecondaryPosition).Name("SEC. POS.");
+            }
+        }
+
         private static CsvConfiguration GetIbwCsvConfig()
         {
             return new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -143,9 +168,17 @@ namespace DraftEngine.Models.Data
                 };
 
             using var csv = new CsvReader(reader, config);
-            if (rankingSource == RankingSource.IBW || prospectSource == ProspectSource.IBW)
+            if (rankingSource == RankingSource.IBW)
             {
                 csv.Context.RegisterClassMap<IbwRankingsMap>();
+            }
+            else if (prospectSource == ProspectSource.IBW)
+            {
+                csv.Context.RegisterClassMap<IbwProspectsMap>();
+            }
+            else if (prospectSource == ProspectSource.BaseballProspectus)
+            {
+                csv.Context.RegisterClassMap<BpRankingsMap>();
             }
             else
             {
@@ -329,7 +362,37 @@ namespace DraftEngine.Models.Data
         {
             if (!string.IsNullOrWhiteSpace(record.POS))
             {
-                return record.POS.Split('/');
+                // For BP prospects, combine POS. and SEC. POS.
+                var positions = new List<string>();
+                
+                // Split and add primary position(s)
+                if (record.POS.Contains("/"))
+                {
+                    positions.AddRange(record.POS.Split('/').Select(p => p.Trim()));
+                }
+                else
+                {
+                    positions.Add(record.POS.Trim());
+                }
+
+                // Add secondary position(s) if available
+                if (!string.IsNullOrWhiteSpace(record.SecondaryPosition))
+                {
+                    if (record.SecondaryPosition.Contains("/"))
+                    {
+                        positions.AddRange(record.SecondaryPosition.Split('/').Select(p => p.Trim()));
+                    }
+                    else
+                    {
+                        positions.Add(record.SecondaryPosition.Trim());
+                    }
+                }
+
+                // Remove any "-" entries and duplicates
+                return positions
+                    .Where(p => p != "-")
+                    .Distinct()
+                    .ToArray();
             }
             
             // For projections, infer position from stats
