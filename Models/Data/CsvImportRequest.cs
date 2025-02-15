@@ -15,6 +15,11 @@ namespace DraftEngine.Models.Data
         public IFormFile File { get; set; } = null!;
 
         /// <summary>
+        /// Type of projections being imported (required when DataType is "projections")
+        /// </summary>
+        public ProjectionType? ProjectionType { get; set; }
+
+        /// <summary>
         /// The source of the data (e.g., steamer_2025)
         /// </summary>
         [Required]

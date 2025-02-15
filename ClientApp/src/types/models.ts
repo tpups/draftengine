@@ -1,6 +1,11 @@
-export interface ProjectionData {
+export interface ProjectionStats {
     updatedDate: string;
     stats: Record<string, number>;
+}
+
+export interface ProjectionData {
+    hitter?: ProjectionStats;
+    pitcher?: ProjectionStats;
 }
 
 export interface DraftStatus {
@@ -235,4 +240,9 @@ export enum TradeStatus {
 export interface LeagueSettings {
     id?: string;
     minGamesForPosition: number;
+}
+
+export enum ProjectionType {
+    Hitter = 'hitter',
+    Pitcher = 'pitcher'
 }

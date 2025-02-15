@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { usePlayerService } from '../../services/playerService';
 import { apiClient } from '../../services/apiClient';
-import { BirthDateVerificationResult, PositionUpdateResult } from '../../types/models';
+import { BirthDateVerificationResult, PositionUpdateResult, ProjectionType } from '../../types/models';
 import { LeagueSettingsModal } from './LeagueSettingsModal';
 
 interface VerifyBirthDatesStatus {
@@ -43,7 +43,8 @@ export const DataManagement: React.FC = () => {
   const [importConfig, setImportConfig] = useState({
     dataSource: '',
     dataType: 'projections',
-    playerCount: 100
+    playerCount: 100,
+    projectionType: ProjectionType.Hitter
   });
   const [verifyBirthDatesDialogOpen, setVerifyBirthDatesDialogOpen] = useState(false);
   const [verifyBirthDatesLoading, setVerifyBirthDatesLoading] = useState(false);
@@ -150,6 +151,9 @@ export const DataManagement: React.FC = () => {
       formData.append('dataSource', importConfig.dataSource);
       formData.append('dataType', importConfig.dataType);
       formData.append('playerCount', importConfig.playerCount.toString());
+      if (importConfig.dataType === 'projections') {
+        formData.append('projectionType', importConfig.projectionType);
+      }
 
       const result = await apiClient.upload<{ message: string }>('player/importcsv', formData);
       
@@ -366,6 +370,23 @@ export const DataManagement: React.FC = () => {
                 <MenuItem value="rankings">Rankings</MenuItem>
                 <MenuItem value="prospects">Prospects</MenuItem>
               </TextField>
+
+              {importConfig.dataType === 'projections' && (
+                <TextField
+                  select
+                  fullWidth
+                  margin="normal"
+                  label="Projection Type"
+                  value={importConfig.projectionType}
+                  onChange={(e) => setImportConfig(prev => ({ 
+                    ...prev, 
+                    projectionType: e.target.value as ProjectionType
+                  }))}
+                >
+                  <MenuItem value={ProjectionType.Hitter}>Hitter</MenuItem>
+                  <MenuItem value={ProjectionType.Pitcher}>Pitcher</MenuItem>
+                </TextField>
+              )}
 
               <TextField
                 fullWidth

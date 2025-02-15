@@ -51,17 +51,15 @@ namespace DraftEngine
             var nameIndexModel = new CreateIndexModel<Player>(nameIndexKeysDefinition, nameIndexOptions);
             await _players.Indexes.CreateOneAsync(nameIndexModel);
             
-            // Create compound index on name and birthDate
-            var compoundIndexKeysDefinition = Builders<Player>.IndexKeys
-                .Ascending(p => p.Name)
-                .Ascending(p => p.BirthDate);
-            var compoundIndexOptions = new CreateIndexOptions { 
-                Unique = true, 
-                Sparse = true,
-                Collation = collation
+            // Create unique index on MLB player ID
+            var mlbIdIndexKeysDefinition = Builders<Player>.IndexKeys
+                .Ascending("ExternalIds.mlbam_id");
+            var mlbIdIndexOptions = new CreateIndexOptions { 
+                Unique = true,
+                Sparse = true // Only index documents that have mlbam_id
             };
-            var compoundIndexModel = new CreateIndexModel<Player>(compoundIndexKeysDefinition, compoundIndexOptions);
-            await _players.Indexes.CreateOneAsync(compoundIndexModel);
+            var mlbIdIndexModel = new CreateIndexModel<Player>(mlbIdIndexKeysDefinition, mlbIdIndexOptions);
+            await _players.Indexes.CreateOneAsync(mlbIdIndexModel);
         }
 
         public IMongoCollection<Player> Players

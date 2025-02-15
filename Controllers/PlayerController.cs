@@ -1228,6 +1228,62 @@ namespace DraftEngine.Controllers
         }
 
         /// <summary>
+        /// Retrieves a player by their MLB ID
+        /// </summary>
+        /// <remarks>
+        /// Returns a player's information using their MLB Stats API ID:
+        /// - Searches for players with matching MLBAM ID in external IDs
+        /// - Returns first matching player if found
+        /// - Returns 404 if no player is found
+        /// </remarks>
+        /// <param name="mlbId">The MLB Stats API ID of the player</param>
+        /// <returns>The player's information if found</returns>
+        /// <response code="200">Successfully retrieved the player</response>
+        /// <response code="404">If no player was found with the specified MLB ID</response>
+        [HttpGet("bymlbid/{mlbId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponse<Player>>> GetByMlbId(string mlbId)
+        {
+            try
+            {
+                _logger.LogInformation("Attempting to get player by MLB ID {MlbId}", mlbId);
+
+                // Use SearchPlayersPaginatedAsync with MLB ID filter
+                var result = await _playerService.SearchPlayersPaginatedAsync(
+                    searchTerm: null,
+                    excludeDrafted: false,
+                    teams: null,
+                    minAge: 18,
+                    maxAge: 40,
+                    levels: null,
+                    playerType: "all",
+                    position: null,
+                    pageNumber: 1,
+                    pageSize: 1,
+                    mlbId: mlbId
+                );
+
+                var player = result.Items.FirstOrDefault();
+
+                if (player is null)
+                {
+                    _logger.LogWarning("No player found with MLB ID {MlbId}", mlbId);
+                    return NotFound(ApiResponse<string>.Create("Player not found"));
+                }
+
+                _logger.LogInformation("Successfully retrieved player {PlayerId} with MLB ID {MlbId}", 
+                    player.Id, mlbId);
+                return Ok(ApiResponse<Player>.Create(player));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving player by MLB ID {MlbId}", mlbId);
+                return StatusCode(500, ApiResponse<string>.Create($"Internal server error: {ex.Message}"));
+            }
+        }
+        
+        /// <summary>
         /// Searches for players by name
         /// </summary>
         /// <remarks>
@@ -1345,6 +1401,13 @@ namespace DraftEngine.Controllers
                 using var reader = new StreamReader(request.File.OpenReadStream());
                 var csvContent = await reader.ReadToEndAsync();
 
+                // Validate projection type is provided when importing projections
+                if (request.DataType == "projections" && !request.ProjectionType.HasValue)
+                {
+                    _logger.LogWarning("Missing projection type for projections import");
+                    return BadRequest(ApiResponse<string>.Create("Projection type is required when importing projections"));
+                }
+
                 var records = CsvPlayerImport.ParseCsvContent(csvContent, request.PlayerCount);
 
                 if (records.Count == 0)
@@ -1362,7 +1425,48 @@ namespace DraftEngine.Controllers
                 }
 
                 var importDate = DateTime.UtcNow;
-                var players = records.Select(r => CsvPlayerImport.MapToPlayer(r, request.DataSource, request.DataType, importDate)).ToList();
+                // Get all existing players first
+                var existingPlayers = await _playerService.GetAsync();
+
+                var players = records.Select(r => 
+                {
+                    var player = CsvPlayerImport.MapToPlayer(r, request.DataSource, request.DataType, importDate, request.ProjectionType);
+                    
+                    // For projections, merge with existing player data if found
+                    if (request.DataType == "projections")
+                    {
+                        var existingPlayer = existingPlayers.FirstOrDefault(p => p.Name == player.Name);
+                        if (existingPlayer != null)
+                        {
+                            // Preserve existing projections
+                            if (existingPlayer.Projections != null && 
+                                existingPlayer.Projections.TryGetValue(request.DataSource, out var existingProjection))
+                            {
+                                var newProjection = player.Projections[request.DataSource];
+                                
+                                // Keep existing projection data for the type we're not updating
+                                if (request.ProjectionType == Models.Data.ProjectionType.Hitter)
+                                {
+                                    newProjection.Pitcher = existingProjection.Pitcher;
+                                }
+                                else if (request.ProjectionType == Models.Data.ProjectionType.Pitcher)
+                                {
+                                    newProjection.Hitter = existingProjection.Hitter;
+                                }
+                                
+                                player.Projections[request.DataSource] = newProjection;
+                            }
+                            
+                            // Preserve TWP status
+                            if (existingPlayer.Position?.Contains("TWP") == true)
+                            {
+                                player.Position = existingPlayer.Position;
+                            }
+                        }
+                    }
+                    
+                    return player;
+                }).ToList();
 
                 // Initialize collections and required fields for each player
                 foreach (var player in players)
@@ -1384,8 +1488,8 @@ namespace DraftEngine.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error importing CSV file");
-                return BadRequest(new { error = ex.Message });
+                _logger.LogError("Error importing CSV file: {Message}", ex.Message);
+                return BadRequest(ApiResponse<string>.Create($"Error importing CSV file: {ex.Message}"));
             }
         }
 

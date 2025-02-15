@@ -87,13 +87,34 @@ namespace DraftEngine.Services
 
         private async Task<Player?> FindDuplicateAsync(Player player)
         {
-            if (player.Name == null || player.BirthDate == null)
-                return null;
+            // First try to find by MLB ID if it exists
+            if (player.ExternalIds?.TryGetValue("mlbam_id", out var mlbId) == true)
+            {
+                var filter = Builders<Player>.Filter.Eq("ExternalIds.mlbam_id", mlbId);
+                var mlbMatch = await _players.Find(filter).FirstOrDefaultAsync();
+                if (mlbMatch != null)
+                    return mlbMatch;
+            }
 
-            return await _players.Find(p => 
-                p.Name == player.Name && 
-                p.BirthDate == player.BirthDate
-            ).FirstOrDefaultAsync();
+            // If no MLB ID match, try to find by name and birthdate
+            if (player.Name != null && player.BirthDate != null)
+            {
+                var nameAndBirthMatch = await _players.Find(p => 
+                    p.Name == player.Name && 
+                    p.BirthDate == player.BirthDate
+                ).FirstOrDefaultAsync();
+
+                if (nameAndBirthMatch != null)
+                    return nameAndBirthMatch;
+            }
+
+            // If still no match and we have a name, try to find by name
+            if (player.Name != null)
+            {
+                return await _players.Find(p => p.Name == player.Name).FirstOrDefaultAsync();
+            }
+
+            return null;
         }
 
         private Player MergePlayerData(Player existing, Player newData)
@@ -112,6 +133,52 @@ namespace DraftEngine.Services
                 }
             }
 
+            // Helper function to merge projection stats
+            void MergeProjectionStats(ProjectionStats? existing, ProjectionStats? newData)
+            {
+                if (newData == null) return;
+                if (existing == null) return;
+
+                existing.UpdatedDate = newData.UpdatedDate;
+                MergeDictionary(existing.Stats, newData.Stats);
+            }
+
+            // Helper function to merge projections
+            void MergeProjections(Dictionary<string, ProjectionData>? existing, Dictionary<string, ProjectionData>? newData)
+            {
+                if (newData == null) return;
+                existing ??= new Dictionary<string, ProjectionData>();
+
+                foreach (var (source, projectionData) in newData)
+                {
+                    if (!existing.TryGetValue(source, out var existingProjection))
+                    {
+                        existing[source] = projectionData;
+                        continue;
+                    }
+
+                    // Create hitter stats if they don't exist
+                    if (projectionData.Hitter != null)
+                    {
+                        existingProjection.Hitter ??= new ProjectionStats
+                        {
+                            Stats = new Dictionary<string, double>()
+                        };
+                        MergeProjectionStats(existingProjection.Hitter, projectionData.Hitter);
+                    }
+
+                    // Create pitcher stats if they don't exist
+                    if (projectionData.Pitcher != null)
+                    {
+                        existingProjection.Pitcher ??= new ProjectionStats
+                        {
+                            Stats = new Dictionary<string, double>()
+                        };
+                        MergeProjectionStats(existingProjection.Pitcher, projectionData.Pitcher);
+                    }
+                }
+            }
+
             // Update non-null fields from new data
             if (newData.Position != null && newData.Position.Length > 0) existing.Position = newData.Position;
             if (newData.MLBTeam != null) existing.MLBTeam = newData.MLBTeam;
@@ -125,6 +192,7 @@ namespace DraftEngine.Services
             MergeDictionary(existing.ProspectRisk, newData.ProspectRisk);
             MergeDictionary(existing.ScoutingGrades, newData.ScoutingGrades);
             MergeDictionary(existing.ExternalIds, newData.ExternalIds);
+            MergeProjections(existing.Projections, newData.Projections);
 
             return existing;
         }
@@ -211,8 +279,12 @@ namespace DraftEngine.Services
                         continue;
                     }
 
-                    // Skip if player has birthdate and we're not checking existing
-                    if (!includeExisting && player.BirthDate.HasValue && player.Position?.Length > 0)
+                    // Skip if player has all required fields and we're not checking existing
+                    if (!includeExisting && 
+                        player.BirthDate.HasValue && 
+                        player.Position?.Length > 0 &&
+                        player.MlbDebutDate.HasValue &&
+                        player.Level == "MLB")
                     {
                         result.ProcessedCount++;
                         continue;
@@ -289,7 +361,8 @@ namespace DraftEngine.Services
                     player.BatSide != mlbPlayer.BatSide?.Code || 
                     player.PitchHand != mlbPlayer.PitchHand?.Code ||
                     !player.MlbDebutDate.HasValue || 
-                    currentPosition != newPosition;
+                    currentPosition != newPosition ||
+                    (!string.IsNullOrEmpty(mlbPlayer.MlbDebutDate) && player.Level != "MLB");
 
                 if (currentPosition != newPosition) {
                     _logger.LogInformation("Position change detected for {PlayerName}: {OldPosition} -> {NewPosition}", 
@@ -862,12 +935,18 @@ namespace DraftEngine.Services
             string playerType = "all",
             string position = null,
             int pageNumber = 1,
-            int pageSize = 100)
+            int pageSize = 100,
+            string mlbId = null)
         {
             var filters = new List<FilterDefinition<Player>>();
             
-            // Only add search filter if search term is provided
-            if (!string.IsNullOrWhiteSpace(searchTerm))
+            // Add MLB ID filter if provided
+            if (!string.IsNullOrWhiteSpace(mlbId))
+            {
+                filters.Add(Builders<Player>.Filter.Eq("ExternalIds.mlbam_id", mlbId));
+            }
+            // Only add search filter if search term is provided and no MLB ID filter
+            else if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 filters.Add(Builders<Player>.Filter.Regex(
                     p => p.Name,
