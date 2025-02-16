@@ -9,7 +9,7 @@ RUN dotnet restore
 COPY . .
 
 # Build with XML documentation
-RUN dotnet build --no-restore -c Debug /p:GenerateDocumentationFile=true
+RUN dotnet build -c Debug /p:GenerateDocumentationFile=true
 
 # Use dotnet watch for hot reload
-ENTRYPOINT ["dotnet", "watch", "run", "--no-restore"]
+ENTRYPOINT ["dotnet", "watch", "run"]

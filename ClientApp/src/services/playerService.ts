@@ -1,14 +1,21 @@
+import { useMemo } from 'react';
 import { apiClient } from './apiClient';
+import { MLB_TEAMS } from '../components/PlayerListFilters';
+import type { MLBTeams } from '../components/PlayerListFilters';
 import { 
-  Player, 
-  DraftInfo, 
-  AgeRangeParams, 
-  RiskLevelParams, 
+  Player,
   ApiResponse,
   BirthDateVerificationResult,
   PaginatedResult,
-  PositionUpdateResult
+  PositionUpdateResult,
+  RankingSource,
+  ProspectSource
 } from '../types/models';
+
+interface AgeRangeParams {
+  minAge: number;
+  maxAge: number;
+}
 
 export interface PlayerFilters {
   excludeDrafted?: boolean;
@@ -22,10 +29,13 @@ export interface PlayerFilters {
   position?: string;
   sortField?: string;
   sortDescending?: boolean;
+  rankingSource?: RankingSource | null;
+  prospectSource?: ProspectSource | null;
+  projectionConfig?: {
+    source: string | null;
+    category: string | null;
+  };
 }
-import { useMemo } from 'react';
-import { MLB_TEAMS } from '../components/PlayerListFilters';
-import type { MLBTeams } from '../components/PlayerListFilters';
 
 const BASE_PATH = '/player';
 
@@ -121,6 +131,22 @@ const playerService = {
     if (filters.sortField) {
       params.append('sortField', filters.sortField);
       params.append('sortDescending', filters.sortDescending ? 'true' : 'false');
+    }
+
+    // Add ranking source if specified
+    if (filters.rankingSource) {
+      params.append('rankingSource', filters.rankingSource);
+    }
+
+    // Add prospect source if specified
+    if (filters.prospectSource) {
+      params.append('prospectSource', filters.prospectSource);
+    }
+
+    // Add projection config if specified
+    if (filters.projectionConfig?.source && filters.projectionConfig?.category) {
+      params.append('projectionSource', filters.projectionConfig.source);
+      params.append('projectionCategory', filters.projectionConfig.category);
     }
 
     return apiClient.get<ApiResponse<PaginatedResult<Player>>>(`${BASE_PATH}/search?${params.toString()}`)

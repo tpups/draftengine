@@ -12,7 +12,8 @@ namespace DraftEngine.Models
 
 public enum RankingSource
 {
-    IBW
+    IBW,
+    STEAMER
 }
 
 public enum ProspectSource

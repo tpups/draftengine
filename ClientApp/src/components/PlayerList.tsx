@@ -3,9 +3,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
-import { Player, Manager, ApiResponse, Draft, PaginatedResult } from '../types/models';
+import { Player, Manager, ApiResponse, Draft, PaginatedResult, RankingSource, ProspectSource, ProjectionSource } from '../types/models';
 import { PickResponse } from '../services/draftService';
-import { playerService } from '../services/playerService';
+import { playerService, PlayerFilters } from '../services/playerService';
 import { draftService } from '../services/draftService';
 import { managerService } from '../services/managerService';
 import { config } from '../config/config';
@@ -83,21 +83,19 @@ export function PlayerList() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
-  const [filters, setFilters] = useState<{
-    excludeDrafted: boolean;
-    teams: string[];
-    ageRange: [number, number];
-    levels?: string[];
-    playerType: 'all' | 'pitchers' | 'hitters';
-    sortField?: string;
-    sortDescending?: boolean;
-  }>({
+  const [filters, setFilters] = useState<PlayerFilters>({
     excludeDrafted: false,
     teams: Object.values(MLB_TEAMS).flatMap(divisions => 
       Object.values(divisions).flat()
     ),
     ageRange: [18, 40],
-    playerType: 'all'
+    playerType: 'all',
+    rankingSource: null,
+    prospectSource: null,
+    projectionConfig: {
+      source: null,
+      category: null
+    }
   });
 
   const { data: searchResult = { items: [], totalCount: 0 }, isLoading, error } = useQuery<PaginatedResult<Player>, Error>({
@@ -127,7 +125,7 @@ export function PlayerList() {
   const advancePickMutation = useMutation<ApiResponse<PickResponse>, Error, boolean>({
     mutationFn: async (skipCompleted) => {
       if (!activeDraft) throw new Error('No active draft found');
-      const nextPick = await draftService.getNextPick(activeDraft.activeOverallPick, skipCompleted);
+      const nextPick = await draftService.getNextPick(activeDraft.activeOverallPick || 0, skipCompleted);
       if (nextPick.value) {
         await draftService.updateActivePick(nextPick.value);
       }
@@ -517,11 +515,23 @@ export function PlayerList() {
                 setPageSize(model.pageSize);
               }}
               onSortChange={(field, descending) => {
-                setFilters(prev => ({
+                setFilters((prev: PlayerFilters) => ({
                   ...prev,
                   sortField: field || undefined,
                   sortDescending: field ? descending : undefined
                 }));
+              }}
+              rankingSource={filters.rankingSource ?? null}
+              prospectSource={filters.prospectSource ?? null}
+              projectionConfig={filters.projectionConfig ?? { source: null, category: null }}
+              onRankingSourceChange={(source) => setFilters((prev: PlayerFilters) => ({ ...prev, rankingSource: source }))}
+              onProspectSourceChange={(source) => setFilters((prev: PlayerFilters) => ({ ...prev, prospectSource: source }))}
+              onProjectionConfigChange={(config) => setFilters((prev: PlayerFilters) => ({ ...prev, projectionConfig: config }))}
+              availableRankingSources={Object.values(RankingSource)}
+              availableProspectSources={Object.values(ProspectSource)}
+              availableProjectionSources={Object.values(ProjectionSource)}
+              availableProjectionCategories={{
+                [ProjectionSource.STEAMER]: ['AVG', 'HR', 'RBI', 'SB', 'OPS', 'ERA', 'WHIP', 'K', 'W', 'SV']
               }}
               noRowsOverlay={
                 searchTerm ? 

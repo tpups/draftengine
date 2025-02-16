@@ -14,6 +14,8 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useTheme } from '../contexts/ThemeContext';
 import { useState, useCallback } from 'react';
+import { RankingSource, ProspectSource, ProjectionSource } from '../types/models';
+import { RankingFilters } from './RankingFilters';
 
 // MLB Teams organized by league and division
 export type MLBTeams = {
@@ -48,6 +50,14 @@ interface PlayerListFiltersProps {
     levels?: string[];
     playerType: 'all' | 'pitchers' | 'hitters';
     position?: string;
+    sortField?: string;
+    sortDescending?: boolean;
+    rankingSource: RankingSource | null;
+    prospectSource: ProspectSource | null;
+    projectionConfig: {
+      source: string | null;
+      category: string | null;
+    };
   }) => void;
   minAge?: number;
   maxAge?: number;
@@ -72,6 +82,15 @@ export function PlayerListFilters({
   const [playerType, setPlayerType] = useState<'all' | 'pitchers' | 'hitters'>('all');
   const [selectedPosition, setSelectedPosition] = useState<string>('');
   const [expandedAccordion, setExpandedAccordion] = useState<string | false>(false);
+  const [rankingSource, setRankingSource] = useState<RankingSource | null>(null);
+  const [prospectSource, setProspectSource] = useState<ProspectSource | null>(null);
+  const [projectionConfig, setProjectionConfig] = useState<{
+    source: string | null;
+    category: string | null;
+  }>({
+    source: null,
+    category: null
+  });
 
   const handleAccordionChange = useCallback((panel: string) => (event: React.SyntheticEvent, expanded: boolean) => {
     setExpandedAccordion(expanded ? panel : false);
@@ -90,9 +109,12 @@ export function PlayerListFilters({
       teams: selectedTeams,
       ageRange,
       levels: selectedLevels,
-      playerType
+      playerType,
+      rankingSource,
+      prospectSource,
+      projectionConfig
     });
-  }, [selectedTeams, ageRange, selectedLevels, onFiltersChange]);
+  }, [selectedTeams, ageRange, selectedLevels, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const handleTeamSelect = useCallback((team: string) => {
     setSelectedTeams(prev => {
@@ -104,23 +126,29 @@ export function PlayerListFilters({
         teams: newTeams,
         ageRange,
         levels: selectedLevels,
-        playerType
+        playerType,
+        rankingSource,
+        prospectSource,
+        projectionConfig
       });
       return newTeams;
     });
-  }, [excludeDrafted, ageRange, selectedLevels, onFiltersChange]);
+  }, [excludeDrafted, ageRange, selectedLevels, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const handleAgeRangeChange = useCallback((_event: Event, newValue: number | number[]) => {
     const newRange = newValue as [number, number];
     setAgeRange(newRange);
-      onFiltersChange({
-        excludeDrafted,
-        teams: selectedTeams,
-        ageRange: newRange,
-        levels: selectedLevels,
-        playerType
+    onFiltersChange({
+      excludeDrafted,
+      teams: selectedTeams,
+      ageRange: newRange,
+      levels: selectedLevels,
+      playerType,
+      rankingSource,
+      prospectSource,
+      projectionConfig
     });
-  }, [excludeDrafted, selectedTeams, selectedLevels, onFiltersChange]);
+  }, [excludeDrafted, selectedTeams, selectedLevels, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const handleLevelSelect = useCallback((level: string) => {
     setSelectedLevels(prev => {
@@ -132,11 +160,14 @@ export function PlayerListFilters({
         teams: selectedTeams,
         ageRange,
         levels: newLevels.length > 0 ? newLevels : undefined,
-        playerType
+        playerType,
+        rankingSource,
+        prospectSource,
+        projectionConfig
       });
       return newLevels;
     });
-  }, [excludeDrafted, selectedTeams, ageRange, onFiltersChange]);
+  }, [excludeDrafted, selectedTeams, ageRange, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const handleSelectAllTeams = useCallback(() => {
     const allTeams = Object.values(MLB_TEAMS).flatMap(divisions => 
@@ -148,9 +179,12 @@ export function PlayerListFilters({
       teams: allTeams,
       ageRange,
       levels: selectedLevels,
-      playerType
+      playerType,
+      rankingSource,
+      prospectSource,
+      projectionConfig
     });
-  }, [excludeDrafted, ageRange, selectedLevels, onFiltersChange]);
+  }, [excludeDrafted, ageRange, selectedLevels, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const handleDeselectAllTeams = useCallback(() => {
     setSelectedTeams([]);
@@ -159,9 +193,12 @@ export function PlayerListFilters({
       teams: [],
       ageRange,
       levels: selectedLevels,
-      playerType
+      playerType,
+      rankingSource,
+      prospectSource,
+      projectionConfig
     });
-  }, [excludeDrafted, ageRange, selectedLevels, onFiltersChange]);
+  }, [excludeDrafted, ageRange, selectedLevels, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const handleSelectAllLevels = useCallback(() => {
     setSelectedLevels(LEVELS);
@@ -170,9 +207,12 @@ export function PlayerListFilters({
       teams: selectedTeams,
       ageRange,
       levels: undefined,
-      playerType
+      playerType,
+      rankingSource,
+      prospectSource,
+      projectionConfig
     });
-  }, [excludeDrafted, selectedTeams, ageRange, onFiltersChange]);
+  }, [excludeDrafted, selectedTeams, ageRange, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const handleDeselectAllLevels = useCallback(() => {
     setSelectedLevels([]);
@@ -181,9 +221,12 @@ export function PlayerListFilters({
       teams: selectedTeams,
       ageRange,
       levels: [],
-      playerType
+      playerType,
+      rankingSource,
+      prospectSource,
+      projectionConfig
     });
-  }, [excludeDrafted, selectedTeams, ageRange, onFiltersChange]);
+  }, [excludeDrafted, selectedTeams, ageRange, rankingSource, prospectSource, projectionConfig, onFiltersChange]);
 
   const accordionStyles = {
     '&.MuiAccordion-root': {
@@ -282,7 +325,10 @@ export function PlayerListFilters({
                 teams: selectedTeams,
                 ageRange,
                 levels: selectedLevels,
-                playerType: 'all'
+                playerType: 'all',
+                rankingSource,
+                prospectSource,
+                projectionConfig
               });
             }}
           >
@@ -298,7 +344,10 @@ export function PlayerListFilters({
                 teams: selectedTeams,
                 ageRange,
                 levels: selectedLevels,
-                playerType: 'pitchers'
+                playerType: 'pitchers',
+                rankingSource,
+                prospectSource,
+                projectionConfig
               });
             }}
           >
@@ -314,7 +363,10 @@ export function PlayerListFilters({
                 teams: selectedTeams,
                 ageRange,
                 levels: selectedLevels,
-                playerType: 'hitters'
+                playerType: 'hitters',
+                rankingSource,
+                prospectSource,
+                projectionConfig
               });
             }}
           >
@@ -361,7 +413,10 @@ export function PlayerListFilters({
                         ageRange,
                         levels: selectedLevels,
                         playerType,
-                        position: undefined
+                        position: undefined,
+                        rankingSource,
+                        prospectSource,
+                        projectionConfig
                       });
                     }}
                   />
@@ -379,7 +434,10 @@ export function PlayerListFilters({
                           ageRange,
                           levels: selectedLevels,
                           playerType,
-                          position: newPosition || undefined
+                          position: newPosition || undefined,
+                          rankingSource,
+                          prospectSource,
+                          projectionConfig
                         });
                       }}
                       color={selectedPosition === position ? 'primary' : 'default'}
@@ -561,6 +619,61 @@ export function PlayerListFilters({
           </AccordionDetails>
         </Accordion>
       </Box>
+
+      {/* Ranking Filters */}
+      <RankingFilters
+        rankingSource={rankingSource}
+        prospectSource={prospectSource}
+        projectionConfig={projectionConfig}
+        onRankingSourceChange={(source: RankingSource | null) => {
+          setRankingSource(source);
+          onFiltersChange({
+            excludeDrafted,
+            teams: selectedTeams,
+            ageRange,
+            levels: selectedLevels,
+            playerType,
+            position: selectedPosition || undefined,
+            rankingSource: source,
+            prospectSource,
+            projectionConfig
+          });
+        }}
+        onProspectSourceChange={(source: ProspectSource | null) => {
+          setProspectSource(source);
+          onFiltersChange({
+            excludeDrafted,
+            teams: selectedTeams,
+            ageRange,
+            levels: selectedLevels,
+            playerType,
+            position: selectedPosition || undefined,
+            rankingSource,
+            prospectSource: source,
+            projectionConfig
+          });
+        }}
+        onProjectionConfigChange={(config: { source: string | null; category: string | null }) => {
+          setProjectionConfig(config);
+          onFiltersChange({
+            excludeDrafted,
+            teams: selectedTeams,
+            ageRange,
+            levels: selectedLevels,
+            playerType,
+            position: selectedPosition || undefined,
+            rankingSource,
+            prospectSource,
+            projectionConfig: config
+          });
+        }}
+        availableRankingSources={Object.values(RankingSource)}
+        availableProspectSources={Object.values(ProspectSource)}
+        availableProjectionSources={Object.values(ProjectionSource)}
+        availableProjectionCategories={{
+          [ProjectionSource.STEAMER]: ['AVG', 'HR', 'RBI', 'SB', 'OPS', 'ERA', 'WHIP', 'K', 'W', 'SV']
+        }}
+      />
     </Box>
   );
 }

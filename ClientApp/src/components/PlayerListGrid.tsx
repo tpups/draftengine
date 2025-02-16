@@ -1,7 +1,7 @@
-import { Box, Paper } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 import { useTheme } from '../contexts/ThemeContext';
-import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
-import { Draft, Manager, Player, RankingSource } from '../types/models';
+import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams, GridRowParams, GridSortModel, GridValueGetter } from '@mui/x-data-grid';
+import { Draft, Manager, Player, RankingSource, ProspectSource } from '../types/models';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { DraftManagerFlyout } from './DraftManagerFlyout';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -22,7 +22,9 @@ interface GridPlayer {
   eligible: string;
   mlbTeam?: string;
   level?: string;
-  rank: number | null;
+  rankingValue: number | null;
+  prospectValue: number | null;
+  projectionValue: number | null;
   age: number | null;
   draftingManagerName: string;
   draftRound?: number | null;
@@ -59,6 +61,19 @@ interface PlayerListGridProps {
   onSortChange?: (field: string, descending: boolean) => void;
   currentPage: number;
   noRowsOverlay?: React.ReactNode;
+  rankingSource: RankingSource | null;
+  prospectSource: ProspectSource | null;
+  projectionConfig: {
+    source: string | null;
+    category: string | null;
+  };
+  onRankingSourceChange: (source: RankingSource | null) => void;
+  onProspectSourceChange: (source: ProspectSource | null) => void;
+  onProjectionConfigChange: (config: { source: string | null; category: string | null }) => void;
+  availableRankingSources: RankingSource[];
+  availableProspectSources: ProspectSource[];
+  availableProjectionSources: string[];
+  availableProjectionCategories: { [source: string]: string[] };
 }
 
 const PlayerListGridComponent = React.memo(function PlayerListGridInner({
@@ -78,7 +93,17 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
   onPaginationChange,
   onSortChange,
   currentPage,
-  noRowsOverlay
+  noRowsOverlay,
+  rankingSource,
+  prospectSource,
+  projectionConfig,
+  onRankingSourceChange,
+  onProspectSourceChange,
+  onProjectionConfigChange,
+  availableRankingSources,
+  availableProspectSources,
+  availableProjectionSources,
+  availableProjectionCategories
 }: PlayerListGridProps): JSX.Element {
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -99,8 +124,9 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
   }, [currentPage]);
   const { theme, mode } = useTheme();
   const { settings } = useLeagueSettings();
+  
 
-  const handlePlayerClick = useCallback((id: string | undefined, event?: React.MouseEvent) => {
+  const handlePlayerClick = useCallback((id: string | undefined, event?: React.MouseEvent<HTMLElement>) => {
     event?.stopPropagation();
     const player = players.find(p => p.id === id);
     if (player) {
@@ -171,14 +197,28 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       ? determineEligiblePositions(mostRecentStats, settings?.minGamesForPosition || 10)
       : [];
 
+    const rankLower = rankingSource?.toLowerCase();
+    const rankValue = rankLower && player.rank ? player.rank[rankLower] : null;
+    const rankingValue: number | null = rankValue;
+    const prospectValue: number | null = prospectSource && player.prospectRank ? 
+      (player.prospectRank[prospectSource] ?? null) : null;
+    const projectionValue = (projectionConfig.source && projectionConfig.category && player.projections?.[projectionConfig.source])
+      ? (player.projections[projectionConfig.source].hitter?.stats?.[projectionConfig.category] || 
+         player.projections[projectionConfig.source].pitcher?.stats?.[projectionConfig.category] || 
+         null)
+      : null;
+
+
     return {
-      id: player.id,
+      id: player.id || '',
       name: player.name,
       mlbTeam: player.mlbTeam,
       level: player.level,
       eligible: eligiblePositions.join(', '),
-      rank: player.rank?.[RankingSource.IBW] || null,
-      age: calculateBaseballAge(player.birthDate, CURRENT_BASEBALL_SEASON),
+      rankingValue,
+      prospectValue,
+      projectionValue: projectionValue as number | null,
+      age: calculateBaseballAge(player.birthDate?.toISOString(), CURRENT_BASEBALL_SEASON),
       position: player.position?.join(', ') || '',
       draftingManagerName: draftStatus?.isDrafted ? (draftingManager?.name ?? '[Manager Deleted]') : '',
       draftRound: draftStatus?.isDrafted ? draftStatus.round : null,
@@ -322,15 +362,66 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
   }, [gridMode, theme, mode, handlePlayerHighlight, handlePlayerEdit, handlePlayerDelete, handlePlayerUndraft, handleDraftClick, canDraft]);
 
   const columns: GridColDef<GridPlayer>[] = [
-    {
-      field: 'rank',
-      headerName: 'Rank',
+    ...(rankingSource ? [{
+      field: 'rankingValue',
+      headerName: rankingSource.toUpperCase(),
       width: 80,
       type: 'number' as const,
       align: 'center' as const,
       headerAlign: 'center' as const,
-      sortable: true
-    },
+      sortable: true,
+      renderCell: (params: GridRenderCellParams<GridPlayer>) => {
+        const value = params.row?.rankingValue;
+        if (value === null || value === undefined) return '-';
+        return `#${value}`;
+      }
+    }] : []),
+    ...(prospectSource ? [{
+      field: 'prospectValue',
+      headerName: `${prospectSource} (Prospect)`,
+      width: 100,
+      type: 'number' as const,
+      align: 'center' as const,
+      headerAlign: 'center' as const,
+      sortable: true,
+      renderCell: (params: GridRenderCellParams<GridPlayer>) => {
+        const value = params.row?.prospectValue;
+        if (value === null || value === undefined) return '-';
+        return `#${value}`;
+      }
+    }] : []),
+    ...(projectionConfig.source && projectionConfig.category ? [{
+      field: 'projectionValue',
+      headerName: `${projectionConfig.source} ${projectionConfig.category}`,
+      width: 100,
+      type: 'number' as const,
+      align: 'center' as const,
+      headerAlign: 'center' as const,
+      sortable: true,
+      renderCell: (params: GridRenderCellParams<GridPlayer>) => {
+        const value = params.row?.projectionValue;
+        if (value === null || value === undefined) return '-';
+        
+        // Format based on common stat categories
+        const category = projectionConfig.category?.toLowerCase() || '';
+        try {
+          if (category && ['avg', 'ops', 'iso', 'obp', 'slg'].includes(category)) {
+            return value.toFixed(3);
+          }
+          if (category && ['era', 'whip', 'k/9', 'bb/9', 'hr/9', 'war'].includes(category)) {
+            return value.toFixed(2);
+          }
+          if (category && ['k%', 'bb%', 'gb%'].includes(category)) {
+            return `${(value * 100).toFixed(1)}%`;
+          }
+          // For counting stats like HR, R, RBI, SO, etc.
+          return Math.round(value).toString();
+        } catch (error) {
+          console.error('Error formatting projection value:', error);
+          return '-';
+        }
+      }
+    }] : []),
     {
       field: 'name',
       headerName: 'Name',
@@ -444,6 +535,12 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
         p: 0,
         m: 2
       }}>
+        {/* Debug info */}
+        <Box sx={{ p: 2 }}>
+          <Typography variant="caption" color="text.secondary">
+            Selected Sources: {rankingSource || 'None'} | {prospectSource || 'None'} | {projectionConfig.source || 'None'}
+          </Typography>
+        </Box>
         <DataGrid
           getRowClassName={getRowClassName}
           rows={gridData}
@@ -454,18 +551,39 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
           rowHeight={46}
           pageSizeOptions={[25, 50, 100]}
           paginationModel={paginationModel}
-          onPaginationModelChange={(model) => {
+          onPaginationModelChange={(model: { page: number; pageSize: number }) => {
             setPaginationModel(model);
             onPaginationChange(model);
           }}
           paginationMode="server"
           sortingMode="server"
-          onSortModelChange={(model) => {
+          onSortModelChange={(model: GridSortModel) => {
             if (onSortChange) {
-              const sortField = model[0]?.field;
+              const field = model[0]?.field;
+              // Convert grid field names to match backend property names
+              // Preserve case for MLBTeam, convert others to lowercase
+              // Preserve case for specific fields
+              const sortField = field === 'mlbTeam' ? 'MLBTeam' 
+                : field === 'name' ? 'Name'
+                : field === 'rankingValue' && rankingSource ? `rank.${rankingSource.toLowerCase()}`
+                : field === 'prospectValue' && prospectSource ? `prospectrank.${prospectSource}`
+                : field === 'projectionValue' && projectionConfig.source && projectionConfig.category ? 
+                    `Projections.${projectionConfig.source}.${projectionConfig.category}`
+                : field?.toLowerCase();
               const sortDescending = model[0]?.sort === 'desc';
+              console.log('Sort changed:', JSON.stringify({ 
+                originalField: field,
+                mappedField: sortField,
+                descending: sortDescending,
+                model: model[0]
+              }, null, 2));
               onSortChange(sortField, sortDescending);
             }
+          }}
+          initialState={{
+            sorting: {
+              sortModel: rankingSource ? [{ field: 'rankingValue', sort: 'asc' }] : [],
+            },
           }}
           rowCount={totalCount}
           getRowSpacing={() => ({
@@ -668,7 +786,11 @@ const PlayerListGridComponent = React.memo(function PlayerListGridInner({
       prevProps.totalCount !== nextProps.totalCount ||
       prevProps.gridMode !== nextProps.gridMode ||
       prevProps.activeDraft !== nextProps.activeDraft ||
-      prevProps.onSortChange !== nextProps.onSortChange) {
+      prevProps.onSortChange !== nextProps.onSortChange ||
+      prevProps.rankingSource !== nextProps.rankingSource ||
+      prevProps.prospectSource !== nextProps.prospectSource ||
+      prevProps.projectionConfig.source !== nextProps.projectionConfig.source ||
+      prevProps.projectionConfig.category !== nextProps.projectionConfig.category) {
     return false;
   }
   return true;

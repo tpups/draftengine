@@ -76,7 +76,9 @@ namespace DraftEngine.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> Get(
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -84,7 +86,7 @@ namespace DraftEngine.Controllers
                     "Attempting to get all players (Page {Page}, Size {Size})", 
                     pageNumber, pageSize);
 
-                var result = await _playerService.GetPaginatedAsync(pageNumber, pageSize);
+                var result = await _playerService.GetPaginatedAsync(pageNumber, pageSize, null, sortField, sortDescending);
                 
                 _logger.LogInformation(
                     "Retrieved {Total} players (Page {Page} of {TotalPages})", 
@@ -344,7 +346,9 @@ namespace DraftEngine.Controllers
         public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> GetByLevel(
             string level,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -358,7 +362,7 @@ namespace DraftEngine.Controllers
                     return BadRequest(ApiResponse<string>.Create("Competition level is required"));
                 }
 
-                var result = await _playerService.GetByLevelPaginatedAsync(level, pageNumber, pageSize);
+                var result = await _playerService.GetByLevelPaginatedAsync(level, pageNumber, pageSize, sortField, sortDescending);
                 
                 _logger.LogInformation(
                     "Found {Total} players at level {Level} (Page {Page} of {TotalPages})", 
@@ -395,7 +399,9 @@ namespace DraftEngine.Controllers
         public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> GetByTeam(
             string team,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -415,7 +421,7 @@ namespace DraftEngine.Controllers
                     return BadRequest(ApiResponse<string>.Create("Team abbreviation must be 3 characters"));
                 }
 
-                var result = await _playerService.GetByTeamPaginatedAsync(team.ToUpperInvariant(), pageNumber, pageSize);
+                var result = await _playerService.GetByTeamPaginatedAsync(team.ToUpperInvariant(), pageNumber, pageSize, sortField, sortDescending);
                 
                 _logger.LogInformation(
                     "Found {Total} players for team {Team} (Page {Page} of {TotalPages})", 
@@ -459,7 +465,9 @@ namespace DraftEngine.Controllers
         public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> GetByPosition(
             string position,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -481,7 +489,7 @@ namespace DraftEngine.Controllers
                     return BadRequest(ApiResponse<string>.Create("Invalid position code. Valid codes are: " + string.Join(", ", validPositions)));
                 }
 
-                var result = await _playerService.GetByPositionPaginatedAsync(position.ToUpperInvariant(), pageNumber, pageSize);
+                var result = await _playerService.GetByPositionPaginatedAsync(position.ToUpperInvariant(), pageNumber, pageSize, sortField, sortDescending);
                 
                 _logger.LogInformation(
                     "Found {Total} players at position {Position} (Page {Page} of {TotalPages})", 
@@ -521,7 +529,9 @@ namespace DraftEngine.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> GetUndrafted(
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -537,7 +547,7 @@ namespace DraftEngine.Controllers
                     return BadRequest(ApiResponse<string>.Create("No active draft found"));
                 }
 
-                var result = await _playerService.GetUndraftedPlayersPaginatedAsync(pageNumber, pageSize);
+                var result = await _playerService.GetUndraftedPlayersPaginatedAsync(pageNumber, pageSize, sortField, sortDescending);
                 
                 _logger.LogInformation(
                     "Found {Total} undrafted players (Page {Page} of {TotalPages})", 
@@ -578,7 +588,9 @@ namespace DraftEngine.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<PaginatedResult<Player>>>> GetHighlighted(
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -586,7 +598,7 @@ namespace DraftEngine.Controllers
                     "Attempting to get highlighted players (Page {Page}, Size {Size})", 
                     pageNumber, pageSize);
 
-                var result = await _playerService.GetHighlightedPlayersPaginatedAsync(pageNumber, pageSize);
+                var result = await _playerService.GetHighlightedPlayersPaginatedAsync(pageNumber, pageSize, sortField, sortDescending);
                 
                 _logger.LogInformation(
                     "Found {Total} highlighted players (Page {Page} of {TotalPages})", 
@@ -1043,7 +1055,9 @@ namespace DraftEngine.Controllers
             [FromQuery] int minAge, 
             [FromQuery] int maxAge,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -1316,7 +1330,9 @@ namespace DraftEngine.Controllers
             [FromQuery] string playerType = "all",
             [FromQuery] string position = null,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortField = null,
+            [FromQuery] bool sortDescending = false)
         {
             try
             {
@@ -1331,6 +1347,26 @@ namespace DraftEngine.Controllers
                     return BadRequest(ApiResponse<string>.Create("Player type must be 'all', 'pitchers', or 'hitters'"));
                 }
 
+                // Map grid field names to MongoDB field paths
+                var mappedSortField = sortField;
+                if (sortField?.Contains(".") == true)
+                {
+                    // Field already contains the path (e.g., "Rank.IBW")
+                    mappedSortField = sortField;
+                }
+                else if (sortField == "rankingValue" || sortField == "prospectValue")
+                {
+                    // Extract source from query string
+                    var source = HttpContext.Request.Query["rankingSource"].FirstOrDefault() ?? 
+                               HttpContext.Request.Query["prospectSource"].FirstOrDefault();
+                    
+                    if (!string.IsNullOrEmpty(source))
+                    {
+                        mappedSortField = sortField == "rankingValue" ? 
+                            $"Rank.{source}" : $"ProspectRank.{source}";
+                    }
+                }
+
                 var result = await _playerService.SearchPlayersPaginatedAsync(
                     searchTerm, 
                     excludeDrafted,
@@ -1341,7 +1377,10 @@ namespace DraftEngine.Controllers
                     playerType,
                     position,
                     pageNumber, 
-                    pageSize);
+                    pageSize,
+                    mlbId: null,
+                    sortField: mappedSortField,
+                    sortDescending: sortDescending);
                 
                 _logger.LogInformation(
                     "Found {Total} players matching '{SearchTerm}' (Page {Page} of {TotalPages})", 

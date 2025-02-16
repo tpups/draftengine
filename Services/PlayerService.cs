@@ -655,14 +655,64 @@ namespace DraftEngine.Services
         public async Task<PaginatedResult<Player>> GetPaginatedAsync(
             int pageNumber = 1,
             int pageSize = 100,
-            FilterDefinition<Player>? filter = null)
+            FilterDefinition<Player>? filter = null,
+            string sortField = null,
+            bool sortDescending = false)
         {
             filter ??= Builders<Player>.Filter.Empty;
+            var findFluent = _players.Find(filter);
+
+            // Apply sorting if specified
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                // Map grid field names to MongoDB field names
+                // Extract source and field type from sort field (e.g., "Rank.IBW" or "ProspectRank.IBW")
+                var mongoField = sortField;
+                if (sortField?.Contains(".") == true)
+                {
+                    // Field already contains the path (e.g., "Rank.IBW")
+                    mongoField = sortField;
+                }
+                else
+                {
+                    mongoField = sortField switch
+                    {
+                        "rankingValue" => "Rank.IBW", // Default to IBW if no specific source
+                        "prospectValue" => "ProspectRank.IBW", // Default to IBW if no specific source
+                        "name" => "Name",
+                        "position" => "Position",
+                        "eligible" => "PositionStats.2024", // Current year position stats
+                        "age" => "BirthDate", // Sort by birthdate for age (reverse order)
+                        "mlbTeam" => "MLBTeam",
+                        "level" => "Level",
+                        _ => sortField
+                    };
+                }
+
+                // For age sorting, we need to reverse the order since older = earlier birthdate
+                if (sortField == "age")
+                {
+                    sortDescending = !sortDescending;
+                }
+
+                var sortDefinition = sortDescending
+                    ? Builders<Player>.Sort.Descending(mongoField).Ascending("Name")
+                    : Builders<Player>.Sort.Ascending(mongoField).Ascending("Name");
+                findFluent = findFluent.Sort(sortDefinition);
+            }
+            else
+            {
+                // Default sort by IBW rank if available, then name
+                var defaultSort = Builders<Player>.Sort
+                    .Ascending("Rank.IBW")
+                    .Ascending("Name");
+                findFluent = findFluent.Sort(defaultSort);
+            }
 
             var totalCount = await _players.CountDocumentsAsync(filter);
             var skip = (pageNumber - 1) * pageSize;
 
-            var items = await _players.Find(filter)
+            var items = await findFluent
                 .Skip(skip)
                 .Limit(pageSize)
                 .ToListAsync();
@@ -682,10 +732,64 @@ namespace DraftEngine.Services
         public async Task<PaginatedResult<Player>> GetByLevelPaginatedAsync(
             string level,
             int pageNumber = 1,
-            int pageSize = 100)
+            int pageSize = 100,
+            string sortField = null,
+            bool sortDescending = false)
         {
             var filter = Builders<Player>.Filter.Eq(p => p.Level, level);
-            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+            var findFluent = _players.Find(filter);
+
+            // Apply sorting if specified
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                // Map grid field names to MongoDB field names
+                var mongoField = sortField switch
+                {
+                    "rank" => "Rank.IBW",
+                    "name" => "Name",
+                    "position" => "Position",
+                    "eligible" => "PositionStats.2024", // Current year position stats
+                    "age" => "BirthDate", // Sort by birthdate for age (reverse order)
+                    "mlbTeam" => "MLBTeam",
+                    "level" => "Level",
+                    _ => sortField
+                };
+
+                // For age sorting, we need to reverse the order since older = earlier birthdate
+                if (sortField == "age")
+                {
+                    sortDescending = !sortDescending;
+                }
+
+                var sortDefinition = sortDescending
+                    ? Builders<Player>.Sort.Descending(mongoField).Ascending("Name")
+                    : Builders<Player>.Sort.Ascending(mongoField).Ascending("Name");
+                findFluent = findFluent.Sort(sortDefinition);
+            }
+            else
+            {
+                // Default sort by IBW rank if available, then name
+                var defaultSort = Builders<Player>.Sort
+                    .Ascending("Rank.IBW")
+                    .Ascending("Name");
+                findFluent = findFluent.Sort(defaultSort);
+            }
+
+            var totalCount = await _players.CountDocumentsAsync(filter);
+            var skip = (pageNumber - 1) * pageSize;
+
+            var items = await findFluent
+                .Skip(skip)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<Player>
+            {
+                Items = items,
+                TotalCount = (int)totalCount,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>
@@ -694,10 +798,64 @@ namespace DraftEngine.Services
         public async Task<PaginatedResult<Player>> GetByTeamPaginatedAsync(
             string team,
             int pageNumber = 1,
-            int pageSize = 100)
+            int pageSize = 100,
+            string sortField = null,
+            bool sortDescending = false)
         {
             var filter = Builders<Player>.Filter.Eq(p => p.MLBTeam, team);
-            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+            var findFluent = _players.Find(filter);
+
+            // Apply sorting if specified
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                // Map grid field names to MongoDB field names
+                var mongoField = sortField switch
+                {
+                    "rank" => "Rank.IBW",
+                    "name" => "Name",
+                    "position" => "Position",
+                    "eligible" => "PositionStats.2024", // Current year position stats
+                    "age" => "BirthDate", // Sort by birthdate for age (reverse order)
+                    "mlbTeam" => "MLBTeam",
+                    "level" => "Level",
+                    _ => sortField
+                };
+
+                // For age sorting, we need to reverse the order since older = earlier birthdate
+                if (sortField == "age")
+                {
+                    sortDescending = !sortDescending;
+                }
+
+                var sortDefinition = sortDescending
+                    ? Builders<Player>.Sort.Descending(mongoField).Ascending("Name")
+                    : Builders<Player>.Sort.Ascending(mongoField).Ascending("Name");
+                findFluent = findFluent.Sort(sortDefinition);
+            }
+            else
+            {
+                // Default sort by IBW rank if available, then name
+                var defaultSort = Builders<Player>.Sort
+                    .Ascending("Rank.IBW")
+                    .Ascending("Name");
+                findFluent = findFluent.Sort(defaultSort);
+            }
+
+            var totalCount = await _players.CountDocumentsAsync(filter);
+            var skip = (pageNumber - 1) * pageSize;
+
+            var items = await findFluent
+                .Skip(skip)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<Player>
+            {
+                Items = items,
+                TotalCount = (int)totalCount,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>
@@ -706,10 +864,64 @@ namespace DraftEngine.Services
         public async Task<PaginatedResult<Player>> GetByPositionPaginatedAsync(
             string position,
             int pageNumber = 1,
-            int pageSize = 100)
+            int pageSize = 100,
+            string sortField = null,
+            bool sortDescending = false)
         {
             var filter = Builders<Player>.Filter.AnyEq(p => p.Position, position);
-            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+            var findFluent = _players.Find(filter);
+
+            // Apply sorting if specified
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                // Map grid field names to MongoDB field names
+                var mongoField = sortField switch
+                {
+                    "rank" => "Rank.IBW",
+                    "name" => "Name",
+                    "position" => "Position",
+                    "eligible" => "PositionStats.2024", // Current year position stats
+                    "age" => "BirthDate", // Sort by birthdate for age (reverse order)
+                    "mlbTeam" => "MLBTeam",
+                    "level" => "Level",
+                    _ => sortField
+                };
+
+                // For age sorting, we need to reverse the order since older = earlier birthdate
+                if (sortField == "age")
+                {
+                    sortDescending = !sortDescending;
+                }
+
+                var sortDefinition = sortDescending
+                    ? Builders<Player>.Sort.Descending(mongoField).Ascending("Name")
+                    : Builders<Player>.Sort.Ascending(mongoField).Ascending("Name");
+                findFluent = findFluent.Sort(sortDefinition);
+            }
+            else
+            {
+                // Default sort by IBW rank if available, then name
+                var defaultSort = Builders<Player>.Sort
+                    .Ascending("Rank.IBW")
+                    .Ascending("Name");
+                findFluent = findFluent.Sort(defaultSort);
+            }
+
+            var totalCount = await _players.CountDocumentsAsync(filter);
+            var skip = (pageNumber - 1) * pageSize;
+
+            var items = await findFluent
+                .Skip(skip)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<Player>
+            {
+                Items = items,
+                TotalCount = (int)totalCount,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>
@@ -717,7 +929,9 @@ namespace DraftEngine.Services
         /// </summary>
         public async Task<PaginatedResult<Player>> GetUndraftedPlayersPaginatedAsync(
             int pageNumber = 1,
-            int pageSize = 100)
+            int pageSize = 100,
+            string sortField = null,
+            bool sortDescending = false)
         {
             var draft = await _draftService.GetActiveDraftAsync();
             if (draft == null) return new PaginatedResult<Player>
@@ -737,7 +951,60 @@ namespace DraftEngine.Services
                     )
                 )
             );
-            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+
+            var findFluent = _players.Find(filter);
+
+            // Apply sorting if specified
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                // Map grid field names to MongoDB field names
+                var mongoField = sortField switch
+                {
+                    "rank" => "Rank.IBW",
+                    "name" => "Name",
+                    "position" => "Position",
+                    "eligible" => "PositionStats.2024", // Current year position stats
+                    "age" => "BirthDate", // Sort by birthdate for age (reverse order)
+                    "mlbTeam" => "MLBTeam",
+                    "level" => "Level",
+                    _ => sortField
+                };
+
+                // For age sorting, we need to reverse the order since older = earlier birthdate
+                if (sortField == "age")
+                {
+                    sortDescending = !sortDescending;
+                }
+
+                var sortDefinition = sortDescending
+                    ? Builders<Player>.Sort.Descending(mongoField).Ascending("Name")
+                    : Builders<Player>.Sort.Ascending(mongoField).Ascending("Name");
+                findFluent = findFluent.Sort(sortDefinition);
+            }
+            else
+            {
+                // Default sort by IBW rank if available, then name
+                var defaultSort = Builders<Player>.Sort
+                    .Ascending("Rank.IBW")
+                    .Ascending("Name");
+                findFluent = findFluent.Sort(defaultSort);
+            }
+
+            var totalCount = await _players.CountDocumentsAsync(filter);
+            var skip = (pageNumber - 1) * pageSize;
+
+            var items = await findFluent
+                .Skip(skip)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<Player>
+            {
+                Items = items,
+                TotalCount = (int)totalCount,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>
@@ -745,10 +1012,12 @@ namespace DraftEngine.Services
         /// </summary>
         public async Task<PaginatedResult<Player>> GetHighlightedPlayersPaginatedAsync(
             int pageNumber = 1,
-            int pageSize = 100)
+            int pageSize = 100,
+            string sortField = null,
+            bool sortDescending = false)
         {
             var filter = Builders<Player>.Filter.Eq(p => p.IsHighlighted, true);
-            return await GetPaginatedAsync(pageNumber, pageSize, filter);
+            return await GetPaginatedAsync(pageNumber, pageSize, filter, sortField, sortDescending);
         }
 
         /// <summary>
@@ -1093,7 +1362,7 @@ namespace DraftEngine.Services
                 // Map grid field names to MongoDB field names
                 var mongoField = sortField switch
                 {
-                    "rank" => $"Rank.{RankingSource.IBW}",
+                    "rank" => "Rank.IBW",
                     "name" => "Name",
                     "position" => "Position",
                     "eligible" => "PositionStats.2024", // Current year position stats
@@ -1110,15 +1379,15 @@ namespace DraftEngine.Services
                 }
 
                 var sortDefinition = sortDescending
-                    ? Builders<Player>.Sort.Descending(mongoField)
-                    : Builders<Player>.Sort.Ascending(mongoField);
+                    ? Builders<Player>.Sort.Descending(mongoField).Ascending("Name")
+                    : Builders<Player>.Sort.Ascending(mongoField).Ascending("Name");
                 findFluent = findFluent.Sort(sortDefinition);
             }
             else
             {
                 // Default sort by IBW rank if available, then name
                 var defaultSort = Builders<Player>.Sort
-                    .Ascending($"Rank.{RankingSource.IBW}")
+                    .Ascending("Rank.IBW")
                     .Ascending("Name");
                 findFluent = findFluent.Sort(defaultSort);
             }
